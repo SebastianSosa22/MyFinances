@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, Modal, Platform, StyleSheet, Keyboard, Animated, PanResponder, ActivityIndicator, AppState, RefreshControl, Switch } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, Modal, Platform, StyleSheet, Keyboard, Animated, PanResponder, ActivityIndicator, AppState, RefreshControl, Switch, useWindowDimensions } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, G } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -88,12 +88,15 @@ function periodEnd(p, start) {
 }
 
 // ---------- Componentes ----------
+const useWide = () => useWindowDimensions().width >= 900; // escritorio: barra lateral y columnas
+
 const Card = ({ children, style }) => <View style={[s.card, style]}>{children}</View>;
 const Title = ({ children }) => <Text style={s.sectionTitle}>{children}</Text>;
 
 function Segmented({ options, value, onChange }) {
+  const wide = useWide();
   return (
-    <View style={s.seg}>
+    <View style={[s.seg, wide && { maxWidth: 420 }]}>
       {Object.entries(options).map(([k, v]) => (
         <Pressable key={k} onPress={() => onChange(k)} style={[s.segItem, value === k && s.segActive]}>
           <Text style={[s.segText, value === k && { fontWeight: '600' }]}>{v.label}</Text>
@@ -298,7 +301,26 @@ export default function App() {
 const asExp = (m) => ({ freq: m.freq, day: m.day, date: m.occurred_at });
 const bucketOf = (cat) => (CATS.find((c) => c.name === cat) || { bucket: 'wants' }).bucket;
 
+function Sidebar({ tab, setTab, onAdd, email }) {
+  const items = [['home', '📊', 'Resumen'], ['moves', '🧾', 'Movimientos'], ['goals', '🎯', 'Metas'], ['history', '🗓️', 'Historial'], ['settings', '⚙️', 'Ajustes']];
+  return (
+    <View style={s.sidebar}>
+      <Text style={s.brand}>Finanzas</Text>
+      <Pressable style={s.addBtn} onPress={onAdd}><Text style={s.addBtnText}>{tab === 'goals' ? '+ Nueva meta' : '+ Nuevo movimiento'}</Text></Pressable>
+      {items.map(([k, ic, l]) => (
+        <Pressable key={k} onPress={() => setTab(k)} style={[s.navItem, tab === k && s.navActive]}>
+          <Text style={{ fontSize: 18, marginRight: 10 }}>{ic}</Text>
+          <Text style={[s.navText, tab === k && { color: '#007AFF', fontWeight: '600' }]}>{l}</Text>
+        </Pressable>
+      ))}
+      <View style={{ flex: 1 }} />
+      <Text style={[s.caption, { paddingHorizontal: 0 }]} numberOfLines={1}>{email}</Text>
+    </View>
+  );
+}
+
 function Main({ session }) {
+  const wide = useWide();
   const [tab, setTab] = useState('home');
   const [period, setPeriod] = useState('monthly');
   const [moves, setMoves] = useState([]);
@@ -429,8 +451,9 @@ function Main({ session }) {
     : null;
 
   return (
-    <View style={s.container}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+    <View style={wide ? s.shellWide : s.container}>
+      {wide && <Sidebar tab={tab} setTab={setTab} email={session.user.email} onAdd={() => (tab === 'goals' ? setGoalSheet({ open: true, goal: null }) : setModal(true))} />}
+      <ScrollView style={wide ? { flex: 1 } : null} contentContainerStyle={wide ? s.contentWide : { padding: 16, paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}>
         {!!err && <Text style={[s.hint, { color: '#FF3B30', marginBottom: 8 }]}>{err}</Text>}
         {!!notice && <Pressable onPress={() => setNotice('')}><Text style={[s.hint, { color: '#FF9500', marginBottom: 8 }]}>{notice}</Text></Pressable>}
@@ -440,133 +463,139 @@ function Main({ session }) {
             <Text style={s.largeTitle}>Resumen</Text>
             <Segmented options={PERIODS} value={period} onChange={setPeriod} />
             <Text style={[s.caption, { marginTop: 8 }]}>Del {fmt(start)} al {fmt(now)} (hoy)</Text>
-            <Card style={{ marginTop: 12 }}>
-              <Text style={[s.caption, { marginTop: 12 }]}>Disponible</Text>
-              <Text style={[s.big, income - totalSpent < 0 && { color: '#FF3B30' }]}>{money(income - totalSpent)}</Text>
-              <View style={[s.row, s.sep, { marginTop: 12 }]}>
-                <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { color: '#34C759', paddingHorizontal: 16 }]}>{money(income)}</Text></View>
-                <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { color: '#FF3B30', paddingHorizontal: 16 }]}>{money(totalSpent)}</Text></View>
+            <View style={wide ? s.cols : null}>
+              <View style={wide ? s.col : null}>
+                <Card style={{ marginTop: 12 }}>
+                  <Text style={[s.caption, { marginTop: 12 }]}>Disponible</Text>
+                  <Text style={[s.big, income - totalSpent < 0 && { color: '#FF3B30' }]}>{money(income - totalSpent)}</Text>
+                  <View style={[s.row, s.sep, { marginTop: 12 }]}>
+                    <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { color: '#34C759', paddingHorizontal: 16 }]}>{money(income)}</Text></View>
+                    <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { color: '#FF3B30', paddingHorizontal: 16 }]}>{money(totalSpent)}</Text></View>
+                  </View>
+                </Card>
+                <Card>
+                  <BudgetDonut spent={spent} income={income} center={<><Text style={s.big2}>{spentPct}%</Text><Text style={s.caption}>de tus ingresos</Text></>} />
+                  <Text style={[s.caption, { textAlign: 'center', marginTop: 8 }]}>Cada tramo es una parte de tu plan 50/30/20 y se llena conforme gastas.</Text>
+                  {Object.entries(BUCKETS).map(([k, b]) => {
+                    const target = (income * b.pct) / 100;
+                    return (
+                      <View key={k} style={[s.row, s.sep, { marginTop: 8, justifyContent: 'space-between' }]}>
+                        <Text style={s.body}><Text style={{ color: b.color }}>● </Text>{b.label} {b.pct}%</Text>
+                        <Text style={[s.body, spent[k] > target && { color: '#FF3B30' }]}>{money(spent[k])} / {money(target)}</Text>
+                      </View>
+                    );
+                  })}
+                </Card>
+                {income === 0 && <Text style={s.hint}>Toca + y registra un ingreso para calcular tu presupuesto.</Text>}
+
+                {income > 0 && (
+                  <>
+                    <Title>Ritmo del periodo</Title>
+                    <Card style={{ padding: 16 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}><Text style={s.body}>Día {elapsed} de {totalDays}</Text><Text style={s.caption}>{timePct}%</Text></View>
+                      <Bar spent={elapsed} budget={totalDays} color="#007AFF" />
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, marginBottom: 6 }}><Text style={s.body}>Gastado de tus ingresos</Text><Text style={s.caption}>{spentPct}%</Text></View>
+                      <Bar spent={totalSpent} budget={income} color={spentPct > timePct ? '#FF9500' : '#34C759'} />
+                      <Text style={[s.hint, { textAlign: 'left', marginTop: 12, color: spentPct > timePct ? '#FF9500' : '#34C759' }]}>
+                        {spentPct > timePct ? 'Vas gastando más rápido de lo que avanza el periodo.' : 'Vas bien: tu gasto va por debajo del ritmo del periodo.'}
+                      </Text>
+                      <View style={[s.row, s.sep, { paddingHorizontal: 0, marginTop: 8, justifyContent: 'space-between' }]}><Text style={s.body}>Puedes gastar por día</Text><Text style={[s.body, { fontWeight: '600' }]}>{money(Math.max(avail, 0) / daysLeft)}</Text></View>
+                      <View style={[s.row, s.sep, { paddingHorizontal: 0, justifyContent: 'space-between' }]}><Text style={s.body}>Has gastado en promedio</Text><Text style={s.body}>{money(totalSpent / elapsed)} / día</Text></View>
+                    </Card>
+                  </>
+                )}
+
               </View>
-            </Card>
-            <Card>
-              <BudgetDonut spent={spent} income={income} center={<><Text style={s.big2}>{spentPct}%</Text><Text style={s.caption}>de tus ingresos</Text></>} />
-              <Text style={[s.caption, { textAlign: 'center', marginTop: 8 }]}>Cada tramo es una parte de tu plan 50/30/20 y se llena conforme gastas.</Text>
-              {Object.entries(BUCKETS).map(([k, b]) => {
-                const target = (income * b.pct) / 100;
-                return (
-                  <View key={k} style={[s.row, s.sep, { marginTop: 8, justifyContent: 'space-between' }]}>
-                    <Text style={s.body}><Text style={{ color: b.color }}>● </Text>{b.label} {b.pct}%</Text>
-                    <Text style={[s.body, spent[k] > target && { color: '#FF3B30' }]}>{money(spent[k])} / {money(target)}</Text>
-                  </View>
-                );
-              })}
-            </Card>
-            {income === 0 && <Text style={s.hint}>Toca + y registra un ingreso para calcular tu presupuesto.</Text>}
+              <View style={wide ? s.col : null}>
+                {limitRows.length > 0 && (
+                  <>
+                    <Title>Límites del mes</Title>
+                    <Card>
+                      {limitRows.map(([cat, lim, sp], i) => {
+                        const c = CATS.find((z) => z.name === cat), ratio = sp / lim;
+                        const col = ratio >= 1 ? '#FF3B30' : ratio >= 0.8 ? '#FF9500' : '#34C759';
+                        return (
+                          <View key={cat} style={[s.row, i > 0 && s.sep, { flexDirection: 'column', alignItems: 'stretch' }]}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                              <Text style={s.body}>{c ? c.icon : '🧾'} {cat}</Text>
+                              <Text style={[s.body, ratio >= 0.8 && { color: col }]}>{money(sp)} / {money(lim)}</Text>
+                            </View>
+                            <Bar spent={sp} budget={lim} color={col} />
+                          </View>
+                        );
+                      })}
+                    </Card>
+                  </>
+                )}
 
-            {income > 0 && (
-              <>
-                <Title>Ritmo del periodo</Title>
-                <Card style={{ padding: 16 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}><Text style={s.body}>Día {elapsed} de {totalDays}</Text><Text style={s.caption}>{timePct}%</Text></View>
-                  <Bar spent={elapsed} budget={totalDays} color="#007AFF" />
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, marginBottom: 6 }}><Text style={s.body}>Gastado de tus ingresos</Text><Text style={s.caption}>{spentPct}%</Text></View>
-                  <Bar spent={totalSpent} budget={income} color={spentPct > timePct ? '#FF9500' : '#34C759'} />
-                  <Text style={[s.hint, { textAlign: 'left', marginTop: 12, color: spentPct > timePct ? '#FF9500' : '#34C759' }]}>
-                    {spentPct > timePct ? 'Vas gastando más rápido de lo que avanza el periodo.' : 'Vas bien: tu gasto va por debajo del ritmo del periodo.'}
-                  </Text>
-                  <View style={[s.row, s.sep, { paddingHorizontal: 0, marginTop: 8, justifyContent: 'space-between' }]}><Text style={s.body}>Puedes gastar por día</Text><Text style={[s.body, { fontWeight: '600' }]}>{money(Math.max(avail, 0) / daysLeft)}</Text></View>
-                  <View style={[s.row, s.sep, { paddingHorizontal: 0, justifyContent: 'space-between' }]}><Text style={s.body}>Has gastado en promedio</Text><Text style={s.body}>{money(totalSpent / elapsed)} / día</Text></View>
-                </Card>
-              </>
-            )}
+                {upcoming.length > 0 && (
+                  <>
+                    <Title>Próximos 7 días</Title>
+                    <Card>
+                      {upcoming.map((u, i) => {
+                        const c = CATS.find((z) => z.name === u.m.cat);
+                        return (
+                          <View key={u.m.id + i} style={[s.row, i > 0 && s.sep]}>
+                            <Text style={{ fontSize: 22, marginRight: 12 }}>{c ? c.icon : '🧾'}</Text>
+                            <View style={{ flex: 1 }}><Text style={s.body}>{u.m.note || u.m.cat}</Text><Text style={s.caption}>{u.d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })}</Text></View>
+                            <Text style={[s.body, { color: '#FF3B30' }]}>-{money(u.m.amount, true)}</Text>
+                          </View>
+                        );
+                      })}
+                      <View style={[s.row, s.sep, { justifyContent: 'space-between' }]}><Text style={s.body}>Total por pagar</Text><Text style={[s.body, { fontWeight: '600' }]}>{money(upcoming.reduce((a, u) => a + u.m.amount, 0), true)}</Text></View>
+                    </Card>
+                  </>
+                )}
 
-            {limitRows.length > 0 && (
-              <>
-                <Title>Límites del mes</Title>
-                <Card>
-                  {limitRows.map(([cat, lim, sp], i) => {
-                    const c = CATS.find((z) => z.name === cat), ratio = sp / lim;
-                    const col = ratio >= 1 ? '#FF3B30' : ratio >= 0.8 ? '#FF9500' : '#34C759';
-                    return (
-                      <View key={cat} style={[s.row, i > 0 && s.sep, { flexDirection: 'column', alignItems: 'stretch' }]}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <Text style={s.body}>{c ? c.icon : '🧾'} {cat}</Text>
-                          <Text style={[s.body, ratio >= 0.8 && { color: col }]}>{money(sp)} / {money(lim)}</Text>
-                        </View>
-                        <Bar spent={sp} budget={lim} color={col} />
+                {topCats.length > 0 && (
+                  <>
+                    <Title>En qué gastas más</Title>
+                    <Card>
+                      {topCats.map(([name, amt], i) => {
+                        const c = CATS.find((z) => z.name === name);
+                        return (
+                          <View key={name} style={[s.row, i > 0 && s.sep, { flexDirection: 'column', alignItems: 'stretch' }]}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}><Text style={s.body}>{c ? c.icon : '🧾'} {name}</Text><Text style={s.body}>{money(amt)} · {Math.round((amt / cur.total) * 100)}%</Text></View>
+                            <Bar spent={amt} budget={topCats[0][1]} color={BUCKETS[bucketOf(name)].color} />
+                          </View>
+                        );
+                      })}
+                    </Card>
+                  </>
+                )}
+
+                {prev && (prev.total > 0 || prev.income > 0) && (
+                  <>
+                    <Title>Vs. el mes pasado a esta fecha</Title>
+                    <Card>
+                      <View style={s.row}>
+                        <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { paddingHorizontal: 16 }]}>{money(income)}</Text><Text style={s.caption}>antes {money(prev.income)}</Text><Delta now={income} prev={prev.income} upIsGood /></View>
+                        <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { paddingHorizontal: 16 }]}>{money(totalSpent)}</Text><Text style={s.caption}>antes {money(prev.total)}</Text><Delta now={totalSpent} prev={prev.total} upIsGood={false} /></View>
                       </View>
-                    );
-                  })}
-                </Card>
-              </>
-            )}
+                    </Card>
+                  </>
+                )}
 
-            {upcoming.length > 0 && (
-              <>
-                <Title>Próximos 7 días</Title>
-                <Card>
-                  {upcoming.map((u, i) => {
-                    const c = CATS.find((z) => z.name === u.m.cat);
-                    return (
-                      <View key={u.m.id + i} style={[s.row, i > 0 && s.sep]}>
-                        <Text style={{ fontSize: 22, marginRight: 12 }}>{c ? c.icon : '🧾'}</Text>
-                        <View style={{ flex: 1 }}><Text style={s.body}>{u.m.note || u.m.cat}</Text><Text style={s.caption}>{u.d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })}</Text></View>
-                        <Text style={[s.body, { color: '#FF3B30' }]}>-{money(u.m.amount, true)}</Text>
-                      </View>
-                    );
-                  })}
-                  <View style={[s.row, s.sep, { justifyContent: 'space-between' }]}><Text style={s.body}>Total por pagar</Text><Text style={[s.body, { fontWeight: '600' }]}>{money(upcoming.reduce((a, u) => a + u.m.amount, 0), true)}</Text></View>
-                </Card>
-              </>
-            )}
-
-            {topCats.length > 0 && (
-              <>
-                <Title>En qué gastas más</Title>
-                <Card>
-                  {topCats.map(([name, amt], i) => {
-                    const c = CATS.find((z) => z.name === name);
-                    return (
-                      <View key={name} style={[s.row, i > 0 && s.sep, { flexDirection: 'column', alignItems: 'stretch' }]}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}><Text style={s.body}>{c ? c.icon : '🧾'} {name}</Text><Text style={s.body}>{money(amt)} · {Math.round((amt / cur.total) * 100)}%</Text></View>
-                        <Bar spent={amt} budget={topCats[0][1]} color={BUCKETS[bucketOf(name)].color} />
-                      </View>
-                    );
-                  })}
-                </Card>
-              </>
-            )}
-
-            {prev && (prev.total > 0 || prev.income > 0) && (
-              <>
-                <Title>Vs. el mes pasado a esta fecha</Title>
-                <Card>
-                  <View style={s.row}>
-                    <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { paddingHorizontal: 16 }]}>{money(income)}</Text><Text style={s.caption}>antes {money(prev.income)}</Text><Delta now={income} prev={prev.income} upIsGood /></View>
-                    <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { paddingHorizontal: 16 }]}>{money(totalSpent)}</Text><Text style={s.caption}>antes {money(prev.total)}</Text><Delta now={totalSpent} prev={prev.total} upIsGood={false} /></View>
-                  </View>
-                </Card>
-              </>
-            )}
-
-            {moves.length > 0 && (
-              <>
-                <Title>Últimos movimientos</Title>
-                <Card>
-                  {moves.slice(0, 4).map((m, i) => {
-                    const isInc = m.kind === 'income', c = CATS.find((z) => z.name === m.cat);
-                    return (
-                      <View key={m.id} style={[s.row, i > 0 && s.sep]}>
-                        <Text style={{ fontSize: 22, marginRight: 12 }}>{isInc ? '💵' : c ? c.icon : '🧾'}</Text>
-                        <View style={{ flex: 1 }}><Text style={s.body}>{isInc ? m.note || 'Ingreso' : m.note || m.cat}</Text><Text style={s.caption}>{freqLabel(asExp(m))}</Text></View>
-                        <Text style={[s.body, { color: isInc ? '#34C759' : '#FF3B30' }]}>{isInc ? '+' : '-'}{money(m.amount, true)}</Text>
-                      </View>
-                    );
-                  })}
-                  <Pressable style={[s.row, s.sep, { justifyContent: 'center' }]} onPress={() => setTab('moves')}><Text style={s.link}>Ver todos</Text></Pressable>
-                </Card>
-              </>
-            )}
+                {moves.length > 0 && (
+                  <>
+                    <Title>Últimos movimientos</Title>
+                    <Card>
+                      {moves.slice(0, 4).map((m, i) => {
+                        const isInc = m.kind === 'income', c = CATS.find((z) => z.name === m.cat);
+                        return (
+                          <View key={m.id} style={[s.row, i > 0 && s.sep]}>
+                            <Text style={{ fontSize: 22, marginRight: 12 }}>{isInc ? '💵' : c ? c.icon : '🧾'}</Text>
+                            <View style={{ flex: 1 }}><Text style={s.body}>{isInc ? m.note || 'Ingreso' : m.note || m.cat}</Text><Text style={s.caption}>{freqLabel(asExp(m))}</Text></View>
+                            <Text style={[s.body, { color: isInc ? '#34C759' : '#FF3B30' }]}>{isInc ? '+' : '-'}{money(m.amount, true)}</Text>
+                          </View>
+                        );
+                      })}
+                      <Pressable style={[s.row, s.sep, { justifyContent: 'center' }]} onPress={() => setTab('moves')}><Text style={s.link}>Ver todos</Text></Pressable>
+                    </Card>
+                  </>
+                )}
+              </View>
+            </View>
           </>
         )}
 
@@ -590,48 +619,54 @@ function Main({ session }) {
           return (
             <>
               <Text style={s.largeTitle}>Movimientos</Text>
-              <TextInput style={[s.input, { backgroundColor: '#E3E3E8', marginTop: 0 }]} placeholder="Buscar categoría o concepto" value={q} onChangeText={setQ} />
-              <Segmented options={{ all: { label: 'Todos' }, expense: { label: 'Gastos' }, income: { label: 'Ingresos' } }} value={fType} onChange={setFType} />
-              <Segmented options={{ all: { label: 'Todo' }, month: { label: 'Este mes' }, '30d': { label: '30 días' } }} value={fRange} onChange={setFRange} />
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
-                {Object.entries(BUCKETS).map(([k, x]) => (
-                  <Pressable key={k} onPress={() => setFBucket(fBucket === k ? null : k)} style={[s.chip, { backgroundColor: fBucket === k ? x.color : '#fff' }]}>
-                    <Text style={[s.chipText, fBucket === k && { color: '#fff' }]}>{x.label}</Text>
-                  </Pressable>
-                ))}
-                <Pressable onPress={() => setFRec(!fRec)} style={[s.chip, { backgroundColor: fRec ? '#007AFF' : '#fff' }]}>
-                  <Text style={[s.chipText, fRec && { color: '#fff' }]}>🔁 Recurrentes</Text>
-                </Pressable>
-              </View>
-              {shown.length > 0 && (
-                <Card style={{ marginTop: 8 }}>
-                  <View style={s.row}>
-                    <View style={{ flex: 1 }}><Text style={s.caption}>{shown.length} movimientos</Text><Text style={[s.body, { color: '#34C759', paddingHorizontal: 16 }]}>+{money(inc)}</Text></View>
-                    <View style={{ flex: 1 }}><Text style={s.caption}>Total gastado</Text><Text style={[s.body, { color: '#FF3B30', paddingHorizontal: 16 }]}>-{money(exp)}</Text></View>
+              <View style={wide ? s.cols : null}>
+                <View style={wide ? s.colSide : null}>
+                  <TextInput style={[s.input, { backgroundColor: '#E3E3E8', marginTop: 0 }]} placeholder="Buscar categoría o concepto" value={q} onChangeText={setQ} />
+                  <Segmented options={{ all: { label: 'Todos' }, expense: { label: 'Gastos' }, income: { label: 'Ingresos' } }} value={fType} onChange={setFType} />
+                  <Segmented options={{ all: { label: 'Todo' }, month: { label: 'Este mes' }, '30d': { label: '30 días' } }} value={fRange} onChange={setFRange} />
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
+                    {Object.entries(BUCKETS).map(([k, x]) => (
+                      <Pressable key={k} onPress={() => setFBucket(fBucket === k ? null : k)} style={[s.chip, { backgroundColor: fBucket === k ? x.color : '#fff' }]}>
+                        <Text style={[s.chipText, fBucket === k && { color: '#fff' }]}>{x.label}</Text>
+                      </Pressable>
+                    ))}
+                    <Pressable onPress={() => setFRec(!fRec)} style={[s.chip, { backgroundColor: fRec ? '#007AFF' : '#fff' }]}>
+                      <Text style={[s.chipText, fRec && { color: '#fff' }]}>🔁 Recurrentes</Text>
+                    </Pressable>
                   </View>
-                </Card>
-              )}
-              <Card>
-                {moves.length === 0 && <Text style={[s.hint, { padding: 16 }]}>Aún no hay movimientos. Toca + para agregar el primero.</Text>}
-                {moves.length > 0 && shown.length === 0 && <Text style={[s.hint, { padding: 16 }]}>Ningún movimiento coincide con los filtros.</Text>}
-                {shown.map((m, i) => {
-                  const isInc = m.kind === 'income', c = CATS.find((x) => x.name === m.cat), b = BUCKETS[bucketOf(m.cat)];
-                  return (
-                    <SwipeRow key={m.id} first={i === 0} onDelete={() => delMove(m.id)}>
+                  {shown.length > 0 && (
+                    <Card style={{ marginTop: 8 }}>
                       <View style={s.row}>
-                        <Text style={{ fontSize: 24, marginRight: 12 }}>{isInc ? '💵' : c ? c.icon : '🧾'}</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={s.body}>{isInc ? m.note || 'Ingreso' : m.note || m.cat}</Text>
-                          <Text style={[s.caption, { color: isInc ? '#34C759' : b.color }]}>{isInc ? 'Ingreso' : (m.note ? m.cat + ' · ' : '') + b.label} · {freqLabel(asExp(m))}</Text>
-                        </View>
-                        <Text style={[s.body, { color: isInc ? '#34C759' : '#FF3B30' }]}>{isInc ? '+' : '-'}{money(m.amount, true)}</Text>
+                        <View style={{ flex: 1 }}><Text style={s.caption}>{shown.length} movimientos</Text><Text style={[s.body, { color: '#34C759', paddingHorizontal: 16 }]}>+{money(inc)}</Text></View>
+                        <View style={{ flex: 1 }}><Text style={s.caption}>Total gastado</Text><Text style={[s.body, { color: '#FF3B30', paddingHorizontal: 16 }]}>-{money(exp)}</Text></View>
                       </View>
-                    </SwipeRow>
-                  );
-                })}
-              </Card>
-              {active ? <Pressable onPress={clear}><Text style={[s.link, { textAlign: 'center', marginTop: 12 }]}>Quitar filtros</Text></Pressable>
-                : moves.length > 0 && <Text style={s.hint}>Desliza un movimiento hacia la izquierda para borrarlo.</Text>}
+                    </Card>
+                  )}
+                </View>
+                <View style={wide ? s.col : null}>
+                  <Card style={wide ? { marginTop: 0 } : null}>
+                    {moves.length === 0 && <Text style={[s.hint, { padding: 16 }]}>Aún no hay movimientos. Toca + para agregar el primero.</Text>}
+                    {moves.length > 0 && shown.length === 0 && <Text style={[s.hint, { padding: 16 }]}>Ningún movimiento coincide con los filtros.</Text>}
+                    {shown.map((m, i) => {
+                      const isInc = m.kind === 'income', c = CATS.find((x) => x.name === m.cat), b = BUCKETS[bucketOf(m.cat)];
+                      return (
+                        <SwipeRow key={m.id} first={i === 0} onDelete={() => delMove(m.id)}>
+                          <View style={s.row}>
+                            <Text style={{ fontSize: 24, marginRight: 12 }}>{isInc ? '💵' : c ? c.icon : '🧾'}</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={s.body}>{isInc ? m.note || 'Ingreso' : m.note || m.cat}</Text>
+                              <Text style={[s.caption, { color: isInc ? '#34C759' : b.color }]}>{isInc ? 'Ingreso' : (m.note ? m.cat + ' · ' : '') + b.label} · {freqLabel(asExp(m))}</Text>
+                            </View>
+                            <Text style={[s.body, { color: isInc ? '#34C759' : '#FF3B30' }]}>{isInc ? '+' : '-'}{money(m.amount, true)}</Text>
+                          </View>
+                        </SwipeRow>
+                      );
+                    })}
+                  </Card>
+                  {active ? <Pressable onPress={clear}><Text style={[s.link, { textAlign: 'center', marginTop: 12 }]}>Quitar filtros</Text></Pressable>
+                    : moves.length > 0 && <Text style={s.hint}>Desliza un movimiento hacia la izquierda para borrarlo.</Text>}
+                </View>
+              </View>
             </>
           );
         })()}
@@ -642,9 +677,8 @@ function Main({ session }) {
 
         {tab === 'history' && <History moves={moves} />}
 
-        {tab === 'settings' && (
-          <>
-            <Text style={s.largeTitle}>Ajustes</Text>
+        {tab === 'settings' && (() => {
+          const remB = (<>
             <Title>Recordatorios</Title>
             <Card>
               <View style={[s.row, { justifyContent: 'space-between' }]}>
@@ -664,6 +698,8 @@ function Main({ session }) {
             </Card>
             <Text style={s.hint}>Las notificaciones se programan en este teléfono y se actualizan cada vez que abres la app.</Text>
 
+          </>);
+          const limB = (<>
             <Title>Límites mensuales por categoría</Title>
             <Card>
               {CATS.filter((c) => c.bucket !== 'savings').map((c, i) => (
@@ -672,24 +708,36 @@ function Main({ session }) {
             </Card>
             <Text style={s.hint}>Déjalo vacío si no quieres límite. Te avisamos en el Resumen y al registrar un gasto cuando llegues al 80% y al 100%.</Text>
 
+          </>);
+          const accB = (<>
             <Title>Cuenta</Title>
             <Card style={{ padding: 16 }}>
               <Text style={s.body}>{session.user.email}</Text>
               <Pressable onPress={() => supabase.auth.signOut()}><Text style={[s.link, { color: '#FF3B30', marginTop: 12 }]}>Cerrar sesión</Text></Pressable>
             </Card>
-          </>
-        )}
+          </>);
+          return (
+            <>
+              <Text style={s.largeTitle}>Ajustes</Text>
+              {wide ? (
+                <View style={s.cols}><View style={s.col}>{remB}{accB}</View><View style={s.col}>{limB}</View></View>
+              ) : (<>{remB}{limB}{accB}</>)}
+            </>
+          );
+        })()}
       </ScrollView>
 
-      {tab !== 'settings' && tab !== 'history' && <Pressable style={s.fab} onPress={() => (tab === 'goals' ? setGoalSheet({ open: true, goal: null }) : setModal(true))}><Text style={s.fabText}>+</Text></Pressable>}
-      <View style={s.tabbar}>
-        {[['home', '📊', 'Resumen'], ['moves', '🧾', 'Movimientos'], ['goals', '🎯', 'Metas'], ['history', '🗓️', 'Historial'], ['settings', '⚙️', 'Ajustes']].map(([k, ic, l]) => (
-          <Pressable key={k} style={s.tab} onPress={() => setTab(k)}>
-            <Text style={{ fontSize: 22, opacity: tab === k ? 1 : 0.45 }}>{ic}</Text>
-            <Text style={[s.tabLabel, tab === k && { color: '#007AFF' }]}>{l}</Text>
-          </Pressable>
-        ))}
-      </View>
+      {!wide && tab !== 'settings' && tab !== 'history' && <Pressable style={s.fab} onPress={() => (tab === 'goals' ? setGoalSheet({ open: true, goal: null }) : setModal(true))}><Text style={s.fabText}>+</Text></Pressable>}
+      {!wide && (
+        <View style={s.tabbar}>
+          {[['home', '📊', 'Resumen'], ['moves', '🧾', 'Movimientos'], ['goals', '🎯', 'Metas'], ['history', '🗓️', 'Historial'], ['settings', '⚙️', 'Ajustes']].map(([k, ic, l]) => (
+            <Pressable key={k} style={s.tab} onPress={() => setTab(k)}>
+              <Text style={{ fontSize: 22, opacity: tab === k ? 1 : 0.45 }}>{ic}</Text>
+              <Text style={[s.tabLabel, tab === k && { color: '#007AFF' }]}>{l}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       <AddMovement visible={modal} onClose={() => setModal(false)} onAdd={addMove} />
       <GoalSheet visible={goalSheet.open} goal={goalSheet.goal} onClose={() => setGoalSheet({ open: false, goal: null })} onSave={saveGoal} />
       <ContributeSheet goal={contrib} onClose={() => setContrib(null)} onSubmit={contribute} />
@@ -700,10 +748,11 @@ function Main({ session }) {
 // ---------- Metas ----------
 const isoLocal = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 function Goals({ goals, moves, needsAvg, onEdit, onDelete, onContribute, onEmergency }) {
+  const wide = useWide();
   const now = new Date();
   const hasEmergency = goals.some((g) => /emergencia/i.test(g.name));
   return (
-    <>
+    <View style={wide ? { maxWidth: 760 } : null}>
       <Text style={s.largeTitle}>Metas</Text>
       {goals.length === 0 && <Text style={s.hint}>Aún no tienes metas. Toca + para crear la primera.</Text>}
       {!hasEmergency && needsAvg > 0 && (
@@ -749,7 +798,7 @@ function Goals({ goals, moves, needsAvg, onEdit, onDelete, onContribute, onEmerg
         </Card>
       )}
       {goals.length > 0 && <Text style={s.hint}>Cada aporte cuenta como gasto de Ahorro. Toca una meta para editarla o desliza para borrarla.</Text>}
-    </>
+    </View>
   );
 }
 
@@ -835,6 +884,7 @@ function Delta({ now, prev, upIsGood }) {
 }
 function History({ moves }) {
   const [back, setBack] = useState(0);
+  const wide = useWide();
   const now = new Date();
   const oldest = new Date(moves.reduce((a, m) => Math.min(a, new Date(m.occurred_at).getTime()), now.getTime()));
   const maxBack = (now.getFullYear() - oldest.getFullYear()) * 12 + now.getMonth() - oldest.getMonth();
@@ -863,75 +913,81 @@ function History({ moves }) {
       </View>
       {r.rows.length === 0 ? <Text style={s.hint}>Sin movimientos en este mes.</Text> : (
         <>
-          <Card>
-            <Text style={[s.caption, { marginTop: 12 }]}>Balance del mes</Text>
-            <Text style={[s.big, balance < 0 && { color: '#FF3B30' }]}>{money(balance)}</Text>
-            <View style={[s.row, s.sep, { marginTop: 12 }]}>
-              <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { color: '#34C759', paddingHorizontal: 16 }]}>{money(r.income)}</Text></View>
-              <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { color: '#FF3B30', paddingHorizontal: 16 }]}>{money(r.total)}</Text></View>
-            </View>
-          </Card>
-          <Card>
-            <BudgetDonut spent={r.spent} income={r.income} center={<><Text style={s.big2}>{spentPct}%</Text><Text style={s.caption}>de tus ingresos</Text></>} />
-            {Object.entries(BUCKETS).map(([k, x]) => {
-              const target = (r.income * x.pct) / 100;
-              return (
-                <View key={k} style={[s.row, s.sep, { marginTop: 8, justifyContent: 'space-between' }]}>
-                  <Text style={s.body}><Text style={{ color: x.color }}>● </Text>{x.label} {x.pct}%</Text>
-                  <Text style={[s.body, r.spent[k] > target && { color: '#FF3B30' }]}>{money(r.spent[k])} / {money(target)}</Text>
-                </View>
-              );
-            })}
-          </Card>
-          <Title>Datos del mes</Title>
-          <Card style={{ paddingHorizontal: 16 }}>
-            <View style={[s.row, { paddingHorizontal: 0, justifyContent: 'space-between' }]}><Text style={s.body}>Gasto promedio por día</Text><Text style={s.body}>{money(r.total / days)}</Text></View>
-            <Line label="Tasa de ahorro (meta 20%)" value={savePct + '%'} color={savePct >= 20 ? '#34C759' : '#FF9500'} />
-            {biggest && <Line label={'Mayor gasto · ' + (biggest.m.note || biggest.m.cat)} value={money(-biggest.amount, true)} />}
-            <Line label="Movimientos" value={String(rows.length)} />
-          </Card>
-          {cats.length > 0 && (
-            <>
-              <Title>Gasto por categoría</Title>
+          <View style={wide ? s.cols : null}>
+            <View style={wide ? s.col : null}>
               <Card>
-                {cats.map(([name, amt], i) => {
-                  const c = CATS.find((z) => z.name === name);
+                <Text style={[s.caption, { marginTop: 12 }]}>Balance del mes</Text>
+                <Text style={[s.big, balance < 0 && { color: '#FF3B30' }]}>{money(balance)}</Text>
+                <View style={[s.row, s.sep, { marginTop: 12 }]}>
+                  <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { color: '#34C759', paddingHorizontal: 16 }]}>{money(r.income)}</Text></View>
+                  <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { color: '#FF3B30', paddingHorizontal: 16 }]}>{money(r.total)}</Text></View>
+                </View>
+              </Card>
+              <Card>
+                <BudgetDonut spent={r.spent} income={r.income} center={<><Text style={s.big2}>{spentPct}%</Text><Text style={s.caption}>de tus ingresos</Text></>} />
+                {Object.entries(BUCKETS).map(([k, x]) => {
+                  const target = (r.income * x.pct) / 100;
                   return (
-                    <View key={name} style={[s.row, i > 0 && s.sep, { flexDirection: 'column', alignItems: 'stretch' }]}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <Text style={s.body}>{c ? c.icon : '🧾'} {name}</Text>
-                        <Text style={s.body}>{money(amt)} · {Math.round((amt / r.total) * 100)}%</Text>
-                      </View>
-                      <Bar spent={amt} budget={cats[0][1]} color={BUCKETS[bucketOf(name)].color} />
+                    <View key={k} style={[s.row, s.sep, { marginTop: 8, justifyContent: 'space-between' }]}>
+                      <Text style={s.body}><Text style={{ color: x.color }}>● </Text>{x.label} {x.pct}%</Text>
+                      <Text style={[s.body, r.spent[k] > target && { color: '#FF3B30' }]}>{money(r.spent[k])} / {money(target)}</Text>
                     </View>
                   );
                 })}
               </Card>
-            </>
-          )}
-          {(p.total > 0 || p.income > 0) && (
-            <>
-              <Title>Vs. el mes anterior</Title>
-              <Card>
-                <View style={s.row}>
-                  <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { paddingHorizontal: 16 }]}>{money(r.income)}</Text><Text style={s.caption}>antes {money(p.income)}</Text><Delta now={r.income} prev={p.income} upIsGood /></View>
-                  <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { paddingHorizontal: 16 }]}>{money(r.total)}</Text><Text style={s.caption}>antes {money(p.total)}</Text><Delta now={r.total} prev={p.total} upIsGood={false} /></View>
-                </View>
+              <Title>Datos del mes</Title>
+              <Card style={{ paddingHorizontal: 16 }}>
+                <View style={[s.row, { paddingHorizontal: 0, justifyContent: 'space-between' }]}><Text style={s.body}>Gasto promedio por día</Text><Text style={s.body}>{money(r.total / days)}</Text></View>
+                <Line label="Tasa de ahorro (meta 20%)" value={savePct + '%'} color={savePct >= 20 ? '#34C759' : '#FF9500'} />
+                {biggest && <Line label={'Mayor gasto · ' + (biggest.m.note || biggest.m.cat)} value={money(-biggest.amount, true)} />}
+                <Line label="Movimientos" value={String(rows.length)} />
               </Card>
-            </>
-          )}
-          <Title>Movimientos del mes</Title>
-          <Card>
-            {rows.map((x, i) => (
-              <View key={x.m.id} style={[s.row, i > 0 && s.sep]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.body}>{x.m.kind === 'income' ? x.m.note || 'Ingreso' : x.m.note || x.m.cat}</Text>
-                  <Text style={s.caption}>{x.m.kind === 'expense' && x.m.note ? x.m.cat + ' · ' : ''}{x.label}</Text>
-                </View>
-                <Text style={[s.body, { color: x.amount > 0 ? '#34C759' : '#FF3B30' }]}>{x.amount > 0 ? '+' : '-'}{money(Math.abs(x.amount), true)}</Text>
-              </View>
-            ))}
-          </Card>
+            </View>
+            <View style={wide ? s.col : null}>
+              {cats.length > 0 && (
+                <>
+                  <Title>Gasto por categoría</Title>
+                  <Card>
+                    {cats.map(([name, amt], i) => {
+                      const c = CATS.find((z) => z.name === name);
+                      return (
+                        <View key={name} style={[s.row, i > 0 && s.sep, { flexDirection: 'column', alignItems: 'stretch' }]}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <Text style={s.body}>{c ? c.icon : '🧾'} {name}</Text>
+                            <Text style={s.body}>{money(amt)} · {Math.round((amt / r.total) * 100)}%</Text>
+                          </View>
+                          <Bar spent={amt} budget={cats[0][1]} color={BUCKETS[bucketOf(name)].color} />
+                        </View>
+                      );
+                    })}
+                  </Card>
+                </>
+              )}
+              {(p.total > 0 || p.income > 0) && (
+                <>
+                  <Title>Vs. el mes anterior</Title>
+                  <Card>
+                    <View style={s.row}>
+                      <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { paddingHorizontal: 16 }]}>{money(r.income)}</Text><Text style={s.caption}>antes {money(p.income)}</Text><Delta now={r.income} prev={p.income} upIsGood /></View>
+                      <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { paddingHorizontal: 16 }]}>{money(r.total)}</Text><Text style={s.caption}>antes {money(p.total)}</Text><Delta now={r.total} prev={p.total} upIsGood={false} /></View>
+                    </View>
+                  </Card>
+                </>
+              )}
+              <Title>Movimientos del mes</Title>
+              <Card>
+                {rows.map((x, i) => (
+                  <View key={x.m.id} style={[s.row, i > 0 && s.sep]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.body}>{x.m.kind === 'income' ? x.m.note || 'Ingreso' : x.m.note || x.m.cat}</Text>
+                      <Text style={s.caption}>{x.m.kind === 'expense' && x.m.note ? x.m.cat + ' · ' : ''}{x.label}</Text>
+                    </View>
+                    <Text style={[s.body, { color: x.amount > 0 ? '#34C759' : '#FF3B30' }]}>{x.amount > 0 ? '+' : '-'}{money(Math.abs(x.amount), true)}</Text>
+                  </View>
+                ))}
+              </Card>
+            </View>
+          </View>
         </>
       )}
     </>
@@ -1041,6 +1097,18 @@ const s = StyleSheet.create({
   caption: { fontFamily: FONT, fontSize: 13, color: '#6C6C70', paddingHorizontal: 16, marginTop: 4 },
   hint: { fontFamily: FONT, fontSize: 15, color: '#6C6C70', textAlign: 'center', marginTop: 16 },
   limitInput: { fontFamily: FONT, fontSize: 17, textAlign: 'right', width: 120, color: '#007AFF' },
+  cols: { flexDirection: 'row', alignItems: 'flex-start', gap: 24 },
+  col: { flex: 1, minWidth: 0 },
+  colSide: { width: 320 },
+  shellWide: { flex: 1, flexDirection: 'row', width: '100%' },
+  contentWide: { padding: 32, paddingBottom: 60, maxWidth: 1180, width: '100%', alignSelf: 'center' },
+  sidebar: { width: 240, backgroundColor: '#fff', borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: '#C6C6C8', paddingHorizontal: 16, paddingTop: 32, paddingBottom: 20 },
+  brand: { fontFamily: FONT, fontSize: 24, fontWeight: '700', marginBottom: 20, paddingHorizontal: 8 },
+  addBtn: { backgroundColor: '#007AFF', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginBottom: 16 },
+  addBtnText: { fontFamily: FONT, color: '#fff', fontSize: 15, fontWeight: '600' },
+  navItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, marginBottom: 2 },
+  navActive: { backgroundColor: '#EAF2FF' },
+  navText: { fontFamily: FONT, fontSize: 16, color: '#000' },
   big2: { fontFamily: FONT, fontSize: 34, fontWeight: '700' },
   big: { fontFamily: FONT, fontSize: 40, fontWeight: '700', paddingHorizontal: 16, marginTop: 4 },
   donutCenter: { fontFamily: FONT, fontSize: 17, fontWeight: '600' },
