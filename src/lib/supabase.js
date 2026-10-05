@@ -7,5 +7,5 @@ const SUPABASE_URL = 'https://yphvecfopkaifhkndaru.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_tEZCbqmFNfWtYQMRMzKZaA_EmQjCvPD';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
+  auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
 });
