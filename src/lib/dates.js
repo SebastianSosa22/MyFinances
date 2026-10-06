@@ -22,3 +22,11 @@ export function periodEnd(p, start) {
 
 export const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
 export const endOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+// Inicio del periodo siguiente (para recorrer ciclos completos)
+export function nextPeriodStart(p, start) {
+  const y = start.getFullYear(), m = start.getMonth(), d = start.getDate();
+  if (p === 'weekly') return new Date(y, m, d + 7);
+  if (p === 'biweekly') return d === 1 ? new Date(y, m, 16) : new Date(y, m + 1, 1);
+  return new Date(y, m + 1, 1);
+}

@@ -21,3 +21,10 @@ export const EFREQ = { once: 'Una vez', weekly: 'Semanal', biweekly: 'Cada 2 sem
 export const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 export const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+// Ciclo en que el usuario recibe su ingreso (define cuándo "cierra" la caja de ahorro)
+export const CYCLES = {
+  weekly: { label: 'Semanal', this: 'esta semana' },
+  biweekly: { label: 'Quincenal', this: 'esta quincena' },
+  monthly: { label: 'Mensual', this: 'este mes' },
+};

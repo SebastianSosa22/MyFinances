@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, Switch } from 'react-native';
 import { Card, Segmented, Title } from '../components/ui';
-import { CATS } from '../constants/budget';
+import { CATS, CYCLES } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
 import { startOfMonth } from '../lib/dates';
 import { report } from '../lib/finance';
@@ -9,12 +9,21 @@ import { cleanAmount, money, showAmount } from '../lib/format';
 import { supabase } from '../lib/supabase';
 import { s } from '../theme/styles';
 
-export function SettingsScreen({ session, moves, limits, rem, setReminders, onSaveLimit }) {
+export function SettingsScreen({ session, moves, limits, settings, onSaveSettings, rem, setReminders, onSaveLimit }) {
   const wide = useWide();
   const now = new Date();
   const monthByCat = report(moves, startOfMonth(now), now).byCat;
 
   const remB = (<>
+    <Title>Caja de ahorro</Title>
+    <Card style={{ padding: 16 }}>
+      <Text style={s.body}>Cada cuánto recibes tu ingreso</Text>
+      <Segmented options={CYCLES} value={settings.cycle} onChange={(k) => onSaveSettings({ cycle: k })} />
+      <Text style={[s.body, { marginTop: 16 }]}>Apartar al recibir un ingreso</Text>
+      <Segmented options={{ 0: { label: '0%' }, 10: { label: '10%' }, 20: { label: '20%' }, 30: { label: '30%' } }} value={String(settings.reservePct)} onChange={(k) => onSaveSettings({ reservePct: Number(k) })} />
+    </Card>
+    <Text style={s.hint}>Al cerrar cada ciclo, lo que no gastaste pasa solo a tu caja de ahorro. Si apartas un porcentaje, esa parte de cada ingreso ya cuenta como ahorrada desde el inicio y no aparece como disponible.</Text>
+
     <Title>Recordatorios</Title>
     <Card>
       <View style={[s.row, { justifyContent: 'space-between' }]}>

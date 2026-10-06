@@ -1,5 +1,6 @@
 import { DAY_MS, daysIn, endOfDay, midnight, periodEnd, periodStart, startOfMonth } from './dates';
-import { asExp, occurrences, report } from './finance';
+import { BUCKETS } from '../constants/budget';
+import { asExp, bucketOf, occurrences, report } from './finance';
 import { money } from './format';
 
 // Cálculos que usan las pantallas (separados de la interfaz para poder reutilizarlos y probarlos)
@@ -12,6 +13,12 @@ export function homeSummary(moves, limits, period, now = new Date()) {
   const totalDays = Math.round((periodEnd(period, start) - start) / DAY_MS) + 1;
   const elapsed = Math.round((midnight(now) - start) / DAY_MS) + 1;
   const daysLeft = Math.max(totalDays - elapsed + 1, 1);
+  const end = periodEnd(period, start);
+  // Ritmo: se mide contra Necesidades + Deseos (el 80%), porque el Ahorro (20%) es una meta, no un gasto a frenar
+  const flexSpent = spent.needs + spent.wants;
+  const flexBudget = (income * (BUCKETS.needs.pct + BUCKETS.wants.pct)) / 100;
+  const pending = pendingFixed(moves, now, end);
+  const flexLeft = flexBudget - flexSpent - pending;
   const monthByCat = report(moves, startOfMonth(now), now).byCat;
   const limitRows = Object.entries(limits)
     .map(([cat, lim]) => [cat, lim, monthByCat[cat] || 0])
@@ -21,13 +28,24 @@ export function homeSummary(moves, limits, period, now = new Date()) {
     ? report(moves, prevMonth, endOfDay(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), Math.min(now.getDate(), daysIn(prevMonth.getFullYear(), prevMonth.getMonth())))))
     : null;
   return {
-    now, start, cur, income, spent, totalSpent, limitRows, prev, totalDays, elapsed, daysLeft,
-    avail: income - totalSpent,
+    now, start, end, cur, income, spent, totalSpent, limitRows, prev, totalDays, elapsed, daysLeft,
+    flexSpent, flexBudget, pending, flexLeft,
+    flexPct: flexBudget > 0 ? Math.round((flexSpent / flexBudget) * 100) : 0,
+    perDay: Math.max(flexLeft, 0) / daysLeft,
     timePct: Math.round((elapsed / totalDays) * 100),
     spentPct: income > 0 ? Math.round((totalSpent / income) * 100) : 0,
     upcoming: upcomingPayments(moves, now, 7),
     topCats: Object.entries(cur.byCat).sort((x, y) => y[1] - x[1]).slice(0, 3),
   };
+}
+
+// Pagos fijos (recurrentes, sin contar Ahorro) que aún faltan por cobrarse hasta el fin del periodo
+export function pendingFixed(moves, now, end) {
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  if (tomorrow > end) return 0;
+  return moves
+    .filter((m) => m.kind === 'expense' && m.freq && m.freq !== 'once' && bucketOf(m.cat) !== 'savings')
+    .reduce((sum, m) => sum + m.amount * occurrences(asExp(m), tomorrow, end), 0);
 }
 
 // Gastos recurrentes que vencen en los próximos N días

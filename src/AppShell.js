@@ -14,6 +14,8 @@ import { AddMovementSheet } from './sheets/AddMovementSheet';
 import { ContributeSheet } from './sheets/ContributeSheet';
 import { GoalSheet } from './sheets/GoalSheet';
 import { s } from './theme/styles';
+import { useUserSettings } from './hooks/useUserSettings';
+import { SavingsScreen } from './screens/SavingsScreen';
 
 // Estructura de la app: barra lateral (escritorio) o barra inferior (móvil), pantalla activa y hojas
 export function AppShell({ session }) {
@@ -26,6 +28,7 @@ export function AppShell({ session }) {
 
   const data = useFinanceData(session);
   const [rem, setReminders] = useReminders(data.moves, data.setNotice);
+  const [settings, saveSettings] = useUserSettings(session);
   const { moves, goals, limits } = data;
 
   const openAdd = () => (tab === 'goals' ? setGoalSheet({ open: true, goal: null }) : setAddOpen(true));
@@ -42,7 +45,8 @@ export function AppShell({ session }) {
         {!!data.err && <Text style={[s.hint, { color: '#FF3B30', marginBottom: 8 }]}>{data.err}</Text>}
         {!!data.notice && <Pressable onPress={() => data.setNotice('')}><Text style={[s.hint, { color: '#FF9500', marginBottom: 8 }]}>{data.notice}</Text></Pressable>}
 
-        {tab === 'home' && <HomeScreen moves={moves} limits={limits} onSeeAll={() => setTab('moves')} />}
+        {tab === 'home' && <HomeScreen moves={moves} limits={limits} settings={settings} onSeeAll={() => setTab('moves')} />}
+        {tab === 'savings' && <SavingsScreen moves={moves} settings={settings} />}
         {tab === 'moves' && <MovesScreen moves={moves} onDelete={data.delMove} />}
         {tab === 'goals' && (
           <GoalsScreen goals={goals} moves={moves} onSave={data.saveGoal} onDelete={data.delGoal}
@@ -50,7 +54,7 @@ export function AppShell({ session }) {
         )}
         {tab === 'history' && <HistoryScreen moves={moves} />}
         {tab === 'settings' && (
-          <SettingsScreen session={session} moves={moves} limits={limits} rem={rem} setReminders={setReminders} onSaveLimit={data.saveLimit} />
+          <SettingsScreen session={session} moves={moves} limits={limits} settings={settings} onSaveSettings={saveSettings} rem={rem} setReminders={setReminders} onSaveLimit={data.saveLimit} />
         )}
       </ScrollView>
 

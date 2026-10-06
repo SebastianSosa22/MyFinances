@@ -16,6 +16,7 @@ export function MovesScreen({ moves, onDelete }) {
   const [fRange, setFRange] = useState('all');
   const [fBucket, setFBucket] = useState(null);
   const [fRec, setFRec] = useState(false);
+  const [open, setOpen] = useState(false); // panel de filtros en móvil
   const now = new Date();
 
   const isRec = (m) => m.kind === 'expense' && m.freq && m.freq !== 'once';
@@ -32,26 +33,44 @@ export function MovesScreen({ moves, onDelete }) {
   });
   const inc = shown.filter((m) => m.kind === 'income').reduce((a, m) => a + m.amount, 0);
   const exp = shown.filter((m) => m.kind === 'expense').reduce((a, m) => a + m.amount, 0);
+  const filterCount = (fType !== 'all' ? 1 : 0) + (fRange !== 'all' ? 1 : 0) + (fBucket ? 1 : 0) + (fRec ? 1 : 0);
   const active = q || fType !== 'all' || fRange !== 'all' || fBucket || fRec;
   const clear = () => { setQ(''); setFType('all'); setFRange('all'); setFBucket(null); setFRec(false); };
+  const idle = wide ? '#fff' : '#F2F2F7';
+  const search = <TextInput style={[s.input, s.searchInput]} placeholder="Buscar categoría o concepto" value={q} onChangeText={setQ} />;
+  const typeFilter = <Segmented options={{ all: { label: 'Todos' }, expense: { label: 'Gastos' }, income: { label: 'Ingresos' } }} value={fType} onChange={setFType} style={wide ? s.filterSeg : { marginTop: 0 }} />;
+  const rangeFilter = <Segmented options={{ all: { label: 'Todo' }, month: { label: 'Este mes' }, '30d': { label: '30 días' } }} value={fRange} onChange={setFRange} style={wide ? s.filterSeg : null} />;
+  const chips = (
+    <View style={[s.chipsRow, !wide && { marginTop: 8 }]}>
+      {Object.entries(BUCKETS).map(([k, x]) => (
+        <Pressable key={k} onPress={() => setFBucket(fBucket === k ? null : k)} style={[s.chip, { backgroundColor: fBucket === k ? x.color : idle }]}>
+          <Text style={[s.chipText, fBucket === k && { color: '#fff' }]}>{x.label}</Text>
+        </Pressable>
+      ))}
+      <Pressable onPress={() => setFRec(!fRec)} style={[s.chip, { backgroundColor: fRec ? '#007AFF' : idle }]}>
+        <Text style={[s.chipText, fRec && { color: '#fff' }]}>🔁 Recurrentes</Text>
+      </Pressable>
+    </View>
+  );
+
   return (
     <>
       <Text style={s.largeTitle}>Movimientos</Text>
-      <View style={wide ? s.cols : null}>
-      <View style={wide ? s.colSide : null}>
-      <TextInput style={[s.input, { backgroundColor: '#E3E3E8', marginTop: 0 }]} placeholder="Buscar categoría o concepto" value={q} onChangeText={setQ} />
-      <Segmented options={{ all: { label: 'Todos' }, expense: { label: 'Gastos' }, income: { label: 'Ingresos' } }} value={fType} onChange={setFType} />
-      <Segmented options={{ all: { label: 'Todo' }, month: { label: 'Este mes' }, '30d': { label: '30 días' } }} value={fRange} onChange={setFRange} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
-        {Object.entries(BUCKETS).map(([k, x]) => (
-          <Pressable key={k} onPress={() => setFBucket(fBucket === k ? null : k)} style={[s.chip, { backgroundColor: fBucket === k ? x.color : '#fff' }]}>
-            <Text style={[s.chipText, fBucket === k && { color: '#fff' }]}>{x.label}</Text>
-          </Pressable>
-        ))}
-        <Pressable onPress={() => setFRec(!fRec)} style={[s.chip, { backgroundColor: fRec ? '#007AFF' : '#fff' }]}>
-          <Text style={[s.chipText, fRec && { color: '#fff' }]}>🔁 Recurrentes</Text>
-        </Pressable>
-      </View>
+      {wide ? (
+        // Escritorio: búsqueda y filtros en una sola fila
+        <View style={s.filterRow}>{search}{typeFilter}{rangeFilter}{chips}</View>
+      ) : (
+        // Móvil: búsqueda visible y filtros dentro de un desplegable
+        <>
+          <View style={s.searchRow}>
+            {search}
+            <Pressable style={s.filterBtn} onPress={() => setOpen(!open)}>
+              <Text style={s.link}>Filtros{filterCount ? ' (' + filterCount + ')' : ''} {open ? '▴' : '▾'}</Text>
+            </Pressable>
+          </View>
+          {open && <Card style={{ padding: 12 }}>{typeFilter}{rangeFilter}{chips}</Card>}
+        </>
+      )}
       {shown.length > 0 && (
         <Card style={{ marginTop: 8 }}>
           <View style={s.row}>
@@ -60,9 +79,7 @@ export function MovesScreen({ moves, onDelete }) {
           </View>
         </Card>
       )}
-      </View>
-      <View style={wide ? s.col : null}>
-      <Card style={wide ? { marginTop: 0 } : null}>
+      <Card>
         {moves.length === 0 && <Text style={[s.hint, { padding: 16 }]}>Aún no hay movimientos. Toca + para agregar el primero.</Text>}
         {moves.length > 0 && shown.length === 0 && <Text style={[s.hint, { padding: 16 }]}>Ningún movimiento coincide con los filtros.</Text>}
         {shown.map((m, i) => {
@@ -83,8 +100,6 @@ export function MovesScreen({ moves, onDelete }) {
       </Card>
       {active ? <Pressable onPress={clear}><Text style={[s.link, { textAlign: 'center', marginTop: 12 }]}>Quitar filtros</Text></Pressable>
         : moves.length > 0 && <Text style={s.hint}>Desliza un movimiento hacia la izquierda para borrarlo.</Text>}
-      </View>
-      </View>
     </>
   );
 }

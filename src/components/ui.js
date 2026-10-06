@@ -7,10 +7,10 @@ export const Card = ({ children, style }) => <View style={[s.card, style]}>{chil
 
 export const Title = ({ children }) => <Text style={s.sectionTitle}>{children}</Text>;
 
-export function Segmented({ options, value, onChange }) {
+export function Segmented({ options, value, onChange, style }) {
   const wide = useWide();
   return (
-    <View style={[s.seg, wide && { maxWidth: 420 }]}>
+    <View style={[s.seg, wide && { maxWidth: 420 }, style]}>
       {Object.entries(options).map(([k, v]) => (
         <Pressable key={k} onPress={() => onChange(k)} style={[s.segItem, value === k && s.segActive]}>
           <Text style={[s.segText, value === k && { fontWeight: '600' }]}>{v.label}</Text>
