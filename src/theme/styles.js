@@ -19,6 +19,8 @@ export const s = StyleSheet.create({
   limitInput: { fontFamily: FONT, fontSize: 17, textAlign: 'right', width: 120, color: '#007AFF' },
   cols: { flexDirection: 'row', alignItems: 'flex-start', gap: 24 },
   col: { flex: 1, minWidth: 0 },
+  passRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 0 },
+  passInput: { flex: 1, fontFamily: FONT, fontSize: 17, paddingVertical: 12 },
   boxHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   big3: { fontFamily: FONT, fontSize: 28, fontWeight: '700', marginTop: 2 },
   dateRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, paddingTop: 10 },

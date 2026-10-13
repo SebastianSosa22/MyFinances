@@ -5,6 +5,7 @@ import { Segmented } from '../components/ui';
 import { BUCKETS, CATS, DAYS, DAY_ORDER, EFREQ } from '../constants/budget';
 import { cleanAmount, showAmount } from '../lib/format';
 import { s } from '../theme/styles';
+import { DismissKeyboard } from '../components/DismissKeyboard';
 
 export function AddMovementSheet({ visible, onClose, onAdd }) {
   const insets = useSafeAreaInsets();
@@ -36,7 +37,7 @@ export function AddMovementSheet({ visible, onClose, onAdd }) {
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={s.sheetWrap}>
-        <View style={[s.sheet, { paddingTop: insets.top + 12 }]}>
+        <DismissKeyboard style={[s.sheet, { paddingTop: insets.top + 12 }]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Pressable onPress={onClose}><Text style={s.link}>Cancelar</Text></Pressable>
             <Text style={[s.body, { fontWeight: '600' }]}>{kind === 'income' ? 'Nuevo ingreso' : 'Nuevo gasto'}</Text>
@@ -47,48 +48,48 @@ export function AddMovementSheet({ visible, onClose, onAdd }) {
             <TextInput value={showAmount(amount)} onChangeText={(t) => setAmount(cleanAmount(t))} keyboardType="decimal-pad" placeholder="$0.00" autoFocus style={s.amountInput} />
             <TextInput style={[s.input, { marginTop: 0, marginBottom: 12 }]} placeholder={kind === 'income' ? 'Concepto (ej. Nómina, Freelance)' : 'Descripción (ej. Suscripción Spotify)'} value={note} onChangeText={setNote} maxLength={80} returnKeyType="done" />
             {kind === 'income' ? null : (<>
-            <Text style={[s.sectionTitle, { marginLeft: 4, marginTop: 0 }]}>Categorías</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-              {CATS.map((c) => (
-                <Pressable key={c.name} onPress={() => setCat(c.name)}
-                  style={[s.chip, cat === c.name && { backgroundColor: BUCKETS[c.bucket].color }]}>
-                  <Text style={[s.chipText, cat === c.name && { color: '#fff' }]}>{c.icon} {c.name}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={[s.caption, { paddingHorizontal: 4 }]}>Cuenta como: {BUCKETS[CATS.find((c) => c.name === cat).bucket].label}</Text>
-
-            <Text style={[s.sectionTitle, { marginLeft: 4, marginTop: 16 }]}>Frecuencia</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-              {Object.entries(EFREQ).map(([k, l]) => (
-                <Pressable key={k} onPress={() => setFreq(k)} style={[s.chip, freq === k && { backgroundColor: '#007AFF' }]}>
-                  <Text style={[s.chipText, freq === k && { color: '#fff' }]}>{l}</Text>
-                </Pressable>
-              ))}
-            </View>
-            {freq === 'weekly' && (
-              <View style={{ flexDirection: 'row', marginTop: 8 }}>
-                {DAY_ORDER.map((d) => (
-                  <Pressable key={d} onPress={() => setWday(d)} style={[s.dayChip, wday === d && { backgroundColor: '#007AFF' }]}>
-                    <Text style={[s.chipText, { fontSize: 13 }, wday === d && { color: '#fff' }]}>{DAYS[d]}</Text>
+              <Text style={[s.sectionTitle, { marginLeft: 4, marginTop: 0 }]}>Categorías</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                {CATS.map((c) => (
+                  <Pressable key={c.name} onPress={() => setCat(c.name)}
+                    style={[s.chip, cat === c.name && { backgroundColor: BUCKETS[c.bucket].color }]}>
+                    <Text style={[s.chipText, cat === c.name && { color: '#fff' }]}>{c.icon} {c.name}</Text>
                   </Pressable>
                 ))}
               </View>
-            )}
-            {freq === 'monthly' && (
-              <View style={s.stepper}>
-                <Text style={s.body}>Se cobra el día</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Pressable style={s.stepBtn} onPress={() => setMday(mday <= 1 ? 31 : mday - 1)}><Text style={s.stepText}>−</Text></Pressable>
-                  <Text style={[s.body, { width: 36, textAlign: 'center', fontWeight: '600' }]}>{mday}</Text>
-                  <Pressable style={s.stepBtn} onPress={() => setMday(mday >= 31 ? 1 : mday + 1)}><Text style={s.stepText}>+</Text></Pressable>
-                </View>
+              <Text style={[s.caption, { paddingHorizontal: 4 }]}>Cuenta como: {BUCKETS[CATS.find((c) => c.name === cat).bucket].label}</Text>
+
+              <Text style={[s.sectionTitle, { marginLeft: 4, marginTop: 16 }]}>Frecuencia</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                {Object.entries(EFREQ).map(([k, l]) => (
+                  <Pressable key={k} onPress={() => setFreq(k)} style={[s.chip, freq === k && { backgroundColor: '#007AFF' }]}>
+                    <Text style={[s.chipText, freq === k && { color: '#fff' }]}>{l}</Text>
+                  </Pressable>
+                ))}
               </View>
-            )}
-            {freq !== 'once' && <Text style={[s.caption, { paddingHorizontal: 4, marginTop: 8 }]}>Se cuenta en tu presupuesto cada vez que toque, desde hoy.</Text>}
+              {freq === 'weekly' && (
+                <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                  {DAY_ORDER.map((d) => (
+                    <Pressable key={d} onPress={() => setWday(d)} style={[s.dayChip, wday === d && { backgroundColor: '#007AFF' }]}>
+                      <Text style={[s.chipText, { fontSize: 13 }, wday === d && { color: '#fff' }]}>{DAYS[d]}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              {freq === 'monthly' && (
+                <View style={s.stepper}>
+                  <Text style={s.body}>Se cobra el día</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Pressable style={s.stepBtn} onPress={() => setMday(mday <= 1 ? 31 : mday - 1)}><Text style={s.stepText}>−</Text></Pressable>
+                    <Text style={[s.body, { width: 36, textAlign: 'center', fontWeight: '600' }]}>{mday}</Text>
+                    <Pressable style={s.stepBtn} onPress={() => setMday(mday >= 31 ? 1 : mday + 1)}><Text style={s.stepText}>+</Text></Pressable>
+                  </View>
+                </View>
+              )}
+              {freq !== 'once' && <Text style={[s.caption, { paddingHorizontal: 4, marginTop: 8 }]}>Se cuenta en tu presupuesto cada vez que toque, desde hoy.</Text>}
             </>)}
           </ScrollView>
-        </View>
+        </DismissKeyboard>
         <Pressable style={{ flex: 1 }} onPress={tapOutside} />
       </View>
     </Modal>
