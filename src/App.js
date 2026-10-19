@@ -5,6 +5,9 @@ import { AppShell } from './AppShell';
 import { supabase } from './lib/supabase';
 import { LoginScreen } from './screens/LoginScreen';
 import { s } from './theme/styles';
+import { setupPwa } from './lib/pwa';
+
+setupPwa();
 
 export default function App() {
   const [session, setSession] = useState(undefined);

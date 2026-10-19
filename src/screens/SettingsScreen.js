@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, Switch } from 'react-native';
+import { View, Text, TextInput, Pressable, Switch, Platform } from 'react-native';
 import { Card, Segmented, Title } from '../components/ui';
 import { CATS, CYCLES } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
@@ -8,13 +8,15 @@ import { report } from '../lib/finance';
 import { cleanAmount, money, showAmount } from '../lib/format';
 import { supabase } from '../lib/supabase';
 import { s } from '../theme/styles';
+import { PushCard } from '../components/PushCard';
 
-export function SettingsScreen({ session, moves, limits, settings, onSaveSettings, rem, setReminders, onSaveLimit }) {
+export function SettingsScreen({ session, moves, limits, settings, onSaveSettings, push, rem, setReminders, onSaveLimit }) {
   const wide = useWide();
   const now = new Date();
   const monthByCat = report(moves, startOfMonth(now), now).byCat;
 
   const remB = (<>
+    {Platform.OS === 'web' && <PushCard push={push} />}
     <Title>Caja de ahorro</Title>
     <Card style={{ padding: 16 }}>
       <Text style={s.body}>Cada cuánto recibes tu ingreso</Text>
@@ -40,6 +42,12 @@ export function SettingsScreen({ session, moves, limits, settings, onSaveSetting
         <Text style={[s.body, { flex: 1, marginRight: 12 }]}>Recordarme registrar mis gastos (9 pm)</Text>
         <Switch value={rem.daily} onValueChange={(v) => setReminders({ ...rem, daily: v })} />
       </View>
+      {Platform.OS === 'web' && (
+        <View style={[s.row, s.sep, { justifyContent: 'space-between' }]}>
+          <Text style={[s.body, { flex: 1, marginRight: 12 }]}>Avisarme cuando cierre mi ciclo y cuánto ahorré</Text>
+          <Switch value={rem.close !== false} onValueChange={(v) => setReminders({ ...rem, close: v })} />
+        </View>
+      )}
     </Card>
     <Text style={s.hint}>Las notificaciones se programan en este teléfono y se actualizan cada vez que abres la app.</Text>
 

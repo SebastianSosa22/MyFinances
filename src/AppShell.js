@@ -16,6 +16,7 @@ import { GoalSheet } from './sheets/GoalSheet';
 import { s } from './theme/styles';
 import { useUserSettings } from './hooks/useUserSettings';
 import { SavingsScreen } from './screens/SavingsScreen';
+import { usePush } from './hooks/usePush';
 
 // Estructura de la app: barra lateral (escritorio) o barra inferior (móvil), pantalla activa y hojas
 export function AppShell({ session }) {
@@ -29,6 +30,7 @@ export function AppShell({ session }) {
   const data = useFinanceData(session);
   const [rem, setReminders] = useReminders(data.moves, data.setNotice);
   const [settings, saveSettings] = useUserSettings(session);
+  const push = usePush(rem);
   const { moves, goals, limits } = data;
 
   const openAdd = () => (tab === 'goals' ? setGoalSheet({ open: true, goal: null }) : setAddOpen(true));
@@ -54,7 +56,7 @@ export function AppShell({ session }) {
         )}
         {tab === 'history' && <HistoryScreen moves={moves} />}
         {tab === 'settings' && (
-          <SettingsScreen session={session} moves={moves} limits={limits} settings={settings} onSaveSettings={saveSettings} rem={rem} setReminders={setReminders} onSaveLimit={data.saveLimit} />
+          <SettingsScreen session={session} moves={moves} limits={limits} settings={settings} onSaveSettings={saveSettings} push={push} rem={rem} setReminders={setReminders} onSaveLimit={data.saveLimit} />
         )}
       </ScrollView>
 
