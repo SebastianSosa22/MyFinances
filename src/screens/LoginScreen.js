@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { Card } from '../components/ui';
 import { authErrorMessage, MIN_PASSWORD, validateCredentials } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { s } from '../theme/styles';
 import { DismissKeyboard } from '../components/DismissKeyboard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Campo de contraseña con su propio botón Mostrar/Ocultar
 function PasswordField({ value, onChangeText, placeholder, isNew, onSubmitEditing }) {
@@ -29,6 +30,16 @@ export function LoginScreen() {
   const [msg, setMsg] = useState({ type: '', text: '' });
   const [busy, setBusy] = useState(false);
   const isSignUp = mode === 'signup';
+
+  // Si la sesión se cerró por inactividad, lo avisamos una vez
+  useEffect(() => {
+    AsyncStorage.getItem('idle_logout').then((flag) => {
+      if (flag) {
+        setMsg({ type: 'info', text: 'Cerramos tu sesión por inactividad para proteger tu cuenta. Inicia sesión de nuevo.' });
+        AsyncStorage.removeItem('idle_logout');
+      }
+    });
+  }, []);
 
   const changeMode = (m) => { setMode(m); setConfirm(''); setMsg({ type: '', text: '' }); };
 

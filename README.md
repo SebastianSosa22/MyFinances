@@ -16,6 +16,7 @@ src/
   constants/
     budget.js               BUCKETS (50/30/20), CATS (categorías), PERIODS, frecuencias, días
     navigation.js           TABS (pestañas de la app)
+    security.js             Tiempos de cierre de sesión por inactividad
   theme/
     styles.js               Todos los estilos (StyleSheet `s`) y la tipografía
   lib/                      Lógica pura, sin interfaz
@@ -31,13 +32,14 @@ src/
     pwa.js                  Hace la web instalable y registra el service worker
   hooks/
     useFinanceData.js       Movimientos, metas y límites + operaciones con Supabase
+    useIdleLogout.js        Cierre de sesión por inactividad (aviso 60 s antes)
     useReminders.js         Preferencias de recordatorios
     usePush.js              Estado y acciones de las notificaciones push web
     useUserSettings.js      Ciclo de ingreso y % a apartar (Supabase + copia local)
     useWide.js              Detecta escritorio (>= 900 px)
   components/               Piezas reutilizables
     ui.js                   Card, Title, Segmented, Bar
-    DismissKeyboard.js, PushCard.js, SavingsCard.js, Donut.js, BudgetDonut.js, Delta.js, SwipeRow.js, TopSheet.js, Sidebar.js, TabBar.js
+    DismissKeyboard.js, IdleWarning.js, PushCard.js, SavingsCard.js, Donut.js, BudgetDonut.js, Delta.js, SwipeRow.js, TopSheet.js, Sidebar.js, TabBar.js
   screens/                  Una pantalla por pestaña
     HomeScreen.js (Resumen), SavingsScreen.js (Caja), MovesScreen.js, GoalsScreen.js, HistoryScreen.js,
     SettingsScreen.js, LoginScreen.js

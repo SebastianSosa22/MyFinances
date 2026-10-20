@@ -9,8 +9,9 @@ import { cleanAmount, money, showAmount } from '../lib/format';
 import { supabase } from '../lib/supabase';
 import { s } from '../theme/styles';
 import { PushCard } from '../components/PushCard';
+import { IDLE_OPTIONS } from '../constants/security';
 
-export function SettingsScreen({ session, moves, limits, settings, onSaveSettings, push, rem, setReminders, onSaveLimit }) {
+export function SettingsScreen({ session, moves, limits, settings, onSaveSettings, push, idle, rem, setReminders, onSaveLimit }) {
   const wide = useWide();
   const now = new Date();
   const monthByCat = report(moves, startOfMonth(now), now).byCat;
@@ -63,6 +64,13 @@ export function SettingsScreen({ session, moves, limits, settings, onSaveSetting
 
   </>);
   const accB = (<>
+    <Title>Seguridad</Title>
+    <Card style={{ padding: 16 }}>
+      <Text style={s.body}>Cerrar sesión por inactividad</Text>
+      <Segmented options={IDLE_OPTIONS} value={String(idle.minutes)} onChange={(k) => idle.setMinutes(Number(k))} />
+    </Card>
+    <Text style={s.hint}>Si no usas la app durante este tiempo, cerramos tu sesión en este dispositivo para proteger tu cuenta. Te avisamos 60 segundos antes.</Text>
+
     <Title>Cuenta</Title>
     <Card style={{ padding: 16 }}>
       <Text style={s.body}>{session.user.email}</Text>

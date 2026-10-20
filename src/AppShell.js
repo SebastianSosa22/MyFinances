@@ -19,6 +19,8 @@ import { SavingsScreen } from './screens/SavingsScreen';
 import { usePush } from './hooks/usePush';
 import { ReleaseNotice } from './components/ReleaseNotice';
 import { useReleaseNotice } from './hooks/useReleaseNotice';
+import { IdleWarning } from './components/IdleWarning';
+import { useIdleLogout } from './hooks/useIdleLogout';
 
 // Estructura de la app: barra lateral (escritorio) o barra inferior (móvil), pantalla activa y hojas
 export function AppShell({ session }) {
@@ -34,13 +36,14 @@ export function AppShell({ session }) {
   const [settings, saveSettings] = useUserSettings(session);
   const push = usePush(rem);
   const notice = useReleaseNotice(session);
+  const idle = useIdleLogout();
   const { moves, goals, limits } = data;
 
   const openAdd = () => (tab === 'goals' ? setGoalSheet({ open: true, goal: null }) : setAddOpen(true));
   const refresh = async () => { setRefreshing(true); await data.load(); setRefreshing(false); };
 
   return (
-    <View style={wide ? s.shellWide : s.container}>
+    <View style={wide ? s.shellWide : s.container} {...idle.activityProps}>
       {wide && <Sidebar tab={tab} setTab={setTab} email={session.user.email} onAdd={openAdd} />}
       <ScrollView
         style={wide ? { flex: 1 } : null}
@@ -59,7 +62,7 @@ export function AppShell({ session }) {
         )}
         {tab === 'history' && <HistoryScreen moves={moves} />}
         {tab === 'settings' && (
-          <SettingsScreen session={session} moves={moves} limits={limits} settings={settings} onSaveSettings={saveSettings} push={push} rem={rem} setReminders={setReminders} onSaveLimit={data.saveLimit} />
+          <SettingsScreen session={session} moves={moves} limits={limits} settings={settings} onSaveSettings={saveSettings} push={push} idle={idle} rem={rem} setReminders={setReminders} onSaveLimit={data.saveLimit} />
         )}
       </ScrollView>
 
@@ -70,6 +73,7 @@ export function AppShell({ session }) {
 
       <AddMovementSheet visible={addOpen} onClose={() => setAddOpen(false)} onAdd={data.addMove} />
       <GoalSheet visible={goalSheet.open} goal={goalSheet.goal} onClose={() => setGoalSheet({ open: false, goal: null })} onSave={data.saveGoal} />
+      <IdleWarning visible={idle.warning} seconds={idle.secondsLeft} onStay={idle.stay} onLogout={idle.logoutNow} />
       <ReleaseNotice visible={notice.visible} onClose={notice.dismiss} />
       <ContributeSheet goal={contrib} onClose={() => setContrib(null)} onSubmit={data.contribute} />
     </View>
