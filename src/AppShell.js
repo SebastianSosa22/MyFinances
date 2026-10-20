@@ -17,6 +17,8 @@ import { s } from './theme/styles';
 import { useUserSettings } from './hooks/useUserSettings';
 import { SavingsScreen } from './screens/SavingsScreen';
 import { usePush } from './hooks/usePush';
+import { ReleaseNotice } from './components/ReleaseNotice';
+import { useReleaseNotice } from './hooks/useReleaseNotice';
 
 // Estructura de la app: barra lateral (escritorio) o barra inferior (móvil), pantalla activa y hojas
 export function AppShell({ session }) {
@@ -31,6 +33,7 @@ export function AppShell({ session }) {
   const [rem, setReminders] = useReminders(data.moves, data.setNotice);
   const [settings, saveSettings] = useUserSettings(session);
   const push = usePush(rem);
+  const notice = useReleaseNotice(session);
   const { moves, goals, limits } = data;
 
   const openAdd = () => (tab === 'goals' ? setGoalSheet({ open: true, goal: null }) : setAddOpen(true));
@@ -67,6 +70,7 @@ export function AppShell({ session }) {
 
       <AddMovementSheet visible={addOpen} onClose={() => setAddOpen(false)} onAdd={data.addMove} />
       <GoalSheet visible={goalSheet.open} goal={goalSheet.goal} onClose={() => setGoalSheet({ open: false, goal: null })} onSave={data.saveGoal} />
+      <ReleaseNotice visible={notice.visible} onClose={notice.dismiss} />
       <ContributeSheet goal={contrib} onClose={() => setContrib(null)} onSubmit={data.contribute} />
     </View>
   );

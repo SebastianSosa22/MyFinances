@@ -8,6 +8,7 @@ App de finanzas personales (Expo + React Native + Supabase) basada en la regla 5
 App.js                      Punto de entrada de Expo (solo reexporta src/App)
 app.json
 public/                     Manifiesto, íconos y service worker (app web instalable y push)
+scripts/make_icons.py       Dibuja el ícono de la caja fuerte y genera los tamaños en public/
 supabase/                   Función send-reminders y SQL (push y cron)
 src/
   App.js                    Sesión: muestra Login o la app
@@ -52,6 +53,7 @@ src/
 | Cambiar los porcentajes 50/30/20 | `src/constants/budget.js` (`BUCKETS`) |
 | Cambiar colores, tamaños, estilos | `src/theme/styles.js` |
 | Agregar una pestaña nueva | `constants/navigation.js` (TABS) + nueva pantalla en `screens/` + una línea en `AppShell.js` |
+| Anunciar novedades a los usuarios (una vez) | `src/constants/release.js` (cambia `id` y `cutoff`) |
 | Cambiar un cálculo del Resumen | `src/lib/summary.js` |
 | Cambiar cómo funciona la caja de ahorro | `src/lib/savings.js` |
 | Agregar una operación con datos | `src/hooks/useFinanceData.js` |

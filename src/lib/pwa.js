@@ -10,6 +10,11 @@ export function setupPwa() {
   };
   const missing = (selector) => !document.head.querySelector(selector);
 
+  // Ícono de la pestaña del navegador
+  const favicon = document.head.querySelector('link[rel~="icon"]');
+  if (favicon) { favicon.setAttribute('href', '/favicon.png'); favicon.setAttribute('type', 'image/png'); }
+  else add('link', { rel: 'icon', href: '/favicon.png', type: 'image/png' });
+
   if (missing('link[rel="manifest"]')) add('link', { rel: 'manifest', href: '/manifest.json' });
   if (missing('link[rel="apple-touch-icon"]')) add('link', { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' });
   if (missing('meta[name="apple-mobile-web-app-capable"]')) add('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
