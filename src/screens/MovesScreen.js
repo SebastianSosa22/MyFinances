@@ -1,15 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable } from 'react-native';
+import { View, Text, TextInput, Pressable, ActivityIndicator } from 'react-native';
 import { SwipeRow } from '../components/SwipeRow';
-import { Card, Segmented } from '../components/ui';
+import { Card, Segmented, Title } from '../components/ui';
 import { BUCKETS, CATS } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
 import { periodStart } from '../lib/dates';
-import { asExp, bucketOf, freqLabel } from '../lib/finance';
+import { asExp, bucketOf, freqLabel, isActive, isRecurring } from '../lib/finance';
 import { money } from '../lib/format';
 import { s } from '../theme/styles';
 
-export function MovesScreen({ moves, onDelete }) {
+const FACTOR = { weekly: 52 / 12, biweekly: 26 / 12, monthly: 1, yearly: 1 / 12 };
+
+// Etiqueta de día para agrupar la lista: Hoy, Ayer o la fecha
+function dayLabel(d, now) {
+  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate()), b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((b - a) / 864e5);
+  if (diff === 0) return 'Hoy';
+  if (diff === 1) return 'Ayer';
+  return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' });
+}
+
+export function MovesScreen({ moves, loading, onDelete, onEdit }) {
   const wide = useWide();
   const [q, setQ] = useState('');
   const [fType, setFType] = useState('all');
@@ -19,20 +30,31 @@ export function MovesScreen({ moves, onDelete }) {
   const [open, setOpen] = useState(false); // panel de filtros en móvil
   const now = new Date();
 
-  const isRec = (m) => m.kind === 'expense' && m.freq && m.freq !== 'once';
   const ql = q.trim().toLowerCase();
   const shown = moves.filter((m) => {
     if (fType !== 'all' && m.kind !== fType) return false;
     if (fBucket && (m.kind === 'income' || bucketOf(m.cat) !== fBucket)) return false;
-    if (fRec && !isRec(m)) return false;
+    if (fRec && !isRecurring(m)) return false;
     const d = new Date(m.occurred_at);
-    if (!isRec(m) && fRange === 'month' && d < periodStart('monthly')) return false;
-    if (!isRec(m) && fRange === '30d' && d < new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30)) return false;
+    if (!isRecurring(m) && fRange === 'month' && d < periodStart('monthly')) return false;
+    if (!isRecurring(m) && fRange === '30d' && d < new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30)) return false;
     if (ql && !((m.cat || '').toLowerCase().includes(ql) || (m.note || '').toLowerCase().includes(ql))) return false;
     return true;
   });
-  const inc = shown.filter((m) => m.kind === 'income').reduce((a, m) => a + m.amount, 0);
-  const exp = shown.filter((m) => m.kind === 'expense').reduce((a, m) => a + m.amount, 0);
+  const fixed = shown.filter(isRecurring);
+  const oneOff = shown.filter((m) => !isRecurring(m));
+  const fixedMonthly = fixed.filter((m) => m.kind === 'expense' && isActive(m, now)).reduce((a, m) => a + m.amount * FACTOR[m.freq], 0);
+  const inc = oneOff.filter((m) => m.kind === 'income').reduce((a, m) => a + m.amount, 0);
+  const exp = oneOff.filter((m) => m.kind === 'expense').reduce((a, m) => a + m.amount, 0);
+
+  // Movimientos de un solo día agrupados por fecha (ya vienen ordenados de más nuevo a más viejo)
+  const groups = [];
+  oneOff.forEach((m) => {
+    const label = dayLabel(new Date(m.occurred_at), now);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(m); else groups.push({ label, items: [m] });
+  });
+
   const filterCount = (fType !== 'all' ? 1 : 0) + (fRange !== 'all' ? 1 : 0) + (fBucket ? 1 : 0) + (fRec ? 1 : 0);
   const active = q || fType !== 'all' || fRange !== 'all' || fBucket || fRec;
   const clear = () => { setQ(''); setFType('all'); setFRange('all'); setFBucket(null); setFRec(false); };
@@ -53,6 +75,24 @@ export function MovesScreen({ moves, onDelete }) {
     </View>
   );
 
+  // Una fila: tocar abre la edición; deslizar a la izquierda borra
+  const row = (m, i) => {
+    const isInc = m.kind === 'income', c = CATS.find((x) => x.name === m.cat), b = BUCKETS[bucketOf(m.cat)];
+    const ended = isRecurring(m) && !isActive(m, now);
+    return (
+      <SwipeRow key={m.id} first={i === 0} onDelete={() => onDelete(m.id)}>
+        <Pressable style={[s.row, ended && { opacity: 0.5 }]} onPress={() => onEdit(m)}>
+          <Text style={{ fontSize: 24, marginRight: 12 }}>{isInc ? '💵' : c ? c.icon : '🧾'}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.body}>{isInc ? m.note || 'Ingreso' : m.note || m.cat}</Text>
+            <Text style={[s.caption, { color: isInc ? '#34C759' : b.color }]}>{isInc ? 'Ingreso' : (m.note ? m.cat + ' · ' : '') + b.label} · {freqLabel(asExp(m))}</Text>
+          </View>
+          <Text style={[s.body, { color: isInc ? '#34C759' : '#FF3B30' }]}>{isInc ? '+' : '-'}{money(m.amount, true)}</Text>
+        </Pressable>
+      </SwipeRow>
+    );
+  };
+
   return (
     <>
       <Text style={s.largeTitle}>Movimientos</Text>
@@ -71,35 +111,36 @@ export function MovesScreen({ moves, onDelete }) {
           {open && <Card style={{ padding: 12 }}>{typeFilter}{rangeFilter}{chips}</Card>}
         </>
       )}
-      {shown.length > 0 && (
+
+      {loading && moves.length === 0 && <ActivityIndicator style={{ marginTop: 40 }} />}
+      {!loading && moves.length === 0 && <Card><Text style={[s.hint, { padding: 16 }]}>Aún no hay movimientos. Toca + para agregar el primero.</Text></Card>}
+      {!loading && moves.length > 0 && shown.length === 0 && <Card><Text style={[s.hint, { padding: 16 }]}>Ningún movimiento coincide con los filtros.</Text></Card>}
+
+      {oneOff.length > 0 && (
         <Card style={{ marginTop: 8 }}>
           <View style={s.row}>
-            <View style={{ flex: 1 }}><Text style={s.caption}>{shown.length} movimientos</Text><Text style={[s.body, { color: '#34C759', paddingHorizontal: 16 }]}>+{money(inc)}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.caption}>{oneOff.length} movimientos</Text><Text style={[s.body, { color: '#34C759', paddingHorizontal: 16 }]}>+{money(inc)}</Text></View>
             <View style={{ flex: 1 }}><Text style={s.caption}>Total gastado</Text><Text style={[s.body, { color: '#FF3B30', paddingHorizontal: 16 }]}>-{money(exp)}</Text></View>
           </View>
         </Card>
       )}
-      <Card>
-        {moves.length === 0 && <Text style={[s.hint, { padding: 16 }]}>Aún no hay movimientos. Toca + para agregar el primero.</Text>}
-        {moves.length > 0 && shown.length === 0 && <Text style={[s.hint, { padding: 16 }]}>Ningún movimiento coincide con los filtros.</Text>}
-        {shown.map((m, i) => {
-          const isInc = m.kind === 'income', c = CATS.find((x) => x.name === m.cat), b = BUCKETS[bucketOf(m.cat)];
-          return (
-            <SwipeRow key={m.id} first={i === 0} onDelete={() => onDelete(m.id)}>
-              <View style={s.row}>
-                <Text style={{ fontSize: 24, marginRight: 12 }}>{isInc ? '💵' : c ? c.icon : '🧾'}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.body}>{isInc ? m.note || 'Ingreso' : m.note || m.cat}</Text>
-                  <Text style={[s.caption, { color: isInc ? '#34C759' : b.color }]}>{isInc ? 'Ingreso' : (m.note ? m.cat + ' · ' : '') + b.label} · {freqLabel(asExp(m))}</Text>
-                </View>
-                <Text style={[s.body, { color: isInc ? '#34C759' : '#FF3B30' }]}>{isInc ? '+' : '-'}{money(m.amount, true)}</Text>
-              </View>
-            </SwipeRow>
-          );
-        })}
-      </Card>
+
+      {fixed.length > 0 && (
+        <>
+          <Title>Pagos fijos e ingresos recurrentes{fixedMonthly > 0 ? ' · ≈ ' + money(fixedMonthly) + ' al mes en pagos' : ''}</Title>
+          <Card>{fixed.map(row)}</Card>
+        </>
+      )}
+
+      {groups.map((g) => (
+        <React.Fragment key={g.label + g.items[0].id}>
+          <Title>{g.label}</Title>
+          <Card>{g.items.map(row)}</Card>
+        </React.Fragment>
+      ))}
+
       {active ? <Pressable onPress={clear}><Text style={[s.link, { textAlign: 'center', marginTop: 12 }]}>Quitar filtros</Text></Pressable>
-        : moves.length > 0 && <Text style={s.hint}>Desliza un movimiento hacia la izquierda para borrarlo.</Text>}
+        : moves.length > 0 && <Text style={s.hint}>Toca un movimiento para editarlo o desliza a la izquierda para borrarlo.</Text>}
     </>
   );
 }

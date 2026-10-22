@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text } from 'react-native';
 import { Card, Title } from '../components/ui';
 import { useWide } from '../hooks/useWide';
@@ -8,7 +8,7 @@ import { s } from '../theme/styles';
 
 export function SavingsScreen({ moves, settings }) {
   const wide = useWide();
-  const info = savingsBox(moves, settings);
+  const info = useMemo(() => savingsBox(moves, settings), [moves, settings]);
   const closings = [...info.closed].reverse();
 
   const summary = (
@@ -17,8 +17,10 @@ export function SavingsScreen({ moves, settings }) {
       <Card>
         <View style={[s.row, s.paceRow, { marginTop: 0 }]}><Text style={s.body}>🐷 Caja de ahorro</Text><Text style={s.body}>{money(info.box)}</Text></View>
         <View style={[s.row, s.sep, s.paceRow, { marginTop: 0 }]}><Text style={s.body}>🎯 En tus metas</Text><Text style={s.body}>{money(info.goalsSaved)}</Text></View>
-        <View style={[s.row, s.sep, s.paceRow, { marginTop: 0 }]}><Text style={[s.body, { fontWeight: '600' }]}>Total ahorrado</Text><Text style={[s.body, { fontWeight: '600', color: '#34C759' }]}>{money(info.box + info.goalsSaved)}</Text></View>
+        {info.otherSaved > 0 && <View style={[s.row, s.sep, s.paceRow, { marginTop: 0 }]}><Text style={s.body}>📈 Otros ahorros e inversión</Text><Text style={s.body}>{money(info.otherSaved)}</Text></View>}
+        <View style={[s.row, s.sep, s.paceRow, { marginTop: 0 }]}><Text style={[s.body, { fontWeight: '600' }]}>Total ahorrado</Text><Text style={[s.body, { fontWeight: '600', color: '#34C759' }]}>{money(info.savedTotal)}</Text></View>
       </Card>
+      <Text style={s.hint}>Lo que mandas a Ahorro, Inversión o Deudas cuenta como ahorrado; la caja es lo que no gastaste al cerrar cada ciclo.</Text>
     </>
   );
 

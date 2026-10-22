@@ -6,9 +6,10 @@ export const daysIn = (y, m) => new Date(y, m + 1, 0).getDate();
 
 export const nextDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
 
-export function periodStart(p, now = new Date()) {
+// payDay: día de la semana en que cobra el usuario (0 = domingo ... 6 = sábado); solo afecta al ciclo semanal
+export function periodStart(p, now = new Date(), payDay = 1) {
   const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
-  if (p === 'weekly') return new Date(y, m, d - ((now.getDay() + 6) % 7));
+  if (p === 'weekly') return new Date(y, m, d - ((now.getDay() - payDay + 7) % 7));
   if (p === 'biweekly') return new Date(y, m, d <= 15 ? 1 : 16);
   return new Date(y, m, 1);
 }

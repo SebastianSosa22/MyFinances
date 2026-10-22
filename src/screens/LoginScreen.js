@@ -8,7 +8,7 @@ import { DismissKeyboard } from '../components/DismissKeyboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Campo de contraseña con su propio botón Mostrar/Ocultar
-function PasswordField({ value, onChangeText, placeholder, isNew, onSubmitEditing }) {
+export function PasswordField({ value, onChangeText, placeholder, isNew, onSubmitEditing }) {
   const [show, setShow] = useState(false);
   return (
     <View style={[s.input, s.passRow]}>
@@ -63,6 +63,18 @@ export function LoginScreen() {
     // Si hay sesión, la app cambia sola a la pantalla principal
   };
 
+  // Envía el enlace para crear una contraseña nueva (el mensaje es el mismo exista o no la cuenta)
+  const forgot = async () => {
+    const problem = validateCredentials({ email, password: 'x', confirm: '', isSignUp: false });
+    if (problem) { setMsg({ type: 'error', text: 'Escribe tu correo arriba y vuelve a tocar "¿Olvidaste tu contraseña?".' }); return; }
+    setBusy(true);
+    const redirectTo = typeof window !== 'undefined' && window.location ? window.location.origin : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo });
+    setBusy(false);
+    if (error) { setMsg({ type: 'error', text: authErrorMessage(error) }); return; }
+    setMsg({ type: 'info', text: 'Si ese correo tiene una cuenta, te enviamos un enlace para crear una contraseña nueva.' });
+  };
+
   return (
     <DismissKeyboard style={[s.container, { padding: 16, justifyContent: 'center' }]}>
       <Text style={s.largeTitle}>Finanzas</Text>
@@ -81,6 +93,7 @@ export function LoginScreen() {
         <Pressable style={[s.button, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
           <Text style={s.buttonText}>{busy ? 'Un momento…' : isSignUp ? 'Crear cuenta' : 'Iniciar sesión'}</Text>
         </Pressable>
+        {!isSignUp && <Pressable onPress={forgot} disabled={busy}><Text style={[s.link, { textAlign: 'center', marginTop: 14, fontSize: 15 }]}>¿Olvidaste tu contraseña?</Text></Pressable>}
       </Card>
       {!!msg.text && <Text style={[s.hint, { color: msg.type === 'error' ? '#FF3B30' : '#34C759' }]}>{msg.text}</Text>}
       <Pressable onPress={() => changeMode(isSignUp ? 'signin' : 'signup')}>

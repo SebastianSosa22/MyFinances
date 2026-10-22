@@ -66,7 +66,7 @@ export function HistoryScreen({ moves }) {
           <Title>Datos del mes</Title>
           <Card style={{ paddingHorizontal: 16 }}>
             <View style={[s.row, { paddingHorizontal: 0, justifyContent: 'space-between' }]}><Text style={s.body}>Gasto promedio por día</Text><Text style={s.body}>{money(r.total / days)}</Text></View>
-            <Line label="Tasa de ahorro (meta 20%)" value={savePct + '%'} color={savePct >= 20 ? '#34C759' : '#FF9500'} />
+            <Line label={'Tasa de ahorro (meta ' + BUCKETS.savings.pct + '%)'} value={savePct + '%'} color={savePct >= BUCKETS.savings.pct ? '#34C759' : '#FF9500'} />
             {biggest && <Line label={'Mayor gasto · ' + (biggest.m.note || biggest.m.cat)} value={money(-biggest.amount, true)} />}
             <Line label="Movimientos" value={String(rows.length)} />
           </Card>

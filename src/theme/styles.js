@@ -65,7 +65,7 @@ export const s = StyleSheet.create({
   fabText: { color: '#fff', fontSize: 32, marginTop: -2 },
   tabbar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: 'rgba(249,249,249,0.96)', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#C6C6C8', paddingBottom: 16, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center' },
-  tabLabel: { fontFamily: FONT, fontSize: 10, color: '#8E8E93', marginTop: 2 },
+  tabLabel: { fontFamily: FONT, fontSize: 11, color: '#8E8E93', marginTop: 2 },
   sheetWrap: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
   sheet: { backgroundColor: '#fff', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, padding: 20, paddingBottom: 16, maxHeight: '64%', width: '100%', maxWidth: 520, alignSelf: 'center' },
   amountInput: { fontFamily: FONT, fontSize: 40, fontWeight: '700', textAlign: 'center', marginVertical: 10 },
@@ -78,4 +78,7 @@ export const s = StyleSheet.create({
   delText: { fontFamily: FONT, color: '#fff', fontSize: 17, fontWeight: '600' },
   chip: { backgroundColor: '#F2F2F7', borderRadius: 18, paddingVertical: 8, paddingHorizontal: 12, margin: 4 },
   chipText: { fontFamily: FONT, fontSize: 15 },
+  snackbar: { position: 'absolute', left: 16, right: 16, bottom: 96, maxWidth: 480, alignSelf: 'center', backgroundColor: '#1C1C1E', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  snackText: { fontFamily: FONT, color: '#fff', fontSize: 15 },
+  snackLink: { fontFamily: FONT, color: '#0A84FF', fontSize: 15, fontWeight: '600' },
 });

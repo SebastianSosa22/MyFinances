@@ -34,10 +34,14 @@ function localParts(date: Date, tz: string) {
 }
 const localDay = (date: Date, tz: string) => { const p = localParts(date, tz); return toU(p.y, p.m, p.d); };
 
-// ¿El movimiento recurrente cae en el día `t`? (misma lógica que la app)
+// ¿El movimiento (gasto o ingreso) cae en el día `t`? (misma lógica que la app, incluida la fecha de fin de los recurrentes)
 function occursOn(m: any, t: number, tz: string) {
   const st = localDay(new Date(m.occurred_at), tz);
   if (t < st) return false;
+  if (m.ends_at && m.freq && m.freq !== 'once') {
+    const [ey, em, ed] = String(m.ends_at).slice(0, 10).split('-').map(Number);
+    if (t > toU(ey, em, ed)) return false;
+  }
   const x = fromU(t);
   switch (m.freq) {
     case 'weekly': return x.wd === m.day;
@@ -48,16 +52,16 @@ function occursOn(m: any, t: number, tz: string) {
   }
 }
 
-// Ciclo que acaba de cerrar, si hoy es el primer día del ciclo nuevo
-function justClosed(cycle: string, now: { y: number; m: number; d: number; wd: number }, today: number) {
-  if (cycle === 'weekly' && now.wd === 1) return { start: today - 7 * DAY, end: today - DAY, name: 'semana' };
+// Ciclo que acaba de cerrar, si hoy es el primer día del ciclo nuevo (el semanal empieza el día de cobro de cada usuario)
+function justClosed(cycle: string, payDay: number, now: { y: number; m: number; d: number; wd: number }, today: number) {
+  if (cycle === 'weekly' && now.wd === payDay) return { start: today - 7 * DAY, end: today - DAY, name: 'semana' };
   if (cycle === 'biweekly' && now.d === 1) return { start: toU(now.y, now.m - 1, 16), end: today - DAY, name: 'quincena' };
   if (cycle === 'biweekly' && now.d === 16) return { start: toU(now.y, now.m, 1), end: today - DAY, name: 'quincena' };
   if (cycle === 'monthly' && now.d === 1) return { start: toU(now.y, now.m - 1, 1), end: today - DAY, name: 'mes' };
   return null;
 }
 
-function buildMessages(sub: any, moves: any[], cycle: string) {
+function buildMessages(sub: any, moves: any[], cycle: string, payDay: number) {
   const tz = sub.tz, prefs = sub.prefs || {}, now = localParts(new Date(), tz), today = toU(now.y, now.m, now.d);
   const out: { title: string; body: string }[] = [];
 
@@ -78,12 +82,12 @@ function buildMessages(sub: any, moves: any[], cycle: string) {
   if (prefs.daily && now.hour === 21) out.push({ title: 'Finanzas', body: '¿Ya registraste tus gastos de hoy?' });
 
   // 3) Cierre del ciclo (9 am del primer día del ciclo nuevo)
-  const closed = prefs.close !== false && now.hour === 9 ? justClosed(cycle, now, today) : null;
+  const closed = prefs.close !== false && now.hour === 9 ? justClosed(cycle, payDay, now, today) : null;
   if (closed) {
     let income = 0, spent = 0;
     moves.forEach((m) => {
-      if (m.kind === 'income') { const d = localDay(new Date(m.occurred_at), tz); if (d >= closed.start && d <= closed.end) income += Number(m.amount); return; }
-      for (let t = closed.start; t <= closed.end; t += DAY) if (occursOn(m, t, tz)) spent += Number(m.amount);
+      // Misma regla para ingresos (incluida la nómina recurrente) y gastos: se cuenta cada día en que ocurre
+      for (let t = closed.start; t <= closed.end; t += DAY) if (occursOn(m, t, tz)) { if (m.kind === 'income') income += Number(m.amount); else spent += Number(m.amount); }
     });
     if (income > 0 || spent > 0) {
       const left = income - spent;
@@ -111,10 +115,10 @@ Deno.serve(async (req) => {
   for (const [userId, list] of byUser) {
     const [{ data: moves }, { data: st }] = await Promise.all([
       sb.from('movements').select('*').eq('user_id', userId),
-      sb.from('user_settings').select('cycle').eq('user_id', userId).maybeSingle(),
+      sb.from('user_settings').select('cycle,pay_day').eq('user_id', userId).maybeSingle(),
     ]);
     for (const sub of list) {
-      const msgs = body.test ? [{ title: 'Finanzas', body: 'Notificación de prueba desde el servidor 🎉' }] : buildMessages(sub, moves ?? [], st?.cycle ?? 'weekly');
+      const msgs = body.test ? [{ title: 'Finanzas', body: 'Notificación de prueba desde el servidor 🎉' }] : buildMessages(sub, moves ?? [], st?.cycle ?? 'weekly', st?.pay_day ?? 1);
       for (const msg of msgs) {
         try {
           await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify({ ...msg, url: '/' }));

@@ -4,6 +4,23 @@ export const BUCKETS = {
   savings: { label: 'Ahorro', pct: 20, color: '#34C759' },
 };
 
+// Reparto del presupuesto que cada usuario puede elegir en Ajustes (se guarda en su cuenta)
+export const SPLITS = {
+  '50-30-20': { label: '50/30/20', hint: 'El clásico: equilibrado.' },
+  '60-20-20': { label: '60/20/20', hint: 'Si tus gastos fijos pesan más.' },
+  '70-20-10': { label: '70/20/10', hint: 'Para ingresos ajustados.' },
+  '40-30-30': { label: '40/30/30', hint: 'Prioridad al ahorro.' },
+};
+export const DEFAULT_SPLIT = '50-30-20';
+
+// Cambia los porcentajes de BUCKETS según el reparto elegido (todas las pantallas leen BUCKETS al dibujarse)
+export function applySplit(key) {
+  const [n, w, sv] = (SPLITS[key] ? key : DEFAULT_SPLIT).split('-').map(Number);
+  BUCKETS.needs.pct = n;
+  BUCKETS.wants.pct = w;
+  BUCKETS.savings.pct = sv;
+}
+
 export const CATS = [
   { name: 'Renta', icon: '🏠', bucket: 'needs' }, { name: 'Comida', icon: '🛒', bucket: 'needs' },
   { name: 'Transporte', icon: '🚌', bucket: 'needs' }, { name: 'Servicios', icon: '💡', bucket: 'needs' },
@@ -17,6 +34,9 @@ export const CATS = [
 export const PERIODS = { weekly: { label: 'Semana', div: 52 / 12 }, biweekly: { label: 'Quincena', div: 2 }, monthly: { label: 'Mes', div: 1 } };
 
 export const EFREQ = { once: 'Una vez', weekly: 'Semanal', biweekly: 'Cada 2 sem.', monthly: 'Mensual', yearly: 'Anual' };
+
+// Frecuencias para ingresos (nómina u otros ingresos que se repiten)
+export const INCOME_FREQ = { once: 'Una vez', weekly: 'Semanal', biweekly: 'Cada 2 sem.', monthly: 'Mensual' };
 
 export const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 

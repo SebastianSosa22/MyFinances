@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../lib/supabase';
+import { signOutLocal } from '../lib/session';
 import { DEFAULT_IDLE_MINUTES, IDLE_OPTIONS, WARNING_SECONDS } from '../constants/security';
 
-// Cierra la sesión de ESTE dispositivo (las demás sesiones del usuario no se tocan) y deja una marca para avisar en el login
+// Cierra la sesión de ESTE dispositivo (las demás sesiones del usuario no se tocan), borra la copia local de datos y deja una marca para avisar en el login
 export async function idleSignOut() {
   await AsyncStorage.setItem('idle_logout', '1');
   await AsyncStorage.removeItem('last_activity');
-  await supabase.auth.signOut({ scope: 'local' });
+  await signOutLocal();
 }
 
 // Cierra la sesión tras un rato sin actividad. Avisa 60 s antes y también cuenta el tiempo con la app cerrada o en segundo plano.

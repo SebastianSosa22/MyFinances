@@ -1,12 +1,22 @@
 import { CATS, DAYS } from '../constants/budget';
 import { daysIn, midnight, nextDay } from './dates';
 
-// Cuántas veces ocurre un gasto entre from y to (los recurrentes cuentan desde el día en que se crearon)
+// 'YYYY-MM-DD' (columna date de Supabase) -> fecha local a medianoche
+export const parseDay = (str) => { const [y, m, d] = String(str).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d); };
+
+export const isRecurring = (m) => !!m.freq && m.freq !== 'once';
+
+// Un pago/ingreso recurrente sigue vigente si no tiene fecha de fin o ésta aún no llega
+export const isActive = (m, now = new Date()) => !m.ends_at || parseDay(m.ends_at) >= midnight(now);
+
+// Cuántas veces ocurre un movimiento entre from y to (los recurrentes cuentan desde el día en que se crearon hasta su fecha de fin, si la tienen)
 export function occurrences(e, from, to) {
   const f = e.freq || 'once', st = midnight(new Date(e.date));
   if (f === 'once') { const d = new Date(e.date); return d >= from && d <= to ? 1 : 0; }
+  const last = e.ends ? parseDay(e.ends) : null;
+  const stop = last && last < to ? last : to;
   let n = 0;
-  for (let d = new Date(Math.max(from, st)); d <= to; d = nextDay(d)) {
+  for (let d = new Date(Math.max(from, st)); d <= stop; d = nextDay(d)) {
     if (f === 'weekly' && d.getDay() === e.day) n++;
     else if (f === 'biweekly' && Math.round((d - st) / 864e5) % 14 === 0) n++;
     else if (f === 'monthly' && d.getDate() === Math.min(e.day, daysIn(d.getFullYear(), d.getMonth()))) n++;
@@ -17,14 +27,15 @@ export function occurrences(e, from, to) {
 
 export function freqLabel(e) {
   const f = e.freq || 'once';
-  if (f === 'weekly') return 'Cada ' + DAYS[e.day];
-  if (f === 'biweekly') return 'Cada 2 semanas';
-  if (f === 'monthly') return 'Mensual · día ' + e.day;
-  if (f === 'yearly') return 'Anual';
+  const ended = e.ends ? ' · terminó el ' + parseDay(e.ends).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';
+  if (f === 'weekly') return 'Cada ' + DAYS[e.day] + ended;
+  if (f === 'biweekly') return 'Cada 2 semanas' + ended;
+  if (f === 'monthly') return 'Mensual · día ' + e.day + ended;
+  if (f === 'yearly') return 'Anual' + ended;
   return new Date(e.date).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }
 
-export const asExp = (m) => ({ freq: m.freq, day: m.day, date: m.occurred_at });
+export const asExp = (m) => ({ freq: m.freq, day: m.day, date: m.occurred_at, ends: m.ends_at });
 
 export const bucketOf = (cat) => (CATS.find((c) => c.name === cat) || { bucket: 'wants' }).bucket;
 
@@ -33,8 +44,14 @@ export function report(moves, from, to) {
   let income = 0;
   moves.forEach((m) => {
     if (m.kind === 'income') {
-      const d = new Date(m.occurred_at);
-      if (d >= from && d <= to) { income += m.amount; rows.push({ m, amount: m.amount, label: 'Ingreso' }); }
+      if (!isRecurring(m)) {
+        const d = new Date(m.occurred_at);
+        if (d >= from && d <= to) { income += m.amount; rows.push({ m, amount: m.amount, label: 'Ingreso' }); }
+        return;
+      }
+      // Ingreso recurrente (nómina): cuenta cada vez que toca
+      const k = occurrences(asExp(m), from, to);
+      if (k > 0) { income += m.amount * k; rows.push({ m, amount: m.amount * k, label: (k > 1 ? k + ' veces · ' : '') + freqLabel(asExp(m)) }); }
       return;
     }
     const n = occurrences(asExp(m), from, to);

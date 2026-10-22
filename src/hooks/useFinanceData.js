@@ -1,17 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { startOfMonth } from '../lib/dates';
-import { report } from '../lib/finance';
+import { isRecurring, report } from '../lib/finance';
 import { limitMessage } from '../lib/summary';
 import { supabase } from '../lib/supabase';
+import { CACHE_PREFIX } from '../lib/session';
 
-// Datos de la cuenta (movimientos, metas y límites) y sus operaciones contra Supabase
+const byDateDesc = (list) => [...list].sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at));
+const clean = (x) => ({ ...x, amount: Number(x.amount) });
+const isTemp = (id) => String(id).startsWith('tmp-');
+
+// Datos de la cuenta (movimientos, metas y límites) y sus operaciones contra Supabase.
+// Abre al instante con la última copia guardada en el dispositivo y se actualiza en cuanto llegan los datos.
 export function useFinanceData(session) {
+  const cacheKey = CACHE_PREFIX + session.user.id;
   const [moves, setMoves] = useState([]);
   const [goals, setGoals] = useState([]);
   const [limits, setLimits] = useState({});
   const [err, setErr] = useState('');
   const [notice, setNotice] = useState('');
+  const [loaded, setLoaded] = useState(false);
+  const [undo, setUndo] = useState(null); // último movimiento borrado, para poder deshacer
+  const fresh = useRef(false);
+  const undoTimer = useRef(null);
 
   const load = async () => {
     const [m, g, l] = await Promise.all([
@@ -20,40 +32,80 @@ export function useFinanceData(session) {
       supabase.from('category_limits').select('*'),
     ]);
     const error = m.error || g.error || l.error;
-    if (error) { setErr('No se pudieron cargar los datos: ' + error.message); return; }
-    setMoves(m.data.map((x) => ({ ...x, amount: Number(x.amount) })));
-    setGoals(g.data.map((x) => ({ ...x, target: Number(x.target) })));
+    if (error) { setErr('No se pudieron cargar los datos: ' + error.message); setLoaded(true); return; }
+    const mv = m.data.map(clean);
+    const gl = g.data.map((x) => ({ ...x, target: Number(x.target) }));
     const lim = {};
     l.data.forEach((x) => { lim[x.cat] = Number(x.amount); });
-    setLimits(lim);
-    setErr('');
+    fresh.current = true;
+    setMoves(mv); setGoals(gl); setLimits(lim); setErr(''); setLoaded(true);
+    AsyncStorage.setItem(cacheKey, JSON.stringify({ moves: mv, goals: gl, limits: lim })).catch(() => {});
   };
 
-  useEffect(() => { load(); }, []);
+  // 1) copia local (instantánea)  2) datos frescos de Supabase
+  useEffect(() => {
+    let alive = true;
+    AsyncStorage.getItem(cacheKey).then((raw) => {
+      if (!alive || !raw || fresh.current) return;
+      try { const c = JSON.parse(raw); setMoves(c.moves || []); setGoals(c.goals || []); setLimits(c.limits || {}); setLoaded(true); } catch (e) { /* copia dañada: se ignora */ }
+    });
+    load();
+    return () => { alive = false; clearTimeout(undoTimer.current); };
+  }, []);
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => st === 'active' && load());
     return () => sub.remove();
   }, []);
 
+  // Se guarda de inmediato en pantalla y se confirma en segundo plano (si falla, se revierte y se avisa)
   const addMove = async (row) => {
-    const { data, error } = await supabase.from('movements').insert(row).select().single();
-    if (error) { setErr('No se pudo guardar: ' + error.message); return false; }
-    setMoves((prev) => [{ ...data, amount: Number(data.amount) }, ...prev]);
+    const temp = { id: 'tmp-' + Date.now(), ...row, amount: Number(row.amount), freq: row.freq || 'once' };
+    setMoves((prev) => byDateDesc([temp, ...prev]));
     setErr('');
     const lim = limits[row.cat];
-    if (row.kind === 'expense' && lim && (!row.freq || row.freq === 'once')) {
-      const now = new Date();
+    const now = new Date();
+    if (row.kind === 'expense' && lim && !isRecurring(row) && new Date(row.occurred_at) >= startOfMonth(now)) {
       const monthByCat = report(moves, startOfMonth(now), now).byCat;
       setNotice(limitMessage(row.cat, (monthByCat[row.cat] || 0) + row.amount, lim));
     } else setNotice('');
+    supabase.from('movements').insert(row).select().single().then(({ data, error }) => {
+      if (error) { setMoves((prev) => prev.filter((m) => m.id !== temp.id)); setErr('No se pudo guardar: ' + error.message); return; }
+      setMoves((prev) => byDateDesc(prev.map((m) => (m.id === temp.id ? clean(data) : m))));
+    });
+    return true;
+  };
+
+  const updateMove = async (id, patch) => {
+    if (isTemp(id)) return false;
+    const prev = moves;
+    setMoves(byDateDesc(moves.map((m) => (m.id === id ? { ...m, ...patch } : m))));
+    const { error } = await supabase.from('movements').update(patch).eq('id', id);
+    if (error) { setMoves(prev); setErr('No se pudo guardar: ' + error.message); return false; }
+    setErr('');
     return true;
   };
 
   const delMove = async (id) => {
+    if (isTemp(id)) return;
+    const row = moves.find((m) => m.id === id);
+    if (!row) return;
     const prev = moves;
     setMoves(moves.filter((m) => m.id !== id));
     const { error } = await supabase.from('movements').delete().eq('id', id);
-    if (error) { setMoves(prev); setErr('No se pudo borrar: ' + error.message); }
+    if (error) { setMoves(prev); setErr('No se pudo borrar: ' + error.message); return; }
+    setUndo({ row });
+    clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndo(null), 7000);
+  };
+
+  const undoDelete = async () => {
+    if (!undo) return;
+    const { row } = undo;
+    setUndo(null);
+    clearTimeout(undoTimer.current);
+    setMoves((prev) => byDateDesc([row, ...prev]));
+    const { error } = await supabase.from('movements').insert(row);
+    if (error) { setMoves((prev) => prev.filter((m) => m.id !== row.id)); setErr('No se pudo deshacer: ' + error.message); }
   };
 
   const saveGoal = async (row, id) => {
@@ -86,5 +138,15 @@ export function useFinanceData(session) {
     setLimits((p) => { const n = { ...p }; if (value) n[cat] = value; else delete n[cat]; return n; });
   };
 
-  return { moves, goals, limits, err, notice, setNotice, load, addMove, delMove, saveGoal, delGoal, contribute, saveLimit };
+  // Guarda varios límites a la vez (por ejemplo, los sugeridos según tu historial)
+  const applyLimits = async (map) => {
+    const rows = Object.entries(map).map(([cat, amount]) => ({ user_id: session.user.id, cat, amount }));
+    if (!rows.length) return true;
+    const { error } = await supabase.from('category_limits').upsert(rows, { onConflict: 'user_id,cat' });
+    if (error) { setErr('No se pudieron guardar los límites: ' + error.message); return false; }
+    setLimits((p) => ({ ...p, ...map }));
+    return true;
+  };
+
+  return { moves, goals, limits, err, notice, setNotice, loaded, undo, undoDelete, load, addMove, updateMove, delMove, saveGoal, delGoal, contribute, saveLimit, applyLimits };
 }

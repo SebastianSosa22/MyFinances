@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { BudgetDonut } from '../components/BudgetDonut';
 import { SavingsCard } from '../components/SavingsCard';
 import { Delta } from '../components/Delta';
@@ -8,21 +8,31 @@ import { BUCKETS, CATS, PERIODS } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
 import { asExp, bucketOf, freqLabel } from '../lib/finance';
 import { money, shortDate } from '../lib/format';
+import { buildInsights } from '../lib/insights';
 import { savingsBox } from '../lib/savings';
 import { homeSummary } from '../lib/summary';
 import { s } from '../theme/styles';
 
-export function HomeScreen({ moves, limits, settings, onSeeAll }) {
+export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
   const wide = useWide();
-  const [period, setPeriod] = useState('monthly');
-  const { now, start, end, cur, income, spent, totalSpent, limitRows, prev, totalDays, elapsed, timePct, spentPct, flexSpent, flexBudget, flexPct, pending, flexLeft, perDay, upcoming, topCats } = homeSummary(moves, limits, period);
+  const [pick, setPick] = useState(null);
+  const period = pick || settings.cycle; // el Resumen abre en TU ciclo de cobro
+  const dayKey = new Date().toDateString();
+  const sm = useMemo(() => homeSummary(moves, limits, period, new Date(), settings.payDay), [moves, limits, period, settings.payDay, settings.split, dayKey]);
+  const box = useMemo(() => savingsBox(moves, settings), [moves, settings, dayKey]);
+  const insights = useMemo(() => buildInsights(moves, settings), [moves, settings, dayKey]);
+  const { now, start, end, cur, income, spent, totalSpent, limitRows, prev, totalDays, elapsed, timePct, spentPct, flexSpent, flexBudget, flexPct, pending, flexLeft, perDay, projectedLeft, upcoming, topCats } = sm;
 
-  const box = savingsBox(moves, settings);
+  if (loading) {
+    return (<><Text style={s.largeTitle}>Resumen</Text><ActivityIndicator style={{ marginTop: 40 }} /></>);
+  }
+
+  const paceColor = flexLeft < 0 ? '#FF3B30' : flexPct > timePct ? '#FF9500' : '#34C759';
 
   return (
     <>
       <Text style={s.largeTitle}>Resumen</Text>
-      <Segmented options={PERIODS} value={period} onChange={setPeriod} />
+      <Segmented options={PERIODS} value={period} onChange={setPick} />
       <View style={s.dateRow}>
         <Text style={s.dateText}>{shortDate(start)} – {shortDate(end)}</Text>
         <Text style={s.dateText}>Hoy, {shortDate(now)}</Text>
@@ -30,66 +40,41 @@ export function HomeScreen({ moves, limits, settings, onSeeAll }) {
       <View style={wide ? s.cols : null}>
       <View style={wide ? s.col : null}>
       <Card style={{ marginTop: 12 }}>
-        <Text style={[s.caption, { marginTop: 12 }]}>Disponible</Text>
-        <Text style={[s.big, income - totalSpent < 0 && { color: '#FF3B30' }]}>{money(income - totalSpent)}</Text>
+        <Text style={[s.caption, { marginTop: 12 }]}>Puedes gastar hoy</Text>
+        {income > 0 ? (
+          <>
+            <Text style={[s.big, flexLeft < 0 && { color: '#FF3B30' }]}>{money(perDay)}</Text>
+            <Text style={s.caption}>
+              {flexLeft < 0 ? 'Tus pagos fijos que faltan ya rebasan tu presupuesto del periodo.' : 'Te quedan ' + money(flexLeft) + ' en Necesidades y Deseos hasta el ' + shortDate(end) + '.'}
+            </Text>
+            {elapsed >= 2 && (
+              <Text style={[s.caption, { color: projectedLeft >= 0 ? '#34C759' : '#FF9500' }]}>
+                {projectedLeft >= 0 ? 'A este ritmo cerrarás el periodo con ' + money(projectedLeft) + ' de margen.' : 'A este ritmo te pasarías ' + money(-projectedLeft) + ' de tu presupuesto.'}
+              </Text>
+            )}
+          </>
+        ) : (
+          <>
+            <Text style={[s.big, { color: '#8E8E93' }]}>—</Text>
+            <Text style={s.caption}>Registra tu ingreso (o configura tu nómina) para calcularlo.</Text>
+          </>
+        )}
         <View style={[s.row, s.sep, { marginTop: 12 }]}>
           <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { color: '#34C759', paddingHorizontal: 16 }]}>{money(income)}</Text></View>
           <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { color: '#FF3B30', paddingHorizontal: 16 }]}>{money(totalSpent)}</Text></View>
         </View>
       </Card>
-      <Card>
-        <BudgetDonut spent={spent} income={income} center={<><Text style={s.big2}>{spentPct}%</Text><Text style={s.caption}>de tus ingresos</Text></>} />
-        {Object.entries(BUCKETS).map(([k, b]) => {
-          const target = (income * b.pct) / 100;
-          return (
-            <View key={k} style={[s.row, s.sep, { marginTop: 8, justifyContent: 'space-between' }]}>
-              <Text style={s.body}><Text style={{ color: b.color }}>● </Text>{b.label} {b.pct}%</Text>
-              <Text style={[s.body, spent[k] > target && { color: '#FF3B30' }]}>{money(spent[k])} / {money(target)}</Text>
-            </View>
-          );
-        })}
-      </Card>
-      <SavingsCard info={box} cycle={settings.cycle} />
-      {income === 0 && <Text style={s.hint}>Toca + y registra un ingreso para calcular tu presupuesto.</Text>}
 
-      {income > 0 && (
+      {insights.length > 0 && (
         <>
-          <Title>Ritmo del periodo</Title>
-          <Card style={{ padding: 16 }}>
-            <View style={s.paceHead}><Text style={s.body}>Día {elapsed} de {totalDays}</Text><Text style={s.caption}>{timePct}%</Text></View>
-            <Bar spent={elapsed} budget={totalDays} color="#007AFF" />
-            <View style={[s.paceHead, { marginTop: 14 }]}><Text style={s.body}>Gastado en Necesidades y Deseos</Text><Text style={s.caption}>{flexPct}%</Text></View>
-            <Bar spent={flexSpent} budget={flexBudget} color={flexLeft < 0 ? '#FF3B30' : flexPct > timePct ? '#FF9500' : '#34C759'} />
-            <Text style={[s.caption, { paddingHorizontal: 0 }]}>{money(flexSpent)} de {money(flexBudget)} (80% de tus ingresos)</Text>
-            <Text style={[s.hint, { textAlign: 'left', marginTop: 12, color: flexLeft < 0 ? '#FF3B30' : flexPct > timePct ? '#FF9500' : '#34C759' }]}>
-              {flexLeft < 0 ? 'Con tus pagos fijos que faltan ya rebasarías tu presupuesto del periodo.' : flexPct > timePct ? 'Vas gastando más rápido de lo que avanza el periodo.' : 'Vas bien: tu gasto va por debajo del ritmo del periodo.'}
-            </Text>
-            <View style={[s.row, s.sep, s.paceRow]}><Text style={s.body}>Puedes gastar por día</Text><Text style={[s.body, { fontWeight: '600' }]}>{money(perDay)}</Text></View>
-            {pending > 0 && <View style={[s.row, s.sep, s.paceRow]}><Text style={s.body}>Pagos fijos por venir</Text><Text style={s.body}>{money(pending)}</Text></View>}
-            <View style={[s.row, s.sep, s.paceRow]}><Text style={s.body}>Gasto promedio por día</Text><Text style={s.body}>{money(flexSpent / elapsed)}</Text></View>
-          </Card>
-        </>
-      )}
-
-      </View>
-      <View style={wide ? s.col : null}>
-      {limitRows.length > 0 && (
-        <>
-          <Title>Límites del mes</Title>
+          <Title>Para ti</Title>
           <Card>
-            {limitRows.map(([cat, lim, sp], i) => {
-              const c = CATS.find((z) => z.name === cat), ratio = sp / lim;
-              const col = ratio >= 1 ? '#FF3B30' : ratio >= 0.8 ? '#FF9500' : '#34C759';
-              return (
-                <View key={cat} style={[s.row, i > 0 && s.sep, { flexDirection: 'column', alignItems: 'stretch' }]}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={s.body}>{c ? c.icon : '🧾'} {cat}</Text>
-                    <Text style={[s.body, ratio >= 0.8 && { color: col }]}>{money(sp)} / {money(lim)}</Text>
-                  </View>
-                  <Bar spent={sp} budget={lim} color={col} />
-                </View>
-              );
-            })}
+            {insights.map((it, i) => (
+              <View key={i} style={[s.row, i > 0 && s.sep, { alignItems: 'flex-start' }]}>
+                <Text style={{ fontSize: 20, marginRight: 12 }}>{it.icon}</Text>
+                <Text style={[s.body, { flex: 1, fontSize: 15 }]}>{it.text}</Text>
+              </View>
+            ))}
           </Card>
         </>
       )}
@@ -109,6 +94,62 @@ export function HomeScreen({ moves, limits, settings, onSeeAll }) {
               );
             })}
             <View style={[s.row, s.sep, { justifyContent: 'space-between' }]}><Text style={s.body}>Total por pagar</Text><Text style={[s.body, { fontWeight: '600' }]}>{money(upcoming.reduce((a, u) => a + u.m.amount, 0), true)}</Text></View>
+          </Card>
+        </>
+      )}
+
+      <Card>
+        <BudgetDonut spent={spent} income={income} center={<><Text style={s.big2}>{spentPct}%</Text><Text style={s.caption}>de tus ingresos</Text></>} />
+        {Object.entries(BUCKETS).map(([k, b]) => {
+          const target = (income * b.pct) / 100;
+          return (
+            <View key={k} style={[s.row, s.sep, { marginTop: 8, justifyContent: 'space-between' }]}>
+              <Text style={s.body}><Text style={{ color: b.color }}>● </Text>{b.label} {b.pct}%</Text>
+              <Text style={[s.body, spent[k] > target && { color: '#FF3B30' }]}>{money(spent[k])} / {money(target)}</Text>
+            </View>
+          );
+        })}
+      </Card>
+      <SavingsCard info={box} cycle={settings.cycle} />
+      {income === 0 && <Text style={s.hint}>Toca + y registra un ingreso para calcular tu presupuesto.</Text>}
+      </View>
+      <View style={wide ? s.col : null}>
+
+      {income > 0 && (
+        <>
+          <Title>Ritmo del periodo</Title>
+          <Card style={{ padding: 16 }}>
+            <View style={s.paceHead}><Text style={s.body}>Día {elapsed} de {totalDays}</Text><Text style={s.caption}>{timePct}%</Text></View>
+            <Bar spent={elapsed} budget={totalDays} color="#007AFF" />
+            <View style={[s.paceHead, { marginTop: 14 }]}><Text style={s.body}>Gastado en Necesidades y Deseos</Text><Text style={s.caption}>{flexPct}%</Text></View>
+            <Bar spent={flexSpent} budget={flexBudget} color={paceColor} />
+            <Text style={[s.caption, { paddingHorizontal: 0 }]}>{money(flexSpent)} de {money(flexBudget)} ({BUCKETS.needs.pct + BUCKETS.wants.pct}% de tus ingresos)</Text>
+            <Text style={[s.hint, { textAlign: 'left', marginTop: 12, color: paceColor }]}>
+              {flexLeft < 0 ? 'Con tus pagos fijos que faltan ya rebasarías tu presupuesto del periodo.' : flexPct > timePct ? 'Vas gastando más rápido de lo que avanza el periodo.' : 'Vas bien: tu gasto va por debajo del ritmo del periodo.'}
+            </Text>
+            {pending > 0 && <View style={[s.row, s.sep, s.paceRow]}><Text style={s.body}>Pagos fijos por venir</Text><Text style={s.body}>{money(pending)}</Text></View>}
+            <View style={[s.row, s.sep, s.paceRow]}><Text style={s.body}>Gasto promedio por día</Text><Text style={s.body}>{money(flexSpent / elapsed)}</Text></View>
+          </Card>
+        </>
+      )}
+
+      {limitRows.length > 0 && (
+        <>
+          <Title>Límites del mes</Title>
+          <Card>
+            {limitRows.map(([cat, lim, sp], i) => {
+              const c = CATS.find((z) => z.name === cat), ratio = sp / lim;
+              const col = ratio >= 1 ? '#FF3B30' : ratio >= 0.8 ? '#FF9500' : '#34C759';
+              return (
+                <View key={cat} style={[s.row, i > 0 && s.sep, { flexDirection: 'column', alignItems: 'stretch' }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={s.body}>{c ? c.icon : '🧾'} {cat}</Text>
+                    <Text style={[s.body, ratio >= 0.8 && { color: col }]}>{money(sp)} / {money(lim)}</Text>
+                  </View>
+                  <Bar spent={sp} budget={lim} color={col} />
+                </View>
+              );
+            })}
           </Card>
         </>
       )}
