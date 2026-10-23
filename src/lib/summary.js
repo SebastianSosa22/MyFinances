@@ -1,6 +1,6 @@
 import { DAY_MS, daysIn, endOfDay, midnight, periodEnd, periodStart, startOfMonth } from './dates';
 import { BUCKETS } from '../constants/budget';
-import { asExp, bucketOf, isRecurring, occurrences, report } from './finance';
+import { asExp, bucketOf, isRecurring, isSpreadable, occurrences, report, spreadSpent } from './finance';
 import { money } from './format';
 
 // Cálculos que usan las pantallas (separados de la interfaz para poder reutilizarlos y probarlos)
@@ -8,22 +8,48 @@ import { money } from './format';
 // Resumen del periodo (semana, quincena o mes): del inicio hasta hoy, solo lo ya registrado
 export function homeSummary(moves, limits, period, now = new Date(), payDay = 1) {
   const start = periodStart(period, now, payDay);
+  const end = periodEnd(period, start);
   const cur = report(moves, start, now);
-  const { income, spent, total: totalSpent } = cur;
-  const totalDays = Math.round((periodEnd(period, start) - start) / DAY_MS) + 1;
+  const { income, total: totalSpent } = cur;
+  const totalDays = Math.round((end - start) / DAY_MS) + 1;
   const elapsed = Math.round((midnight(now) - start) / DAY_MS) + 1;
   const daysLeft = Math.max(totalDays - elapsed + 1, 1);
-  const end = periodEnd(period, start);
   // Ritmo: se mide contra Necesidades + Deseos (lo que queda tras apartar el % de ahorro), porque el Ahorro es una meta, no un gasto a frenar
-  const flexSpent = spent.needs + spent.wants;
   const flexBudget = (income * (BUCKETS.needs.pct + BUCKETS.wants.pct)) / 100;
   const pending = pendingFixed(moves, now, end);
-  const flexLeft = flexBudget - flexSpent - pending;
 
-  // Proyección personal: tu gasto variable diario (sin pagos fijos) se extiende a los días que faltan, más los pagos fijos por venir
-  const oneOff = report(moves.filter((m) => m.kind === 'income' || !isRecurring(m)), start, now).spent;
-  const variableFlex = oneOff.needs + oneOff.wants;
-  const projectedFlex = flexSpent + pending + (variableFlex / Math.max(elapsed, 1)) * Math.max(totalDays - elapsed, 0);
+  // 1) Efectivo real: lo que ya salió de tu bolsillo en este periodo
+  const flexLeftCash = flexBudget - (cur.spent.needs + cur.spent.wants) - pending;
+  const oneOffAll = report(moves.filter((m) => m.kind === 'income' || !isRecurring(m)), start, now).spent;
+  const projCash = (cur.spent.needs + cur.spent.wants) + pending + ((oneOffAll.needs + oneOffAll.wants) / Math.max(elapsed, 1)) * Math.max(totalDays - elapsed, 0);
+
+  // 2) Vista repartida (semana/quincena): la renta y los pagos mensuales/anuales cuentan solo la parte de los días que cubren
+  const smooth = period !== 'monthly';
+  const fixed = smooth ? moves.filter(isSpreadable) : [];
+  let spent = cur.spent, flexLeft = flexLeftCash, projectedFlex = projCash, fixedShare = 0, fixedPaid = 0;
+  if (fixed.length) {
+    const ids = new Set(fixed.map((m) => m.id));
+    const variable = moves.filter((m) => !ids.has(m.id));
+    const v = report(variable, start, now).spent;
+    const share = spreadSpent(fixed, start, end);
+    const vPending = pendingFixed(variable, now, end);
+    const vOneOff = report(variable.filter((m) => m.kind === 'income' || !isRecurring(m)), start, now).spent;
+    spent = { needs: v.needs + share.needs, wants: v.wants + share.wants, savings: v.savings };
+    fixedShare = share.needs + share.wants;
+    fixedPaid = report(fixed, start, now).total;
+    const flexLeftSmooth = flexBudget - (v.needs + v.wants) - vPending - fixedShare;
+    const projSmooth = (v.needs + v.wants) + vPending + fixedShare + ((vOneOff.needs + vOneOff.wants) / Math.max(elapsed, 1)) * Math.max(totalDays - elapsed, 0);
+    // Nunca te decimos que tienes más de lo que realmente te queda: tomamos el valor más prudente
+    flexLeft = Math.min(flexLeftCash, flexLeftSmooth);
+    projectedFlex = Math.max(projCash, projSmooth);
+  }
+  const flexSpent = spent.needs + spent.wants;
+  const viewTotal = spent.needs + spent.wants + spent.savings;
+
+  // Categorías que ya rebasaron su parte del presupuesto (Necesidades o Deseos)
+  const overs = income > 0
+    ? ['needs', 'wants'].map((k) => ({ k, over: spent[k] - (income * BUCKETS[k].pct) / 100 })).filter((o) => o.over > 0.5)
+    : [];
 
   const monthByCat = report(moves, startOfMonth(now), now).byCat;
   const limitRows = Object.entries(limits)
@@ -35,12 +61,13 @@ export function homeSummary(moves, limits, period, now = new Date(), payDay = 1)
     : null;
   return {
     now, start, end, cur, income, spent, totalSpent, limitRows, prev, totalDays, elapsed, daysLeft,
-    flexSpent, flexBudget, pending, flexLeft, projectedFlex,
+    flexSpent, flexBudget, pending, flexLeft, projectedFlex, overs,
+    fixedShare, fixedPaid, cashBelowShare: fixed.length > 0 && flexLeftCash < flexLeft + 0.5 && fixedPaid > fixedShare,
     projectedLeft: flexBudget - projectedFlex,
     flexPct: flexBudget > 0 ? Math.round((flexSpent / flexBudget) * 100) : 0,
     perDay: Math.max(flexLeft, 0) / daysLeft,
     timePct: Math.round((elapsed / totalDays) * 100),
-    spentPct: income > 0 ? Math.round((totalSpent / income) * 100) : 0,
+    spentPct: income > 0 ? Math.round((viewTotal / income) * 100) : 0,
     upcoming: upcomingPayments(moves, now, 7),
     topCats: Object.entries(cur.byCat).sort((x, y) => y[1] - x[1]).slice(0, 3),
   };

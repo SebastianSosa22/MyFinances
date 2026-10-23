@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, RefreshControl } from 'react-native';
 import { Sidebar } from './components/Sidebar';
 import { TabBar } from './components/TabBar';
@@ -45,6 +45,10 @@ export function AppShell({ session }) {
   const idle = useIdleLogout();
   const { moves, goals, limits } = data;
 
+  // Al cambiar de pestaña (o entre Caja y Metas) la pantalla vuelve arriba
+  const scrollRef = useRef(null);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTo({ y: 0, animated: false }); }, [tab, savingsView]);
+
   const goalsMode = tab === 'savings' && savingsView === 'goals';
   const openAdd = () => (goalsMode ? setGoalSheet({ open: true, goal: null }) : (setEditRow(null), setAddOpen(true)));
   const openEdit = (m) => { setEditRow(m); setAddOpen(true); };
@@ -75,6 +79,7 @@ export function AppShell({ session }) {
         </View>
       )}
       <ScrollView
+        ref={scrollRef}
         style={wide ? { flex: 1 } : null}
         contentContainerStyle={wide ? s.contentWide : { padding: 16, paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.muted} />}

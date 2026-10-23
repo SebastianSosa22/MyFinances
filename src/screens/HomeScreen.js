@@ -21,13 +21,21 @@ export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
   const sm = useMemo(() => homeSummary(moves, limits, period, new Date(), settings.payDay), [moves, limits, period, settings.payDay, settings.split, dayKey]);
   const box = useMemo(() => savingsBox(moves, settings), [moves, settings, dayKey]);
   const insights = useMemo(() => buildInsights(moves, settings), [moves, settings, dayKey]);
-  const { now, start, end, cur, income, spent, totalSpent, limitRows, prev, totalDays, elapsed, timePct, spentPct, flexSpent, flexBudget, flexPct, pending, flexLeft, perDay, projectedLeft, upcoming, topCats } = sm;
+  const { now, start, end, cur, income, spent, totalSpent, limitRows, prev, totalDays, elapsed, timePct, spentPct, flexSpent, flexBudget, flexPct, pending, flexLeft, perDay, projectedLeft, upcoming, topCats, overs, fixedShare, fixedPaid, cashBelowShare } = sm;
 
   if (loading) {
     return (<><Text style={s.largeTitle}>Resumen</Text><ActivityIndicator style={{ marginTop: 40 }} /></>);
   }
 
-  const paceColor = flexLeft < 0 ? '#F87171' : flexPct > timePct ? '#FBBF24' : '#4ADE80';
+  const paceColor = flexLeft < 0 || overs.length > 0 ? '#F87171' : flexPct > timePct || cashBelowShare ? '#FBBF24' : '#4ADE80';
+  const overText = overs.map((o) => money(o.over) + ' en ' + BUCKETS[o.k].label).join(' y ');
+  // Mensaje del ritmo: primero lo más importante (te pasaste en un bucket), luego el total y al final el ritmo
+  const paceText = overs.length > 0
+    ? 'Te pasaste ' + overText + '.' + (flexLeft > 0 ? ' Aún te quedan ' + money(flexLeft) + ' en total, pero conviene frenar ahí.' : '')
+    : flexLeft < 0 ? 'Con tus pagos fijos que faltan ya rebasarías tu presupuesto del periodo.'
+    : cashBelowShare ? 'Tu gasto va bien, pero en este periodo pagaste tu renta completa: te quedan ' + money(Math.max(flexLeft, 0)) + ' hasta el ' + shortDate(end) + '.'
+    : flexPct > timePct ? 'Vas gastando más rápido de lo que avanza el periodo.'
+    : 'Vas bien: tu gasto va por debajo del ritmo del periodo.';
 
   return (
     <>
@@ -47,7 +55,14 @@ export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
                 <Text style={s.caption}>
                   {flexLeft < 0 ? 'Tus pagos fijos que faltan ya rebasan tu presupuesto del periodo.' : 'Te quedan ' + money(flexLeft) + ' en Necesidades y Deseos hasta el ' + shortDate(end) + '.'}
                 </Text>
-                {elapsed >= 2 && (
+                {fixedShare > 0 && (
+                  <Text style={s.caption}>
+                    {cashBelowShare
+                      ? 'Ya pagaste ' + money(fixedPaid) + ' de gastos fijos (renta) en este periodo; esto ya considera lo que realmente te queda.'
+                      : 'Ya apartamos ' + money(fixedShare) + ' para tus gastos fijos (renta) de este periodo.'}
+                  </Text>
+                )}
+                {elapsed >= 2 && overs.length === 0 && (
                   <Text style={[s.caption, { color: projectedLeft >= 0 ? '#4ADE80' : '#FBBF24' }]}>
                     {projectedLeft >= 0 ? 'A este ritmo cerrarás el periodo con ' + money(projectedLeft) + ' de margen.' : 'A este ritmo te pasarías ' + money(-projectedLeft) + ' de tu presupuesto.'}
                   </Text>
@@ -109,6 +124,11 @@ export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
                 </View>
               );
             })}
+            {fixedShare > 0 && (
+              <Text style={[s.caption, { marginTop: 8, marginBottom: 12 }]}>
+                🏠 Tus gastos fijos (renta y pagos mensuales) se reparten entre los días que cubren: en este periodo cuentan {money(fixedShare)}.
+              </Text>
+            )}
           </Card>
           <SavingsCard info={box} cycle={settings.cycle} />
           {income === 0 && <Text style={s.hint}>Toca + y registra un ingreso para calcular tu presupuesto.</Text>}
@@ -125,10 +145,10 @@ export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
                 <Bar spent={flexSpent} budget={flexBudget} color={paceColor} />
                 <Text style={[s.caption, { paddingHorizontal: 0 }]}>{money(flexSpent)} de {money(flexBudget)} ({BUCKETS.needs.pct + BUCKETS.wants.pct}% de tus ingresos)</Text>
                 <Text style={[s.hint, { textAlign: 'left', marginTop: 12, color: paceColor }]}>
-                  {flexLeft < 0 ? 'Con tus pagos fijos que faltan ya rebasarías tu presupuesto del periodo.' : flexPct > timePct ? 'Vas gastando más rápido de lo que avanza el periodo.' : 'Vas bien: tu gasto va por debajo del ritmo del periodo.'}
+                  {paceText}
                 </Text>
                 {pending > 0 && <View style={[s.row, s.sep, s.paceRow]}><Text style={s.body}>Pagos fijos por venir</Text><Text style={s.body}>{money(pending)}</Text></View>}
-                <View style={[s.row, s.sep, s.paceRow]}><Text style={s.body}>Gasto promedio por día</Text><Text style={s.body}>{money(flexSpent / elapsed)}</Text></View>
+                <View style={[s.row, s.sep, s.paceRow]}><Text style={s.body}>{fixedShare > 0 ? 'Gasto diario (sin fijos)' : 'Gasto promedio por día'}</Text><Text style={s.body}>{money((flexSpent - fixedShare) / elapsed)}</Text></View>
               </Card>
             </>
           )}

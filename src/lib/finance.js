@@ -25,6 +25,48 @@ export function occurrences(e, from, to) {
   return n;
 }
 
+// Fechas (a medianoche) en que ocurre un movimiento entre from y to
+export function occurrenceDates(e, from, to) {
+  const f = e.freq || 'once', st = midnight(new Date(e.date));
+  if (f === 'once') { const d = midnight(new Date(e.date)); return d >= midnight(from) && d <= to ? [d] : []; }
+  const last = e.ends ? parseDay(e.ends) : null;
+  const stop = last && last < to ? last : to;
+  const out = [];
+  for (let d = new Date(Math.max(midnight(from), st)); d <= stop; d = nextDay(d)) {
+    if (occurrences(e, d, endOfDayLocal(d)) > 0) out.push(d);
+  }
+  return out;
+}
+const endOfDayLocal = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+// Gastos fijos que cubren varias semanas (la renta, o lo que se paga cada mes o cada año).
+// En la vista semanal/quincenal se reparten entre los días que cubren para no distorsionar la semana en que se pagan.
+const COVER_DAYS = { once: 30, biweekly: 14, monthly: 30, yearly: 365 };
+export function isSpreadable(m) {
+  if (m.kind !== 'expense' || bucketOf(m.cat) === 'savings') return false;
+  const f = m.freq || 'once';
+  if (m.cat === 'Renta') return f !== 'weekly';
+  return f === 'monthly' || f === 'yearly';
+}
+
+// Parte de los gastos fijos que le corresponde a los días entre from y to, por bucket
+export function spreadSpent(moves, from, to) {
+  const spent = { needs: 0, wants: 0, savings: 0 };
+  const a = midnight(from), b = midnight(to);
+  moves.forEach((m) => {
+    const cover = COVER_DAYS[m.freq || 'once'];
+    if (!cover) return;
+    const windowStart = new Date(a.getFullYear(), a.getMonth(), a.getDate() - (cover - 1));
+    occurrenceDates(asExp(m), windowStart, endOfDayLocal(b)).forEach((d) => {
+      const last = new Date(d.getFullYear(), d.getMonth(), d.getDate() + cover - 1);
+      const lo = d > a ? d : a, hi = last < b ? last : b;
+      const days = Math.round((hi - lo) / 864e5) + 1;
+      if (days > 0) spent[bucketOf(m.cat)] += (m.amount * days) / cover;
+    });
+  });
+  return spent;
+}
+
 export function freqLabel(e) {
   const f = e.freq || 'once';
   const ended = e.ends ? ' · terminó el ' + parseDay(e.ends).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';

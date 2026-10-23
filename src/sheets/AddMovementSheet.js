@@ -48,7 +48,7 @@ function FreqPicker({ options, freq, setFreq, wday, setWday, mday, setMday }) {
 export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, edit, moves }) {
   const insets = useSafeAreaInsets();
   const [amount, setAmount] = useState('');
-  const [cat, setCat] = useState('Comida');
+  const [cat, setCat] = useState(''); // sin categoría preseleccionada: el usuario elige (o acepta la sugerencia)
   const [freq, setFreq] = useState('once');
   const [wday, setWday] = useState(new Date().getDay());
   const [mday, setMday] = useState(new Date().getDate());
@@ -79,7 +79,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
       setMday(edit.freq === 'monthly' && edit.day != null ? edit.day : d.getDate());
       setDaysAgo(Math.max(Math.round((midnight(now) - midnight(d)) / DAY_MS), 0));
     } else {
-      setKind('expense'); setAmount(''); setNote(''); setCat('Comida'); setFreq('once');
+      setKind('expense'); setAmount(''); setNote(''); setCat(''); setFreq('once');
       setWday(now.getDay()); setMday(now.getDate()); setDaysAgo(0);
     }
   }, [visible, edit]);
@@ -105,6 +105,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
   const save = async () => {
     const n = parseFloat(amount);
     if (!(n > 0)) { setError('Escribe un monto mayor a $0.'); return; }
+    if (!isIncome && !cat) { setError('Elige una categoría para tu gasto.'); return; }
     const day = freq === 'weekly' ? wday : freq === 'monthly' ? mday : null;
     const common = { amount: n, freq, day, occurred_at: when() };
     const patch = isIncome
@@ -139,8 +140,8 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
             {!!error && <Text style={[s.hint, { color: '#F87171', marginTop: 0, marginBottom: 8 }]}>{error}</Text>}
             <TextInput style={[s.input, { marginTop: 0, marginBottom: 8 }]} placeholder={isIncome ? 'Concepto (ej. Nómina, Freelance)' : 'Descripción (ej. Suscripción Spotify)'} value={note} onChangeText={setNote} maxLength={80} returnKeyType="done" />
             {!!suggestion && (suggestion.cat !== cat || (suggestion.amount && !amount)) && (
-              <Pressable onPress={() => { setCat(suggestion.cat); if (!amount && suggestion.amount) setAmount(String(suggestion.amount)); }} style={[s.chip, { alignSelf: 'flex-start', marginLeft: 0, backgroundColor: '#EAF2FF' }]}>
-                <Text style={[s.chipText, { color: '#2D8A4E' }]}>
+              <Pressable onPress={() => { setCat(suggestion.cat); setError(''); if (!amount && suggestion.amount) setAmount(String(suggestion.amount)); }} style={[s.chip, { alignSelf: 'flex-start', marginLeft: 0, backgroundColor: '#22563A' }]}>
+                <Text style={[s.chipText, { color: '#6FD18F' }]}>
                   💡 {sugCat ? sugCat.icon : ''} {suggestion.cat}{suggestion.amount ? ' · ' + money(suggestion.amount) : ''} {suggestion.source === 'historial' ? '(como la última vez)' : ''}
                 </Text>
               </Pressable>
@@ -157,13 +158,15 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
                 <Text style={[s.sectionTitle, { marginLeft: 4, marginTop: 8 }]}>Categorías</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
                   {CATS.map((c) => (
-                    <Pressable key={c.name} onPress={() => setCat(c.name)}
+                    <Pressable key={c.name} onPress={() => { setCat(c.name); setError(''); }}
                       style={[s.chip, cat === c.name && { backgroundColor: BUCKETS[c.bucket].color }]}>
                       <Text style={[s.chipText, cat === c.name && { color: '#fff' }]}>{c.icon} {c.name}</Text>
                     </Pressable>
                   ))}
                 </View>
-                <Text style={[s.caption, { paddingHorizontal: 4 }]}>Cuenta como: {BUCKETS[CATS.find((c) => c.name === cat).bucket].label}</Text>
+                <Text style={[s.caption, { paddingHorizontal: 4 }]}>
+                  {cat ? 'Cuenta como: ' + BUCKETS[CATS.find((c) => c.name === cat).bucket].label : 'Elige una categoría.'}
+                </Text>
 
                 <Text style={[s.sectionTitle, { marginLeft: 4, marginTop: 16 }]}>Frecuencia</Text>
                 <FreqPicker options={EFREQ} freq={freq} setFreq={setFreq} wday={wday} setWday={setWday} mday={mday} setMday={setMday} />
