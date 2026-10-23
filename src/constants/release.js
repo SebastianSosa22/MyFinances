@@ -2,19 +2,18 @@
 // Para anunciar otra versión: cambia `id`, los textos y la fecha `cutoff`, y publica.
 // Si no hay pasos que seguir, deja `steps` vacío y no se muestra la sección de instalación.
 export const RELEASE = {
-  id: '2026-10-personalizacion',
-  cutoff: '2026-10-21', // solo lo ven las cuentas creadas antes de esta fecha (usa el día en que publiques)
-  title: 'Nuevo: la app se adapta a ti ✨',
+  id: '2026-10-calendario',
+  cutoff: '2026-10-23', // solo lo ven las cuentas creadas antes de esta fecha (usa el día en que publiques)
+  title: 'Novedades en tu app 🎉',
   highlights: [
-    '💵 Nómina automática: registra tu ingreso una vez y se cuenta solo cada semana, quincena o mes. Elige tu día de cobro en Ajustes.',
-    '🎯 Elige tu reparto: 50/30/20, 60/20/20, 70/20/10 o 40/30/30.',
-    '💡 Sugerencias que aprenden de tus gastos, "Puedes gastar hoy" y avisos "Para ti".',
-    '✏️ Toca un movimiento para editarlo, elige su fecha y deshaz si lo borras por error.',
-    '🔁 Termina un pago recurrente (como una suscripción) sin perder su historial.',
-    '📤 Exporta tus movimientos a CSV y recupera tu contraseña desde el login.',
+    '📅 Calendario en Movimientos: los días con movimientos se colorean (punto verde = ingreso, rojo = gasto). Toca un día para ver solo lo de ese día.',
+    '👋 Ahora te saludamos por tu nombre en el Resumen. Escríbelo en Ajustes → Cuenta.',
+    '🏠 Tu renta se reparte entre los días que cubre, así tu semana no se ve "rota" el día que la pagas.',
+    '📊 Resumen más claro: un solo "Puedes gastar hoy", avisos por categoría y tu tasa de ahorro real.',
+    '🌙 Nuevo diseño oscuro, más limpio y fácil de leer.',
   ],
   stepsTitle: '',
   steps: [],
   androidNote: '',
-  note: 'No tienes que hacer nada: tus datos siguen guardados en tu cuenta. Puedes ajustar todo en la pestaña Ajustes.',
+  note: 'No tienes que hacer nada: tus datos siguen guardados en tu cuenta. Solo agrega tu nombre en Ajustes para que te saludemos.',
 };

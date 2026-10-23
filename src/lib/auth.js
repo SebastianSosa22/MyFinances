@@ -2,13 +2,27 @@ export const MIN_PASSWORD = 8;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 // Devuelve un mensaje de error en español, o '' si los datos son válidos
-export function validateCredentials({ email, password, confirm, isSignUp }) {
+export function validateCredentials({ name, email, password, confirm, isSignUp }) {
+  if (isSignUp && !(name || '').trim()) return 'Escribe tu nombre.';
   if (!EMAIL_RE.test(email.trim())) return 'Escribe un correo válido.';
   if (!password) return 'Escribe tu contraseña.';
   if (!isSignUp) return '';
   if (password.length < MIN_PASSWORD) return 'La contraseña debe tener al menos ' + MIN_PASSWORD + ' caracteres.';
   if (password !== confirm) return 'Las contraseñas no coinciden.';
   return '';
+}
+
+// Registro por pasos (0 nombre, 1 correo, 2 contraseña): valida solo el paso actual
+export function validateSignUpStep(step, { name, email, password, confirm }) {
+  if (step === 0) return (name || '').trim() ? '' : 'Escribe tu nombre.';
+  if (step === 1) return EMAIL_RE.test(email.trim()) ? '' : 'Escribe un correo válido.';
+  return validateCredentials({ name, email, password, confirm, isSignUp: true });
+}
+
+// Nombre con el que saludamos (solo el primero); '' si la cuenta aún no tiene nombre
+export function firstName(user) {
+  const full = ((user && user.user_metadata && user.user_metadata.full_name) || '').trim();
+  return full.split(/\s+/)[0] || '';
 }
 
 // Traduce los errores de Supabase Auth

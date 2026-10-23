@@ -9,9 +9,12 @@ import { report } from '../lib/finance';
 import { cleanAmount, money, showAmount } from '../lib/format';
 import { suggestLimits } from '../lib/insights';
 import { signOutLocal } from '../lib/session';
+import { supabase } from '../lib/supabase';
 import { s } from '../theme/styles';
 import { PushCard } from '../components/PushCard';
 import { IDLE_OPTIONS } from '../constants/security';
+
+const C_PLACEHOLDER = '#8E8E93';
 
 export function SettingsScreen({ onBack, session, moves, limits, settings, onSaveSettings, push, idle, rem, setReminders, onSaveLimit, onApplyLimits }) {
   const wide = useWide();
@@ -19,6 +22,18 @@ export function SettingsScreen({ onBack, session, moves, limits, settings, onSav
   const monthByCat = report(moves, startOfMonth(now), now).byCat;
   const [limMsg, setLimMsg] = useState('');
   const [exportMsg, setExportMsg] = useState('');
+  const savedName = (session.user.user_metadata && session.user.user_metadata.full_name) || '';
+  const [name, setName] = useState(savedName);
+  const [nameMsg, setNameMsg] = useState('');
+
+  // Guarda el nombre en la cuenta; la sesión se actualiza sola y el saludo del Resumen cambia
+  const saveName = async () => {
+    const clean = name.trim();
+    if (clean === savedName) return;
+    if (!clean) { setName(savedName); setNameMsg('Escribe tu nombre.'); return; }
+    const { error } = await supabase.auth.updateUser({ data: { full_name: clean } });
+    setNameMsg(error ? 'No se pudo guardar tu nombre.' : 'Nombre guardado.');
+  };
 
   // Límites sugeridos con TU historial (solo en categorías que aún no tienen límite)
   const suggest = async () => {
@@ -121,7 +136,13 @@ export function SettingsScreen({ onBack, session, moves, limits, settings, onSav
 
     <Title>Cuenta</Title>
     <Card style={{ padding: 16 }}>
-      <Text style={s.body}>{session.user.email}</Text>
+      <Text style={[s.caption, { paddingHorizontal: 0 }]}>Tu nombre</Text>
+      <TextInput
+        style={s.input} placeholder="Tu nombre" placeholderTextColor={C_PLACEHOLDER} autoCapitalize="words" autoComplete="name" textContentType="name"
+        value={name} onChangeText={(x) => { setName(x); setNameMsg(''); }} onBlur={saveName} returnKeyType="done"
+      />
+      {!!nameMsg && <Text style={[s.hint, nameMsg !== 'Nombre guardado.' && { color: '#F87171' }]}>{nameMsg}</Text>}
+      <Text style={[s.body, { marginTop: 16 }]}>{session.user.email}</Text>
       <Pressable onPress={exportCsv}><Text style={[s.link, { marginTop: 12 }]}>Exportar mis movimientos (CSV)</Text></Pressable>
       {!!exportMsg && <Text style={[s.hint, { color: '#F87171' }]}>{exportMsg}</Text>}
       <Pressable onPress={() => signOutLocal()}><Text style={[s.link, { color: '#F87171', marginTop: 12 }]}>Cerrar sesión</Text></Pressable>

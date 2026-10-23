@@ -13,7 +13,7 @@ import { savingsBox } from '../lib/savings';
 import { homeSummary } from '../lib/summary';
 import { s } from '../theme/styles';
 
-export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
+export function HomeScreen({ name, moves, limits, settings, loading, onSeeAll }) {
   const wide = useWide();
   const [pick, setPick] = useState(null);
   const period = pick || settings.cycle; // el Resumen abre en TU ciclo de cobro
@@ -23,8 +23,10 @@ export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
   const insights = useMemo(() => buildInsights(moves, settings), [moves, settings, dayKey]);
   const { now, start, end, cur, income, spent, totalSpent, limitRows, prev, totalDays, elapsed, timePct, spentPct, flexSpent, flexBudget, flexPct, pending, flexLeft, perDay, projectedLeft, upcoming, topCats, overs, fixedShare, fixedPaid, cashBelowShare } = sm;
 
+  const greeting = <Text style={s.greeting}>{name ? 'Hola, ' + name + ' 👋' : 'Hola 👋'}</Text>;
+
   if (loading) {
-    return (<><Text style={s.largeTitle}>Resumen</Text><ActivityIndicator style={{ marginTop: 40 }} /></>);
+    return (<>{greeting}<Text style={s.largeTitle}>Resumen</Text><ActivityIndicator style={{ marginTop: 40 }} /></>);
   }
 
   const viewSpent = spent.needs + spent.wants + spent.savings;
@@ -40,6 +42,7 @@ export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
 
   return (
     <>
+      {greeting}
       <Text style={s.largeTitle}>Resumen</Text>
       <Segmented options={PERIODS} value={period} onChange={setPick} />
       <View style={s.dateRow}>

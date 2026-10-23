@@ -25,6 +25,7 @@ import { IdleWarning } from './components/IdleWarning';
 import { useIdleLogout } from './hooks/useIdleLogout';
 import { periodStart } from './lib/dates';
 import { C } from './theme/colors';
+import { firstName } from './lib/auth';
 
 // Estructura de la app: barra lateral (escritorio) o barra inferior (móvil), pantalla activa y hojas
 export function AppShell({ session }) {
@@ -90,7 +91,7 @@ export function AppShell({ session }) {
         {!!data.err && <Text style={[s.hint, { color: '#F87171', marginBottom: 8 }]}>{data.err}</Text>}
         {!!data.notice && <Pressable onPress={() => data.setNotice('')}><Text style={[s.hint, { color: '#FBBF24', marginBottom: 8 }]}>{data.notice}</Text></Pressable>}
 
-        {tab === 'home' && <HomeScreen moves={moves} limits={limits} settings={settings} loading={!data.loaded} onSeeAll={() => setTab('moves')} />}
+        {tab === 'home' && <HomeScreen name={firstName(session.user)} moves={moves} limits={limits} settings={settings} loading={!data.loaded} onSeeAll={() => setTab('moves')} />}
         {tab === 'savings' && (
           <>
             <Text style={s.largeTitle}>{savingsView === 'box' ? 'Caja de ahorro' : 'Metas'}</Text>
