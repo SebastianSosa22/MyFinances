@@ -17,6 +17,13 @@ async function currentSubscription() {
   return reg ? reg.pushManager.getSubscription() : null;
 }
 
+// ¿La suscripción del navegador está guardada a nombre de la cuenta actual? (RLS solo deja ver las propias)
+// Si en este dispositivo antes entró otra cuenta, la suscripción es suya y no debe contarse como activa.
+async function isMine(sub) {
+  const { data } = await supabase.from('push_subscriptions').select('id').eq('endpoint', sub.endpoint).maybeSingle();
+  return !!data;
+}
+
 // 'unsupported' | 'needs-install' | 'not-configured' | 'denied' | 'ready' | 'enabled'
 export async function getPushStatus() {
   if (!isWeb) return 'unsupported';
@@ -26,7 +33,7 @@ export async function getPushStatus() {
   if (VAPID_PUBLIC_KEY.startsWith('PEGA_')) return 'not-configured';
   if (Notification.permission === 'denied') return 'denied';
   const sub = await currentSubscription();
-  return sub && Notification.permission === 'granted' ? 'enabled' : 'ready';
+  return sub && Notification.permission === 'granted' && (await isMine(sub)) ? 'enabled' : 'ready';
 }
 
 // Pide permiso, crea la suscripción de este dispositivo y la guarda en Supabase junto con las preferencias
@@ -34,6 +41,9 @@ export async function enablePush(prefs) {
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') return permission === 'denied' ? 'denied' : 'ready';
   const reg = await navigator.serviceWorker.ready;
+  // Una suscripción de otra cuenta se reemplaza por una nueva: así esa cuenta deja de mandar avisos a este dispositivo
+  const old = await reg.pushManager.getSubscription();
+  if (old && !(await isMine(old))) await old.unsubscribe();
   const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyToBytes(VAPID_PUBLIC_KEY) }));
   const json = sub.toJSON();
   const keys = json.keys || {};

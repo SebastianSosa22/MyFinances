@@ -12,7 +12,6 @@ import { signOutLocal } from '../lib/session';
 import { supabase } from '../lib/supabase';
 import { s } from '../theme/styles';
 import { PushCard } from '../components/PushCard';
-import { IDLE_OPTIONS } from '../constants/security';
 
 const C_PLACEHOLDER = '#8E8E93';
 
@@ -129,10 +128,9 @@ export function SettingsScreen({ onBack, session, moves, limits, settings, onSav
   const accB = (<>
     <Title>Seguridad</Title>
     <Card style={{ padding: 16 }}>
-      <Text style={s.body}>Cerrar sesión por inactividad</Text>
-      <Segmented options={IDLE_OPTIONS} value={String(idle.minutes)} onChange={(k) => idle.setMinutes(Number(k))} />
+      <Text style={s.body}>🔒 Cierre de sesión automático</Text>
+      <Text style={[s.caption, { paddingHorizontal: 0, marginTop: 4 }]}>Por seguridad, si no usas la app durante {idle.minutes} minutos cerramos tu sesión en este dispositivo. Te avisamos 60 segundos antes. Tus recordatorios siguen llegando aunque la sesión esté cerrada.</Text>
     </Card>
-    <Text style={s.hint}>Si no usas la app durante este tiempo, cerramos tu sesión en este dispositivo para proteger tu cuenta. Te avisamos 60 segundos antes.</Text>
 
     <Title>Cuenta</Title>
     <Card style={{ padding: 16 }}>
