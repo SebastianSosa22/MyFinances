@@ -1,4 +1,4 @@
-# Finanzas 50/30/20
+# Finanzas Personales
 
 App de finanzas personales (Expo + React Native + Supabase) basada en la regla 50/30/20.
 

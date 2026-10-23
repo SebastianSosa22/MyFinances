@@ -7,7 +7,7 @@ import { s } from '../theme/styles';
 export function Sidebar({ tab, setTab, onAdd, email, goalsMode }) {
   return (
     <View style={s.sidebar}>
-      <Text style={s.brand}>Finanzas</Text>
+      <Text style={s.brand}>Finanzas Personales</Text>
       <Pressable style={s.addBtn} onPress={onAdd}>
         <Text style={s.addBtnText}>{goalsMode ? '+ Nueva meta' : '+ Nuevo movimiento'}</Text>
       </Pressable>

@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, Animated, Easing, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authErrorMessage, MIN_PASSWORD, validateCredentials, validateSignUpStep } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { s } from '../theme/styles';
@@ -67,16 +66,6 @@ export function LoginScreen() {
   const [fade] = useState(() => new Animated.Value(1));
   const [slide] = useState(() => new Animated.Value(0));
   const isSignUp = mode === 'signup';
-
-  // Si la sesión se cerró por inactividad, lo avisamos una vez
-  useEffect(() => {
-    AsyncStorage.getItem('idle_logout').then((flag) => {
-      if (flag) {
-        setMsg({ type: 'info', text: 'Cerramos tu sesión por inactividad para proteger tu cuenta. Inicia sesión de nuevo.' });
-        AsyncStorage.removeItem('idle_logout');
-      }
-    });
-  }, []);
 
   const changeMode = (m) => {
     setMode(m); setConfirm(''); setMsg({ type: '', text: '' });

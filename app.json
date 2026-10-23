@@ -1,1 +1,1 @@
-{ "expo": { "name": "Finanzas 50/30/20", "slug": "finanzas-503020", "version": "1.0.0", "orientation": "portrait", "userInterfaceStyle": "light", "web": { "bundler": "metro" } } }
+{ "expo": { "name": "Finanzas Personales", "slug": "finanzas-503020", "version": "1.0.0", "orientation": "portrait", "userInterfaceStyle": "light", "web": { "bundler": "metro" } } }
