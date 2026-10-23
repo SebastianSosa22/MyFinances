@@ -8,8 +8,11 @@ export function setupPwa() {
     Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
     document.head.appendChild(el);
   };
-  const missing = document.documentElement.style.backgroundColor = '#111A2B';
-  document.body.style.backgroundColor = '#111A2B';
+  const missing = (selector) => !document.head.querySelector(selector);
+
+  // Fondo oscuro desde el primer pintado (evita destello blanco)
+  document.documentElement.style.backgroundColor = '#111A2B';
+  if (document.body) document.body.style.backgroundColor = '#111A2B';
   if (missing('meta[name="color-scheme"]')) add('meta', { name: 'color-scheme', content: 'dark' });
 
   // Ícono de la pestaña del navegador

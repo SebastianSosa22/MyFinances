@@ -26,6 +26,21 @@ function Field({ icon, secure, isNew, onSubmitEditing, ...props }) {
   );
 }
 
+// Campo de contraseña con su propio botón Mostrar/Ocultar (lo usa también la pantalla de contraseña nueva)
+export function PasswordField({ value, onChangeText, placeholder, isNew, onSubmitEditing }) {
+  const [show, setShow] = useState(false);
+  return (
+    <View style={[s.input, s.passRow]}>
+      <TextInput
+        style={s.passInput} placeholder={placeholder} placeholderTextColor={PLACEHOLDER} secureTextEntry={!show} autoCapitalize="none"
+        autoComplete={isNew ? 'new-password' : 'current-password'} textContentType={isNew ? 'newPassword' : 'password'}
+        value={value} onChangeText={onChangeText} onSubmitEditing={onSubmitEditing}
+      />
+      <Pressable onPress={() => setShow(!show)} hitSlop={8}><Text style={s.link}>{show ? 'Ocultar' : 'Mostrar'}</Text></Pressable>
+    </View>
+  );
+}
+
 export function LoginScreen() {
   const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
@@ -67,6 +82,18 @@ export function LoginScreen() {
     // Si hay sesión, la app cambia sola a la pantalla principal
   };
 
+  // Envía el enlace para crear una contraseña nueva (el mensaje es el mismo exista o no la cuenta)
+  const forgot = async () => {
+    const problem = validateCredentials({ email, password: 'x', confirm: '', isSignUp: false });
+    if (problem) { setMsg({ type: 'error', text: 'Escribe tu correo arriba y vuelve a tocar "¿Olvidaste tu contraseña?".' }); return; }
+    setBusy(true);
+    const redirectTo = typeof window !== 'undefined' && window.location ? window.location.origin : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo });
+    setBusy(false);
+    if (error) { setMsg({ type: 'error', text: authErrorMessage(error) }); return; }
+    setMsg({ type: 'info', text: 'Si ese correo tiene una cuenta, te enviamos un enlace para crear una contraseña nueva.' });
+  };
+
   return (
     <DismissKeyboard style={[s.container, s.loginWrap]}>
       <Text style={s.loginTitle}>¡Hola!</Text>
@@ -82,6 +109,11 @@ export function LoginScreen() {
       <Pressable style={[s.loginButton, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
         <Text style={s.loginButtonText}>{busy ? 'Un momento…' : isSignUp ? 'Crear cuenta  →' : 'Iniciar sesión  →'}</Text>
       </Pressable>
+      {!isSignUp && (
+        <Pressable onPress={forgot} disabled={busy}>
+          <Text style={{ color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginTop: 16, fontSize: 15 }}>¿Olvidaste tu contraseña?</Text>
+        </Pressable>
+      )}
       {!!msg.text && <Text style={[s.hint, { color: msg.type === 'error' ? '#FFB4B4' : '#C6F6D5' }]}>{msg.text}</Text>}
       <Pressable onPress={() => changeMode(isSignUp ? 'signin' : 'signup')}>
         <Text style={s.loginLink}>{isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate aquí'}</Text>
