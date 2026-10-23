@@ -13,7 +13,7 @@ import { s } from '../theme/styles';
 import { PushCard } from '../components/PushCard';
 import { IDLE_OPTIONS } from '../constants/security';
 
-export function SettingsScreen({ session, moves, limits, settings, onSaveSettings, push, idle, rem, setReminders, onSaveLimit, onApplyLimits }) {
+export function SettingsScreen({ onBack, session, moves, limits, settings, onSaveSettings, push, idle, rem, setReminders, onSaveLimit, onApplyLimits }) {
   const wide = useWide();
   const now = new Date();
   const monthByCat = report(moves, startOfMonth(now), now).byCat;
@@ -130,6 +130,11 @@ export function SettingsScreen({ session, moves, limits, settings, onSaveSetting
   </>);
   return (
     <>
+      {!!onBack && (
+        <Pressable onPress={onBack} hitSlop={10} style={{ alignSelf: 'flex-start', marginTop: 4 }}>
+          <Text style={[s.link, { fontSize: 17 }]}>‹ Regresar</Text>
+        </Pressable>
+      )}
       <Text style={s.largeTitle}>Ajustes</Text>
       {wide ? (
         <View style={s.cols}><View style={s.col}>{remB}{accB}</View><View style={s.col}>{limB}</View></View>

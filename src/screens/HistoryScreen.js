@@ -6,7 +6,7 @@ import { Bar, Card, Title } from '../components/ui';
 import { BUCKETS, CATS } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
 import { daysIn } from '../lib/dates';
-import { bucketOf, report } from '../lib/finance';
+import { bucketOf, moveTitle, report, titleIsCat } from '../lib/finance';
 import { money, monthName } from '../lib/format';
 import { s } from '../theme/styles';
 
@@ -67,7 +67,7 @@ export function HistoryScreen({ moves }) {
           <Card style={{ paddingHorizontal: 16 }}>
             <View style={[s.row, { paddingHorizontal: 0, justifyContent: 'space-between' }]}><Text style={s.body}>Gasto promedio por día</Text><Text style={s.body}>{money(r.total / days)}</Text></View>
             <Line label={'Tasa de ahorro (meta ' + BUCKETS.savings.pct + '%)'} value={savePct + '%'} color={savePct >= BUCKETS.savings.pct ? '#4ADE80' : '#FBBF24'} />
-            {biggest && <Line label={'Mayor gasto · ' + (biggest.m.note || biggest.m.cat)} value={money(-biggest.amount, true)} />}
+            {biggest && <Line label={'Mayor gasto · ' + moveTitle(biggest.m)} value={money(-biggest.amount, true)} />}
             <Line label="Movimientos" value={String(rows.length)} />
           </Card>
           </View>
@@ -107,8 +107,8 @@ export function HistoryScreen({ moves }) {
             {rows.map((x, i) => (
               <View key={x.m.id} style={[s.row, i > 0 && s.sep]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.body}>{x.m.kind === 'income' ? x.m.note || 'Ingreso' : x.m.note || x.m.cat}</Text>
-                  <Text style={s.caption}>{x.m.kind === 'expense' && x.m.note ? x.m.cat + ' · ' : ''}{x.label}</Text>
+                  <Text style={s.body}>{moveTitle(x.m)}</Text>
+                  <Text style={s.caption}>{x.m.kind === 'expense' && !titleIsCat(x.m) ? x.m.cat + ' · ' : ''}{x.label}</Text>
                 </View>
                 <Text style={[s.body, { color: x.amount > 0 ? '#4ADE80' : '#F87171' }]}>{x.amount > 0 ? '+' : '-'}{money(Math.abs(x.amount), true)}</Text>
               </View>

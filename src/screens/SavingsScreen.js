@@ -14,7 +14,7 @@ export function SavingsScreen({ moves, settings }) {
   const summary = (
     <>
       <Title>Ahorro total</Title>
-      <Card>
+      <Card style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
         <View style={[s.row, s.paceRow, { marginTop: 0 }]}><Text style={s.body}>🐷 Caja de ahorro</Text><Text style={s.body}>{money(info.box)}</Text></View>
         <View style={[s.row, s.sep, s.paceRow, { marginTop: 0 }]}><Text style={s.body}>🎯 En tus metas</Text><Text style={s.body}>{money(info.goalsSaved)}</Text></View>
         {info.otherSaved > 0 && <View style={[s.row, s.sep, s.paceRow, { marginTop: 0 }]}><Text style={s.body}>📈 Otros ahorros e inversión</Text><Text style={s.body}>{money(info.otherSaved)}</Text></View>}

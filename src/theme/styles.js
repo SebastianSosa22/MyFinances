@@ -5,6 +5,9 @@ export const FONT = Platform.select({ ios: 'System', web: '-apple-system, BlinkM
 
 export const DEL_W = 88;
 
+// En la web el navegador dibuja un recuadro blanco al enfocar un campo; lo quitamos (el cursor ya indica el foco)
+const NO_OUTLINE = Platform.OS === 'web' ? { outlineStyle: 'none', outlineWidth: 0 } : {};
+
 export const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   container: { flex: 1, width: '100%', maxWidth: 520, alignSelf: 'center' },
@@ -16,11 +19,11 @@ export const s = StyleSheet.create({
   body: { fontFamily: FONT, fontSize: 17, color: C.text },
   caption: { fontFamily: FONT, fontSize: 13, color: C.muted, paddingHorizontal: 16, marginTop: 4 },
   hint: { fontFamily: FONT, fontSize: 15, color: C.muted, textAlign: 'center', marginTop: 16 },
-  limitInput: { fontFamily: FONT, fontSize: 17, textAlign: 'right', width: 120, color: C.link },
+  limitInput: { fontFamily: FONT, fontSize: 17, textAlign: 'right', width: 120, color: C.link, ...NO_OUTLINE },
   cols: { flexDirection: 'row', alignItems: 'flex-start', gap: 24 },
   col: { flex: 1, minWidth: 0 },
   passRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 0 },
-  passInput: { flex: 1, fontFamily: FONT, fontSize: 17, paddingVertical: 12, color: C.text },
+  passInput: { flex: 1, fontFamily: FONT, fontSize: 17, paddingVertical: 12, color: C.text, ...NO_OUTLINE },
   noticeOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
   noticeCard: { backgroundColor: C.card, borderRadius: 26, padding: 22, maxHeight: '90%', width: '100%', maxWidth: 460, alignSelf: 'center' },
   noticeTitle: { fontFamily: FONT, fontSize: 22, fontWeight: '700', color: C.text },
@@ -57,7 +60,7 @@ export const s = StyleSheet.create({
   segItem: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 13 },
   segActive: { backgroundColor: C.raisedHi },
   segText: { fontFamily: FONT, fontSize: 13, color: C.text },
-  input: { fontFamily: FONT, fontSize: 17, color: C.text, backgroundColor: C.raised, borderRadius: 14, padding: 14, marginTop: 10 },
+  input: { fontFamily: FONT, fontSize: 17, color: C.text, backgroundColor: C.raised, borderRadius: 14, padding: 14, marginTop: 10, ...NO_OUTLINE },
   button: { backgroundColor: C.primary, borderRadius: 16, padding: 15, alignItems: 'center', marginTop: 14 },
   buttonText: { fontFamily: FONT, color: '#fff', fontSize: 17, fontWeight: '600' },
   link: { fontFamily: FONT, color: C.link, fontSize: 17 },
@@ -72,7 +75,7 @@ export const s = StyleSheet.create({
 
   sheetWrap: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
   sheet: { backgroundColor: C.card, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, padding: 20, paddingBottom: 16, maxHeight: '64%', width: '100%', maxWidth: 520, alignSelf: 'center' },
-  amountInput: { fontFamily: FONT, fontSize: 40, fontWeight: '700', color: C.text, textAlign: 'center', marginVertical: 10 },
+  amountInput: { fontFamily: FONT, fontSize: 40, fontWeight: '700', color: C.text, textAlign: 'center', marginVertical: 10, ...NO_OUTLINE },
   dayChip: { flex: 1, backgroundColor: C.raised, borderRadius: 14, paddingVertical: 8, marginHorizontal: 2, alignItems: 'center' },
   stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, paddingHorizontal: 4 },
   stepBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: C.raised, alignItems: 'center', justifyContent: 'center' },
@@ -88,7 +91,7 @@ export const s = StyleSheet.create({
   loginTitle: { fontFamily: FONT, fontSize: 40, fontWeight: '700', color: '#fff', textAlign: 'center' },
   loginSub: { fontFamily: FONT, fontSize: 17, color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginTop: 8, marginBottom: 12 },
   loginField: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', borderRadius: 22, paddingHorizontal: 18, marginTop: 14 },
-  loginInput: { flex: 1, fontFamily: FONT, fontSize: 17, color: '#fff', paddingVertical: 17 },
+  loginInput: { flex: 1, fontFamily: FONT, fontSize: 17, color: '#fff', paddingVertical: 17, ...NO_OUTLINE },
   loginButton: { backgroundColor: '#fff', borderRadius: 22, paddingVertical: 17, alignItems: 'center', marginTop: 20 },
   loginButtonText: { fontFamily: FONT, color: C.loginBg, fontSize: 17, fontWeight: '700' },
   loginLink: { fontFamily: FONT, fontSize: 16, color: '#FFD84D', fontWeight: '600', textAlign: 'center', marginTop: 22 },

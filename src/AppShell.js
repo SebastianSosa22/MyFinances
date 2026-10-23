@@ -30,6 +30,7 @@ import { C } from './theme/colors';
 export function AppShell({ session }) {
   const wide = useWide();
   const [tab, setTab] = useState('home');
+  const [backTab, setBackTab] = useState('home'); // pestaña a la que regresa Ajustes
   const [savingsView, setSavingsView] = useState('box'); // dentro de Ahorro: 'box' (caja) o 'goals' (metas)
   const [addOpen, setAddOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
@@ -48,6 +49,8 @@ export function AppShell({ session }) {
   // Al cambiar de pestaña (o entre Caja y Metas) la pantalla vuelve arriba
   const scrollRef = useRef(null);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTo({ y: 0, animated: false }); }, [tab, savingsView]);
+
+  const toggleSettings = () => { if (tab === 'settings') setTab(backTab); else { setBackTab(tab); setTab('settings'); } };
 
   const goalsMode = tab === 'savings' && savingsView === 'goals';
   const openAdd = () => (goalsMode ? setGoalSheet({ open: true, goal: null }) : (setEditRow(null), setAddOpen(true)));
@@ -75,7 +78,7 @@ export function AppShell({ session }) {
       {wide && <Sidebar tab={tab} setTab={setTab} email={session.user.email} onAdd={openAdd} goalsMode={goalsMode} />}
       {!wide && (
         <View style={s.headerBar}>
-          <Pressable style={[s.circleBtn, s.circleGreen, tab === 'settings' && s.circleOn]} onPress={() => setTab('settings')}><Text style={s.circleGlyph}>⚙</Text></Pressable>
+          <Pressable style={[s.circleBtn, s.circleGreen, tab === 'settings' && s.circleOn]} onPress={toggleSettings}><Text style={s.circleGlyph}>⚙</Text></Pressable>
         </View>
       )}
       <ScrollView
@@ -100,7 +103,7 @@ export function AppShell({ session }) {
         {tab === 'moves' && <MovesScreen moves={moves} loading={!data.loaded} onDelete={data.delMove} onEdit={openEdit} />}
         {tab === 'history' && <HistoryScreen moves={moves} />}
         {tab === 'settings' && (
-          <SettingsScreen session={session} moves={moves} limits={limits} settings={settings} onSaveSettings={saveSettings} push={push} idle={idle} rem={rem} setReminders={setReminders} onSaveLimit={data.saveLimit} onApplyLimits={data.applyLimits} />
+          <SettingsScreen onBack={wide ? null : () => setTab(backTab)} session={session} moves={moves} limits={limits} settings={settings} onSaveSettings={saveSettings} push={push} idle={idle} rem={rem} setReminders={setReminders} onSaveLimit={data.saveLimit} onApplyLimits={data.applyLimits} />
         )}
       </ScrollView>
 

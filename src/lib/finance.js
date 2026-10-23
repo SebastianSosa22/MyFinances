@@ -77,6 +77,17 @@ export function freqLabel(e) {
   return new Date(e.date).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }
 
+// Título que se muestra para un movimiento: su descripción, salvo que sea genérica (vacía, "Gasto" o igual a la categoría)
+const GENERIC_NOTES = ['gasto', 'gastos', 'pago'];
+export function moveTitle(m) {
+  const note = (m.note || '').trim();
+  if (m.kind === 'income') return note || 'Ingreso';
+  if (!note || GENERIC_NOTES.includes(note.toLowerCase()) || note.toLowerCase() === String(m.cat || '').toLowerCase()) return m.cat || 'Gasto';
+  return note;
+}
+// ¿El título ya es la categoría? (para no repetirla debajo)
+export const titleIsCat = (m) => m.kind !== 'income' && moveTitle(m) === m.cat;
+
 export const asExp = (m) => ({ freq: m.freq, day: m.day, date: m.occurred_at, ends: m.ends_at });
 
 export const bucketOf = (cat) => (CATS.find((c) => c.name === cat) || { bucket: 'wants' }).bucket;

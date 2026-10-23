@@ -6,7 +6,7 @@ import { Delta } from '../components/Delta';
 import { Bar, Card, Segmented, Title } from '../components/ui';
 import { BUCKETS, CATS, PERIODS } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
-import { asExp, bucketOf, freqLabel } from '../lib/finance';
+import { asExp, bucketOf, freqLabel, moveTitle } from '../lib/finance';
 import { money, shortDate } from '../lib/format';
 import { buildInsights } from '../lib/insights';
 import { savingsBox } from '../lib/savings';
@@ -212,7 +212,7 @@ export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
                   return (
                     <View key={m.id} style={[s.row, i > 0 && s.sep]}>
                       <Text style={{ fontSize: 22, marginRight: 12 }}>{isInc ? '💵' : c ? c.icon : '🧾'}</Text>
-                      <View style={{ flex: 1 }}><Text style={s.body}>{isInc ? m.note || 'Ingreso' : m.note || m.cat}</Text><Text style={s.caption}>{freqLabel(asExp(m))}</Text></View>
+                      <View style={{ flex: 1 }}><Text style={s.body}>{moveTitle(m)}</Text><Text style={s.caption}>{freqLabel(asExp(m))}</Text></View>
                       <Text style={[s.body, { color: isInc ? '#4ADE80' : '#F87171' }]}>{isInc ? '+' : '-'}{money(m.amount, true)}</Text>
                     </View>
                   );

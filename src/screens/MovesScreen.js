@@ -5,7 +5,7 @@ import { Card, Segmented, Title } from '../components/ui';
 import { BUCKETS, CATS } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
 import { periodStart } from '../lib/dates';
-import { asExp, bucketOf, freqLabel, isActive, isRecurring } from '../lib/finance';
+import { asExp, bucketOf, freqLabel, isActive, isRecurring, moveTitle, titleIsCat } from '../lib/finance';
 import { money } from '../lib/format';
 import { s } from '../theme/styles';
 
@@ -84,8 +84,8 @@ export function MovesScreen({ moves, loading, onDelete, onEdit }) {
         <Pressable style={[s.row, ended && { opacity: 0.5 }]} onPress={() => onEdit(m)}>
           <Text style={{ fontSize: 24, marginRight: 12 }}>{isInc ? '💵' : c ? c.icon : '🧾'}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={s.body}>{isInc ? m.note || 'Ingreso' : m.note || m.cat}</Text>
-            <Text style={[s.caption, { color: isInc ? '#4ADE80' : b.color }]}>{isInc ? 'Ingreso' : (m.note ? m.cat + ' · ' : '') + b.label} · {freqLabel(asExp(m))}</Text>
+            <Text style={s.body}>{moveTitle(m)}</Text>
+            <Text style={[s.caption, { color: isInc ? '#4ADE80' : b.color }]}>{isInc ? 'Ingreso' : (!titleIsCat(m) ? m.cat + ' · ' : '') + b.label} · {freqLabel(asExp(m))}</Text>
           </View>
           <Text style={[s.body, { color: isInc ? '#4ADE80' : '#F87171' }]}>{isInc ? '+' : '-'}{money(m.amount, true)}</Text>
         </Pressable>
