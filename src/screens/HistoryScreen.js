@@ -26,7 +26,9 @@ export function HistoryScreen({ moves }) {
   const rows = [...r.rows].sort((x, y) => new Date(y.m.occurred_at) - new Date(x.m.occurred_at));
   const days = b === 0 ? now.getDate() : daysIn(from.getFullYear(), from.getMonth());
   const spentPct = r.income > 0 ? Math.round((r.total / r.income) * 100) : 0;
-  const savePct = r.income > 0 ? Math.round((r.spent.savings / r.income) * 100) : 0;
+  // Ahorro real del mes: todo lo que no se fue en Necesidades y Deseos (lo que no gastaste + lo que mandaste a Ahorro/Inversión/Deudas)
+  const savedMonth = r.income - r.spent.needs - r.spent.wants;
+  const savePct = r.income > 0 ? Math.round((savedMonth / r.income) * 100) : 0;
   const biggest = rows.filter((x) => x.amount < 0).sort((x, y) => x.amount - y.amount)[0];
   const Line = ({ label, value, color }) => (
     <View style={[s.row, s.sep, { paddingHorizontal: 0, justifyContent: 'space-between' }]}><Text style={s.body}>{label}</Text><Text style={[s.body, color && { color }]}>{value}</Text></View>
@@ -57,8 +59,8 @@ export function HistoryScreen({ moves }) {
               const target = (r.income * x.pct) / 100;
               return (
                 <View key={k} style={[s.row, s.sep, { marginTop: 8, justifyContent: 'space-between' }]}>
-                  <Text style={s.body}><Text style={{ color: x.color }}>● </Text>{x.label} {x.pct}%</Text>
-                  <Text style={[s.body, r.spent[k] > target && { color: '#F87171' }]}>{money(r.spent[k])} / {money(target)}</Text>
+                  <Text style={[s.body, { flexShrink: 1, marginRight: 8 }]} numberOfLines={1}><Text style={{ color: x.color }}>● </Text>{x.label} {x.pct}%</Text>
+                  <Text style={[s.body, r.spent[k] > target && { color: '#F87171' }]}>{money(Math.round(r.spent[k]))} / {money(Math.round(target))}</Text>
                 </View>
               );
             })}
@@ -67,6 +69,7 @@ export function HistoryScreen({ moves }) {
           <Card style={{ paddingHorizontal: 16 }}>
             <View style={[s.row, { paddingHorizontal: 0, justifyContent: 'space-between' }]}><Text style={s.body}>Gasto promedio por día</Text><Text style={s.body}>{money(r.total / days)}</Text></View>
             <Line label={'Tasa de ahorro (meta ' + BUCKETS.savings.pct + '%)'} value={savePct + '%'} color={savePct >= BUCKETS.savings.pct ? '#4ADE80' : '#FBBF24'} />
+            {r.income > 0 && <Text style={[s.caption, { paddingHorizontal: 0, marginTop: 0, marginBottom: 8 }]}>{money(savedMonth)} entre lo que no gastaste y lo que mandaste a Ahorro, Inversión o Deudas.</Text>}
             {biggest && <Line label={'Mayor gasto · ' + moveTitle(biggest.m)} value={money(-biggest.amount, true)} />}
             <Line label="Movimientos" value={String(rows.length)} />
           </Card>
@@ -106,6 +109,7 @@ export function HistoryScreen({ moves }) {
           <Card>
             {rows.map((x, i) => (
               <View key={x.m.id} style={[s.row, i > 0 && s.sep]}>
+                <Text style={{ fontSize: 22, marginRight: 12 }}>{x.m.kind === 'income' ? '💵' : (CATS.find((z) => z.name === x.m.cat) || { icon: '🧾' }).icon}</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={s.body}>{moveTitle(x.m)}</Text>
                   <Text style={s.caption}>{x.m.kind === 'expense' && !titleIsCat(x.m) ? x.m.cat + ' · ' : ''}{x.label}</Text>

@@ -27,6 +27,7 @@ export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
     return (<><Text style={s.largeTitle}>Resumen</Text><ActivityIndicator style={{ marginTop: 40 }} /></>);
   }
 
+  const viewSpent = spent.needs + spent.wants + spent.savings;
   const paceColor = flexLeft < 0 || overs.length > 0 ? '#F87171' : flexPct > timePct || cashBelowShare ? '#FBBF24' : '#4ADE80';
   const overText = overs.map((o) => money(o.over) + ' en ' + BUCKETS[o.k].label).join(' y ');
   // Mensaje del ritmo: primero lo más importante (te pasaste en un bucket), luego el total y al final el ritmo
@@ -58,11 +59,11 @@ export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
                 {fixedShare > 0 && (
                   <Text style={s.caption}>
                     {cashBelowShare
-                      ? 'Ya pagaste ' + money(fixedPaid) + ' de gastos fijos (renta) en este periodo; esto ya considera lo que realmente te queda.'
-                      : 'Ya apartamos ' + money(fixedShare) + ' para tus gastos fijos (renta) de este periodo.'}
+                      ? '🏠 Ya pagaste tu renta (' + money(fixedPaid) + ') en este periodo.'
+                      : '🏠 Apartamos ' + money(fixedShare) + ' para tu renta.'}
                   </Text>
                 )}
-                {elapsed >= 2 && overs.length === 0 && (
+                {elapsed >= 2 && elapsed < totalDays && overs.length === 0 && Math.abs(projectedLeft - flexLeft) >= 1 && (
                   <Text style={[s.caption, { color: projectedLeft >= 0 ? '#4ADE80' : '#FBBF24' }]}>
                     {projectedLeft >= 0 ? 'A este ritmo cerrarás el periodo con ' + money(projectedLeft) + ' de margen.' : 'A este ritmo te pasarías ' + money(-projectedLeft) + ' de tu presupuesto.'}
                   </Text>
@@ -76,7 +77,11 @@ export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
             )}
             <View style={[s.row, s.sep, { marginTop: 12 }]}>
               <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { color: '#4ADE80', paddingHorizontal: 16 }]}>{money(income)}</Text></View>
-              <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { color: '#F87171', paddingHorizontal: 16 }]}>{money(totalSpent)}</Text></View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.caption}>Gastos</Text>
+                <Text style={[s.body, { color: '#F87171', paddingHorizontal: 16 }]}>{money(totalSpent)}</Text>
+                {fixedShare > 0 && Math.abs(viewSpent - totalSpent) >= 1 && <Text style={[s.caption, { marginTop: 2 }]}>{money(Math.round(viewSpent))} con renta repartida</Text>}
+              </View>
             </View>
           </Card>
 
@@ -119,8 +124,8 @@ export function HomeScreen({ moves, limits, settings, loading, onSeeAll }) {
               const target = (income * b.pct) / 100;
               return (
                 <View key={k} style={[s.row, s.sep, { marginTop: 8, justifyContent: 'space-between' }]}>
-                  <Text style={s.body}><Text style={{ color: b.color }}>● </Text>{b.label} {b.pct}%</Text>
-                  <Text style={[s.body, spent[k] > target && { color: '#F87171' }]}>{money(spent[k])} / {money(target)}</Text>
+                  <Text style={[s.body, { flexShrink: 1, marginRight: 8 }]} numberOfLines={1}><Text style={{ color: b.color }}>● </Text>{b.label} {b.pct}%</Text>
+                  <Text style={[s.body, spent[k] > target && { color: '#F87171' }]}>{money(Math.round(spent[k]))} / {money(Math.round(target))}</Text>
                 </View>
               );
             })}

@@ -15,7 +15,6 @@ export function GoalsScreen({ goals, moves, onEdit, onDelete, onContribute, onSa
   const hasEmergency = goals.some((g) => /emergencia/i.test(g.name));
   return (
     <View style={wide ? { maxWidth: 760 } : null}>
-      <Text style={s.largeTitle}>Metas</Text>
       {goals.length === 0 && <Text style={s.hint}>Aún no tienes metas. Toca + para crear la primera.</Text>}
       {!hasEmergency && needsAvg > 0 && (
         <Card style={{ padding: 16 }}>

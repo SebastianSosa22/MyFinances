@@ -93,6 +93,7 @@ export function AppShell({ session }) {
         {tab === 'home' && <HomeScreen moves={moves} limits={limits} settings={settings} loading={!data.loaded} onSeeAll={() => setTab('moves')} />}
         {tab === 'savings' && (
           <>
+            <Text style={s.largeTitle}>{savingsView === 'box' ? 'Caja de ahorro' : 'Metas'}</Text>
             <Segmented options={{ box: { label: 'Caja' }, goals: { label: 'Metas' } }} value={savingsView} onChange={setSavingsView} />
             {savingsView === 'box'
               ? <SavingsScreen moves={moves} settings={settings} />

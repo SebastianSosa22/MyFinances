@@ -119,9 +119,10 @@ export function MovesScreen({ moves, loading, onDelete, onEdit }) {
       {oneOff.length > 0 && (
         <Card style={{ marginTop: 8 }}>
           <View style={s.row}>
-            <View style={{ flex: 1 }}><Text style={s.caption}>{oneOff.length} movimientos</Text><Text style={[s.body, { color: '#4ADE80', paddingHorizontal: 16 }]}>+{money(inc)}</Text></View>
-            <View style={{ flex: 1 }}><Text style={s.caption}>Total gastado</Text><Text style={[s.body, { color: '#F87171', paddingHorizontal: 16 }]}>-{money(exp)}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { color: '#4ADE80', paddingHorizontal: 16 }]}>+{money(inc)}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { color: '#F87171', paddingHorizontal: 16 }]}>-{money(exp)}</Text></View>
           </View>
+          <Text style={[s.caption, { marginTop: 0, marginBottom: 12 }]}>{oneOff.length} movimientos{oneOff.length !== shown.length ? ' (sin contar pagos recurrentes)' : ''}</Text>
         </Card>
       )}
 

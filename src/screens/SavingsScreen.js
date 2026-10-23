@@ -44,7 +44,6 @@ export function SavingsScreen({ moves, settings }) {
 
   return (
     <>
-      <Text style={s.largeTitle}>Caja de ahorro</Text>
       {wide ? (
         <View style={s.cols}><View style={s.col}>{summary}</View><View style={s.col}>{history}</View></View>
       ) : (
