@@ -45,10 +45,10 @@ export function HistoryScreen({ moves }) {
           <View style={wide ? s.col : null}>
           <Card>
             <Text style={[s.caption, { marginTop: 12 }]}>Balance del mes</Text>
-            <Text style={[s.big, balance < 0 && { color: '#FF3B30' }]}>{money(balance)}</Text>
+            <Text style={[s.big, balance < 0 && { color: '#F87171' }]}>{money(balance)}</Text>
             <View style={[s.row, s.sep, { marginTop: 12 }]}>
-              <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { color: '#34C759', paddingHorizontal: 16 }]}>{money(r.income)}</Text></View>
-              <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { color: '#FF3B30', paddingHorizontal: 16 }]}>{money(r.total)}</Text></View>
+              <View style={{ flex: 1 }}><Text style={s.caption}>Ingresos</Text><Text style={[s.body, { color: '#4ADE80', paddingHorizontal: 16 }]}>{money(r.income)}</Text></View>
+              <View style={{ flex: 1 }}><Text style={s.caption}>Gastos</Text><Text style={[s.body, { color: '#F87171', paddingHorizontal: 16 }]}>{money(r.total)}</Text></View>
             </View>
           </Card>
           <Card>
@@ -58,7 +58,7 @@ export function HistoryScreen({ moves }) {
               return (
                 <View key={k} style={[s.row, s.sep, { marginTop: 8, justifyContent: 'space-between' }]}>
                   <Text style={s.body}><Text style={{ color: x.color }}>● </Text>{x.label} {x.pct}%</Text>
-                  <Text style={[s.body, r.spent[k] > target && { color: '#FF3B30' }]}>{money(r.spent[k])} / {money(target)}</Text>
+                  <Text style={[s.body, r.spent[k] > target && { color: '#F87171' }]}>{money(r.spent[k])} / {money(target)}</Text>
                 </View>
               );
             })}
@@ -66,7 +66,7 @@ export function HistoryScreen({ moves }) {
           <Title>Datos del mes</Title>
           <Card style={{ paddingHorizontal: 16 }}>
             <View style={[s.row, { paddingHorizontal: 0, justifyContent: 'space-between' }]}><Text style={s.body}>Gasto promedio por día</Text><Text style={s.body}>{money(r.total / days)}</Text></View>
-            <Line label={'Tasa de ahorro (meta ' + BUCKETS.savings.pct + '%)'} value={savePct + '%'} color={savePct >= BUCKETS.savings.pct ? '#34C759' : '#FF9500'} />
+            <Line label={'Tasa de ahorro (meta ' + BUCKETS.savings.pct + '%)'} value={savePct + '%'} color={savePct >= BUCKETS.savings.pct ? '#4ADE80' : '#FBBF24'} />
             {biggest && <Line label={'Mayor gasto · ' + (biggest.m.note || biggest.m.cat)} value={money(-biggest.amount, true)} />}
             <Line label="Movimientos" value={String(rows.length)} />
           </Card>
@@ -110,7 +110,7 @@ export function HistoryScreen({ moves }) {
                   <Text style={s.body}>{x.m.kind === 'income' ? x.m.note || 'Ingreso' : x.m.note || x.m.cat}</Text>
                   <Text style={s.caption}>{x.m.kind === 'expense' && x.m.note ? x.m.cat + ' · ' : ''}{x.label}</Text>
                 </View>
-                <Text style={[s.body, { color: x.amount > 0 ? '#34C759' : '#FF3B30' }]}>{x.amount > 0 ? '+' : '-'}{money(Math.abs(x.amount), true)}</Text>
+                <Text style={[s.body, { color: x.amount > 0 ? '#4ADE80' : '#F87171' }]}>{x.amount > 0 ? '+' : '-'}{money(Math.abs(x.amount), true)}</Text>
               </View>
             ))}
           </Card>

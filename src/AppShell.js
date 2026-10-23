@@ -24,6 +24,7 @@ import { useReleaseNotice } from './hooks/useReleaseNotice';
 import { IdleWarning } from './components/IdleWarning';
 import { useIdleLogout } from './hooks/useIdleLogout';
 import { periodStart } from './lib/dates';
+import { C } from './theme/colors';
 
 // Estructura de la app: barra lateral (escritorio) o barra inferior (móvil), pantalla activa y hojas
 export function AppShell({ session }) {
@@ -68,13 +69,18 @@ export function AppShell({ session }) {
   return (
     <View style={wide ? s.shellWide : s.container} {...idle.activityProps}>
       {wide && <Sidebar tab={tab} setTab={setTab} email={session.user.email} onAdd={openAdd} goalsMode={goalsMode} />}
+      {!wide && (
+        <View style={s.headerBar}>
+          <Pressable style={[s.circleBtn, s.circleGreen, tab === 'settings' && s.circleOn]} onPress={() => setTab('settings')}><Text style={s.circleGlyph}>⚙</Text></Pressable>
+        </View>
+      )}
       <ScrollView
         style={wide ? { flex: 1 } : null}
         contentContainerStyle={wide ? s.contentWide : { padding: 16, paddingBottom: 120 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.muted} />}
       >
-        {!!data.err && <Text style={[s.hint, { color: '#FF3B30', marginBottom: 8 }]}>{data.err}</Text>}
-        {!!data.notice && <Pressable onPress={() => data.setNotice('')}><Text style={[s.hint, { color: '#FF9500', marginBottom: 8 }]}>{data.notice}</Text></Pressable>}
+        {!!data.err && <Text style={[s.hint, { color: '#F87171', marginBottom: 8 }]}>{data.err}</Text>}
+        {!!data.notice && <Pressable onPress={() => data.setNotice('')}><Text style={[s.hint, { color: '#FBBF24', marginBottom: 8 }]}>{data.notice}</Text></Pressable>}
 
         {tab === 'home' && <HomeScreen moves={moves} limits={limits} settings={settings} loading={!data.loaded} onSeeAll={() => setTab('moves')} />}
         {tab === 'savings' && (
@@ -83,7 +89,7 @@ export function AppShell({ session }) {
             {savingsView === 'box'
               ? <SavingsScreen moves={moves} settings={settings} />
               : <GoalsScreen goals={goals} moves={moves} onSave={data.saveGoal} onDelete={data.delGoal}
-                  onEdit={(goal) => setGoalSheet({ open: true, goal })} onContribute={setContrib} />}
+                onEdit={(goal) => setGoalSheet({ open: true, goal })} onContribute={setContrib} />}
           </>
         )}
         {tab === 'moves' && <MovesScreen moves={moves} loading={!data.loaded} onDelete={data.delMove} onEdit={openEdit} />}
@@ -93,10 +99,9 @@ export function AppShell({ session }) {
         )}
       </ScrollView>
 
-      {!wide && tab !== 'settings' && tab !== 'history' && (
-        <Pressable style={s.fab} onPress={openAdd}><Text style={s.fabText}>+</Text></Pressable>
-      )}
-      {!wide && <TabBar tab={tab} setTab={setTab} />}
+      {/* {!wide && <TabBar tab={tab} setTab={setTab} onAdd={openAdd} showAdd={tab !== 'settings' && tab !== 'history'} />} */}
+      {!wide && <TabBar tab={tab} setTab={setTab} onAdd={openAdd} />}
+
 
       {!!data.undo && (
         <View style={[s.snackbar, wide && { bottom: 24 }]}>

@@ -18,7 +18,7 @@ export function SavingsScreen({ moves, settings }) {
         <View style={[s.row, s.paceRow, { marginTop: 0 }]}><Text style={s.body}>🐷 Caja de ahorro</Text><Text style={s.body}>{money(info.box)}</Text></View>
         <View style={[s.row, s.sep, s.paceRow, { marginTop: 0 }]}><Text style={s.body}>🎯 En tus metas</Text><Text style={s.body}>{money(info.goalsSaved)}</Text></View>
         {info.otherSaved > 0 && <View style={[s.row, s.sep, s.paceRow, { marginTop: 0 }]}><Text style={s.body}>📈 Otros ahorros e inversión</Text><Text style={s.body}>{money(info.otherSaved)}</Text></View>}
-        <View style={[s.row, s.sep, s.paceRow, { marginTop: 0 }]}><Text style={[s.body, { fontWeight: '600' }]}>Total ahorrado</Text><Text style={[s.body, { fontWeight: '600', color: '#34C759' }]}>{money(info.savedTotal)}</Text></View>
+        <View style={[s.row, s.sep, s.paceRow, { marginTop: 0 }]}><Text style={[s.body, { fontWeight: '600' }]}>Total ahorrado</Text><Text style={[s.body, { fontWeight: '600', color: '#4ADE80' }]}>{money(info.savedTotal)}</Text></View>
       </Card>
       <Text style={s.hint}>Lo que mandas a Ahorro, Inversión o Deudas cuenta como ahorrado; la caja es lo que no gastaste al cerrar cada ciclo.</Text>
     </>
@@ -35,7 +35,7 @@ export function SavingsScreen({ moves, settings }) {
               <Text style={s.body}>{shortDate(c.start)} – {shortDate(c.end)}</Text>
               <Text style={[s.caption, { paddingHorizontal: 0 }]}>Ingresos {money(c.income)} · Gastos {money(c.spent)}</Text>
             </View>
-            <Text style={[s.body, { color: c.saved >= 0 ? '#34C759' : '#FF3B30' }]}>{c.saved >= 0 ? '+' : '-'}{money(Math.abs(c.saved))}</Text>
+            <Text style={[s.body, { color: c.saved >= 0 ? '#4ADE80' : '#F87171' }]}>{c.saved >= 0 ? '+' : '-'}{money(Math.abs(c.saved))}</Text>
           </View>
         ))}
       </Card>

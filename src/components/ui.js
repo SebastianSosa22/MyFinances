@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useWide } from '../hooks/useWide';
+import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
 export const Card = ({ children, style }) => <View style={[s.card, style]}>{children}</View>;
@@ -23,6 +24,6 @@ export function Segmented({ options, value, onChange, style }) {
 export function Bar({ spent, budget, color }) {
   const over = spent > budget, w = budget > 0 ? Math.min(spent / budget, 1) * 100 : 0;
   return (
-    <View style={s.barBg}><View style={{ width: `${w}%`, height: 8, borderRadius: 4, backgroundColor: over ? '#FF3B30' : color }} /></View>
+    <View style={s.barBg}><View style={{ width: `${w}%`, height: 8, borderRadius: 4, backgroundColor: over ? C.red : color }} /></View>
   );
 }

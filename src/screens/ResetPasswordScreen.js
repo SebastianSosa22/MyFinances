@@ -36,7 +36,7 @@ export function ResetPasswordScreen({ onDone }) {
           <Text style={s.buttonText}>{busy ? 'Un momento…' : 'Guardar contraseña'}</Text>
         </Pressable>
       </Card>
-      {!!msg.text && <Text style={[s.hint, { color: msg.type === 'error' ? '#FF3B30' : '#34C759' }]}>{msg.text}</Text>}
+      {!!msg.text && <Text style={[s.hint, { color: msg.type === 'error' ? '#F87171' : '#4ADE80' }]}>{msg.text}</Text>}
     </DismissKeyboard>
   );
 }

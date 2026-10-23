@@ -46,7 +46,7 @@ export function SettingsScreen({ session, moves, limits, settings, onSaveSetting
           <Text style={[s.body, { marginTop: 16 }]}>Día en que cobras</Text>
           <View style={{ flexDirection: 'row', marginTop: 8 }}>
             {DAY_ORDER.map((d) => (
-              <Pressable key={d} onPress={() => onSaveSettings({ payDay: d })} style={[s.dayChip, settings.payDay === d && { backgroundColor: '#007AFF' }]}>
+              <Pressable key={d} onPress={() => onSaveSettings({ payDay: d })} style={[s.dayChip, settings.payDay === d && { backgroundColor: '#2D8A4E' }]}>
                 <Text style={[s.chipText, { fontSize: 13 }, settings.payDay === d && { color: '#fff' }]}>{DAYS[d]}</Text>
               </Pressable>
             ))}
@@ -73,7 +73,7 @@ export function SettingsScreen({ session, moves, limits, settings, onSaveSetting
     <Card>
       <View style={[s.row, { justifyContent: 'space-between' }]}>
         <Text style={[s.body, { flex: 1, marginRight: 12 }]}>Avisarme de mis pagos recurrentes</Text>
-        <Switch value={rem.on} onValueChange={(v) => setReminders({ ...rem, on: v })} />
+        <Switch trackColor={{ false: "#3B475C", true: "#2D8A4E" }} value={rem.on} onValueChange={(v) => setReminders({ ...rem, on: v })} />
       </View>
       {rem.on && (
         <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
@@ -83,12 +83,12 @@ export function SettingsScreen({ session, moves, limits, settings, onSaveSetting
       )}
       <View style={[s.row, s.sep, { justifyContent: 'space-between' }]}>
         <Text style={[s.body, { flex: 1, marginRight: 12 }]}>Recordarme registrar mis gastos (9 pm)</Text>
-        <Switch value={rem.daily} onValueChange={(v) => setReminders({ ...rem, daily: v })} />
+        <Switch trackColor={{ false: "#3B475C", true: "#2D8A4E" }} value={rem.daily} onValueChange={(v) => setReminders({ ...rem, daily: v })} />
       </View>
       {Platform.OS === 'web' && (
         <View style={[s.row, s.sep, { justifyContent: 'space-between' }]}>
           <Text style={[s.body, { flex: 1, marginRight: 12 }]}>Avisarme cuando cierre mi ciclo y cuánto ahorré</Text>
-          <Switch value={rem.close !== false} onValueChange={(v) => setReminders({ ...rem, close: v })} />
+          <Switch trackColor={{ false: "#3B475C", true: "#2D8A4E" }} value={rem.close !== false} onValueChange={(v) => setReminders({ ...rem, close: v })} />
         </View>
       )}
     </Card>
@@ -123,8 +123,8 @@ export function SettingsScreen({ session, moves, limits, settings, onSaveSetting
     <Card style={{ padding: 16 }}>
       <Text style={s.body}>{session.user.email}</Text>
       <Pressable onPress={exportCsv}><Text style={[s.link, { marginTop: 12 }]}>Exportar mis movimientos (CSV)</Text></Pressable>
-      {!!exportMsg && <Text style={[s.hint, { color: '#FF3B30' }]}>{exportMsg}</Text>}
-      <Pressable onPress={() => signOutLocal()}><Text style={[s.link, { color: '#FF3B30', marginTop: 12 }]}>Cerrar sesión</Text></Pressable>
+      {!!exportMsg && <Text style={[s.hint, { color: '#F87171' }]}>{exportMsg}</Text>}
+      <Pressable onPress={() => signOutLocal()}><Text style={[s.link, { color: '#F87171', marginTop: 12 }]}>Cerrar sesión</Text></Pressable>
     </Card>
     <Text style={s.hint}>Cerrar sesión solo afecta a este dispositivo y borra la copia local de tus datos.</Text>
   </>);

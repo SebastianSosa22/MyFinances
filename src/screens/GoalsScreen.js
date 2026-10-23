@@ -49,7 +49,7 @@ export function GoalsScreen({ goals, moves, onEdit, onDelete, onContribute, onSa
                     <Text style={[s.body, { fontWeight: '600', flex: 1 }]}>{g.name}</Text>
                     <Text style={s.body}>{Math.min(Math.round((saved / g.target) * 100), 100)}%</Text>
                   </View>
-                  <Bar spent={Math.min(saved, g.target)} budget={g.target} color="#34C759" />
+                  <Bar spent={Math.min(saved, g.target)} budget={g.target} color="#4ADE80" />
                   <Text style={[s.caption, { paddingHorizontal: 0, marginTop: 6 }]}>{money(saved)} de {money(g.target)}{!done ? ' · faltan ' + money(rem) : ''}</Text>
                   {parts.length > 0 && <Text style={[s.caption, { paddingHorizontal: 0, marginTop: 2 }]}>{parts.join('\n')}</Text>}
                   {!done && <Pressable onPress={() => onContribute(g)} style={{ alignSelf: 'flex-start', marginTop: 10 }} hitSlop={8}><Text style={s.link}>+ Aportar</Text></Pressable>}

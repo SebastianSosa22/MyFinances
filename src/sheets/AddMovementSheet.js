@@ -16,7 +16,7 @@ function FreqPicker({ options, freq, setFreq, wday, setWday, mday, setMday }) {
     <>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {Object.entries(options).map(([k, l]) => (
-          <Pressable key={k} onPress={() => setFreq(k)} style={[s.chip, freq === k && { backgroundColor: '#007AFF' }]}>
+          <Pressable key={k} onPress={() => setFreq(k)} style={[s.chip, freq === k && { backgroundColor: '#2D8A4E' }]}>
             <Text style={[s.chipText, freq === k && { color: '#fff' }]}>{l}</Text>
           </Pressable>
         ))}
@@ -24,7 +24,7 @@ function FreqPicker({ options, freq, setFreq, wday, setWday, mday, setMday }) {
       {freq === 'weekly' && (
         <View style={{ flexDirection: 'row', marginTop: 8 }}>
           {DAY_ORDER.map((d) => (
-            <Pressable key={d} onPress={() => setWday(d)} style={[s.dayChip, wday === d && { backgroundColor: '#007AFF' }]}>
+            <Pressable key={d} onPress={() => setWday(d)} style={[s.dayChip, wday === d && { backgroundColor: '#2D8A4E' }]}>
               <Text style={[s.chipText, { fontSize: 13 }, wday === d && { color: '#fff' }]}>{DAYS[d]}</Text>
             </Pressable>
           ))}
@@ -136,11 +136,11 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
           <ScrollView style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {!edit && <Segmented options={{ expense: { label: 'Gasto' }, income: { label: 'Ingreso' } }} value={kind} onChange={setKind} />}
             <TextInput value={showAmount(amount)} onChangeText={(t) => { setAmount(cleanAmount(t)); setError(''); }} keyboardType="decimal-pad" placeholder="$0.00" autoFocus={!edit} style={s.amountInput} />
-            {!!error && <Text style={[s.hint, { color: '#FF3B30', marginTop: 0, marginBottom: 8 }]}>{error}</Text>}
+            {!!error && <Text style={[s.hint, { color: '#F87171', marginTop: 0, marginBottom: 8 }]}>{error}</Text>}
             <TextInput style={[s.input, { marginTop: 0, marginBottom: 8 }]} placeholder={isIncome ? 'Concepto (ej. Nómina, Freelance)' : 'Descripción (ej. Suscripción Spotify)'} value={note} onChangeText={setNote} maxLength={80} returnKeyType="done" />
             {!!suggestion && (suggestion.cat !== cat || (suggestion.amount && !amount)) && (
               <Pressable onPress={() => { setCat(suggestion.cat); if (!amount && suggestion.amount) setAmount(String(suggestion.amount)); }} style={[s.chip, { alignSelf: 'flex-start', marginLeft: 0, backgroundColor: '#EAF2FF' }]}>
-                <Text style={[s.chipText, { color: '#007AFF' }]}>
+                <Text style={[s.chipText, { color: '#2D8A4E' }]}>
                   💡 {sugCat ? sugCat.icon : ''} {suggestion.cat}{suggestion.amount ? ' · ' + money(suggestion.amount) : ''} {suggestion.source === 'historial' ? '(como la última vez)' : ''}
                 </Text>
               </Pressable>
@@ -193,7 +193,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
                 </View>
               )
             )}
-            {!!edit && <Pressable onPress={remove}><Text style={[s.link, { color: '#FF3B30', marginTop: 16, marginLeft: 4, marginBottom: 8 }]}>Borrar movimiento</Text></Pressable>}
+            {!!edit && <Pressable onPress={remove}><Text style={[s.link, { color: '#F87171', marginTop: 16, marginLeft: 4, marginBottom: 8 }]}>Borrar movimiento</Text></Pressable>}
           </ScrollView>
         </DismissKeyboard>
         <Pressable style={{ flex: 1 }} onPress={tapOutside} />

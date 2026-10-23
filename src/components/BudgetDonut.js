@@ -16,7 +16,7 @@ export function BudgetDonut({ spent, income, center, size = 200 }) {
             acc += seg;
             const target = (income * BUCKETS[k].pct) / 100;
             const fill = target > 0 ? Math.min(spent[k] / target, 1) * len : 0;
-            const col = target > 0 && spent[k] > target ? '#FF3B30' : BUCKETS[k].color;
+            const col = target > 0 && spent[k] > target ? '#F87171' : BUCKETS[k].color;
             const common = { cx: size / 2, cy: size / 2, r, strokeWidth: sw, fill: 'none', strokeDashoffset: -start };
             return (
               <G key={k}>

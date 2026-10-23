@@ -32,7 +32,7 @@ export function ReleaseNotice({ visible, onClose }) {
                   </View>
                 ))}
                 <View style={s.urlBox}>
-                  <Text selectable style={[s.body, { flex: 1, fontSize: 15, color: '#007AFF' }]}>{url}</Text>
+                  <Text selectable style={[s.body, { flex: 1, fontSize: 15, color: '#2D8A4E' }]}>{url}</Text>
                   <Pressable onPress={copy} hitSlop={8}><Text style={s.link}>{copied ? '¡Copiado!' : 'Copiar'}</Text></Pressable>
                 </View>
                 {!!RELEASE.androidNote && <Text style={[s.caption, { paddingHorizontal: 0, marginTop: 8 }]}>{RELEASE.androidNote}</Text>}

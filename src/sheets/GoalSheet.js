@@ -26,7 +26,7 @@ export function GoalSheet({ visible, goal, onClose, onSave }) {
       <Text style={[s.sectionTitle, { marginLeft: 4, marginTop: 0 }]}>Fecha objetivo</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {Object.entries(opts).map(([k, l]) => (
-          <Pressable key={k} onPress={() => setDl(k)} style={[s.chip, dl === k && { backgroundColor: '#007AFF' }]}><Text style={[s.chipText, dl === k && { color: '#fff' }]}>{l}</Text></Pressable>
+          <Pressable key={k} onPress={() => setDl(k)} style={[s.chip, dl === k && { backgroundColor: '#2D8A4E' }]}><Text style={[s.chipText, dl === k && { color: '#fff' }]}>{l}</Text></Pressable>
         ))}
       </View>
     </TopSheet>

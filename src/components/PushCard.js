@@ -50,13 +50,13 @@ export function PushCard({ push }) {
           )}
           {status === 'enabled' && (
             <>
-              <Text style={[s.body, { color: '#34C759' }]}>✓ Notificaciones activas en este dispositivo</Text>
+              <Text style={[s.body, { color: '#4ADE80' }]}>✓ Notificaciones activas en este dispositivo</Text>
               <Text style={[s.caption, { paddingHorizontal: 0, marginTop: 4 }]}>Elige qué avisos quieres en la tarjeta Recordatorios.</Text>
               <Pressable onPress={test} disabled={busy}><Text style={[s.link, { marginTop: 12 }]}>Enviar notificación de prueba</Text></Pressable>
-              <Pressable onPress={disable} disabled={busy}><Text style={[s.link, { color: '#FF3B30', marginTop: 12 }]}>Desactivar en este dispositivo</Text></Pressable>
+              <Pressable onPress={disable} disabled={busy}><Text style={[s.link, { color: '#F87171', marginTop: 12 }]}>Desactivar en este dispositivo</Text></Pressable>
             </>
           )}
-          {!!error && <Text style={[s.hint, { color: '#FF3B30' }]}>{error}</Text>}
+          {!!error && <Text style={[s.hint, { color: '#F87171' }]}>{error}</Text>}
         </Card>
       )}
     </>

@@ -10,7 +10,7 @@ export function Donut({ values, size = 140, label, center }) {
     <View style={{ alignItems: 'center' }}>
       <View style={{ width: size, height: size }}>
         <Svg width={size} height={size}>
-          <Circle cx={size / 2} cy={size / 2} r={r} stroke="#E5E5EA" strokeWidth={20} fill="none" />
+          <Circle cx={size / 2} cy={size / 2} r={r} stroke="#2A3446" strokeWidth={20} fill="none" />
           <G rotation="-90" origin={`${size / 2}, ${size / 2}`}>
             {total > 0 && values.map((v) => {
               const len = (v.value / total) * C;

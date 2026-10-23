@@ -58,7 +58,7 @@ export function MovesScreen({ moves, loading, onDelete, onEdit }) {
   const filterCount = (fType !== 'all' ? 1 : 0) + (fRange !== 'all' ? 1 : 0) + (fBucket ? 1 : 0) + (fRec ? 1 : 0);
   const active = q || fType !== 'all' || fRange !== 'all' || fBucket || fRec;
   const clear = () => { setQ(''); setFType('all'); setFRange('all'); setFBucket(null); setFRec(false); };
-  const idle = wide ? '#fff' : '#F2F2F7';
+  const idle = wide ? '#1E2736' : '#2A3446';   // el comando de abajo convierte #2A3446 en el gris nuevo
   const search = <TextInput style={[s.input, s.searchInput]} placeholder="Buscar categoría o concepto" value={q} onChangeText={setQ} />;
   const typeFilter = <Segmented options={{ all: { label: 'Todos' }, expense: { label: 'Gastos' }, income: { label: 'Ingresos' } }} value={fType} onChange={setFType} style={wide ? s.filterSeg : { marginTop: 0 }} />;
   const rangeFilter = <Segmented options={{ all: { label: 'Todo' }, month: { label: 'Este mes' }, '30d': { label: '30 días' } }} value={fRange} onChange={setFRange} style={wide ? s.filterSeg : null} />;
@@ -69,7 +69,7 @@ export function MovesScreen({ moves, loading, onDelete, onEdit }) {
           <Text style={[s.chipText, fBucket === k && { color: '#fff' }]}>{x.label}</Text>
         </Pressable>
       ))}
-      <Pressable onPress={() => setFRec(!fRec)} style={[s.chip, { backgroundColor: fRec ? '#007AFF' : idle }]}>
+      <Pressable onPress={() => setFRec(!fRec)} style={[s.chip, { backgroundColor: fRec ? '#2D8A4E' : idle }]}>
         <Text style={[s.chipText, fRec && { color: '#fff' }]}>🔁 Recurrentes</Text>
       </Pressable>
     </View>
@@ -85,9 +85,9 @@ export function MovesScreen({ moves, loading, onDelete, onEdit }) {
           <Text style={{ fontSize: 24, marginRight: 12 }}>{isInc ? '💵' : c ? c.icon : '🧾'}</Text>
           <View style={{ flex: 1 }}>
             <Text style={s.body}>{isInc ? m.note || 'Ingreso' : m.note || m.cat}</Text>
-            <Text style={[s.caption, { color: isInc ? '#34C759' : b.color }]}>{isInc ? 'Ingreso' : (m.note ? m.cat + ' · ' : '') + b.label} · {freqLabel(asExp(m))}</Text>
+            <Text style={[s.caption, { color: isInc ? '#4ADE80' : b.color }]}>{isInc ? 'Ingreso' : (m.note ? m.cat + ' · ' : '') + b.label} · {freqLabel(asExp(m))}</Text>
           </View>
-          <Text style={[s.body, { color: isInc ? '#34C759' : '#FF3B30' }]}>{isInc ? '+' : '-'}{money(m.amount, true)}</Text>
+          <Text style={[s.body, { color: isInc ? '#4ADE80' : '#F87171' }]}>{isInc ? '+' : '-'}{money(m.amount, true)}</Text>
         </Pressable>
       </SwipeRow>
     );
@@ -119,8 +119,8 @@ export function MovesScreen({ moves, loading, onDelete, onEdit }) {
       {oneOff.length > 0 && (
         <Card style={{ marginTop: 8 }}>
           <View style={s.row}>
-            <View style={{ flex: 1 }}><Text style={s.caption}>{oneOff.length} movimientos</Text><Text style={[s.body, { color: '#34C759', paddingHorizontal: 16 }]}>+{money(inc)}</Text></View>
-            <View style={{ flex: 1 }}><Text style={s.caption}>Total gastado</Text><Text style={[s.body, { color: '#FF3B30', paddingHorizontal: 16 }]}>-{money(exp)}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.caption}>{oneOff.length} movimientos</Text><Text style={[s.body, { color: '#4ADE80', paddingHorizontal: 16 }]}>+{money(inc)}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.caption}>Total gastado</Text><Text style={[s.body, { color: '#F87171', paddingHorizontal: 16 }]}>-{money(exp)}</Text></View>
           </View>
         </Card>
       )}

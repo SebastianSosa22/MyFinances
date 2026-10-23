@@ -8,7 +8,9 @@ export function setupPwa() {
     Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
     document.head.appendChild(el);
   };
-  const missing = (selector) => !document.head.querySelector(selector);
+  const missing = document.documentElement.style.backgroundColor = '#111A2B';
+  document.body.style.backgroundColor = '#111A2B';
+  if (missing('meta[name="color-scheme"]')) add('meta', { name: 'color-scheme', content: 'dark' });
 
   // Ícono de la pestaña del navegador
   const favicon = document.head.querySelector('link[rel~="icon"]');
@@ -20,11 +22,11 @@ export function setupPwa() {
   if (missing('meta[name="apple-mobile-web-app-capable"]')) add('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
   if (missing('meta[name="mobile-web-app-capable"]')) add('meta', { name: 'mobile-web-app-capable', content: 'yes' });
   if (missing('meta[name="apple-mobile-web-app-title"]')) add('meta', { name: 'apple-mobile-web-app-title', content: 'Finanzas' });
-  if (missing('meta[name="apple-mobile-web-app-status-bar-style"]')) add('meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'default' });
-  if (missing('meta[name="theme-color"]')) add('meta', { name: 'theme-color', content: '#F2F2F7' });
+  if (missing('meta[name="apple-mobile-web-app-status-bar-style"]')) add('meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black' });
+  if (missing('meta[name="theme-color"]')) add('meta', { name: 'theme-color', content: '#111A2B' });
 
   if ('serviceWorker' in navigator) {
-    const register = () => navigator.serviceWorker.register('/sw.js').catch(() => {});
+    const register = () => navigator.serviceWorker.register('/sw.js').catch(() => { });
     if (document.readyState === 'complete') register();
     else window.addEventListener('load', register);
   }

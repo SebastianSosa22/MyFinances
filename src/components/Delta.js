@@ -7,5 +7,5 @@ export function Delta({ now, prev, upIsGood }) {
   const pc = Math.round(((now - prev) / prev) * 100);
   if (pc === 0) return <Text style={s.caption}>Igual que el mes anterior</Text>;
   const good = (pc > 0) === upIsGood;
-  return <Text style={[s.caption, { color: good ? '#34C759' : '#FF3B30' }]}>{pc > 0 ? '▲' : '▼'} {Math.abs(pc)}% vs mes anterior</Text>;
+  return <Text style={[s.caption, { color: good ? '#4ADE80' : '#F87171' }]}>{pc > 0 ? '▲' : '▼'} {Math.abs(pc)}% vs mes anterior</Text>;
 }

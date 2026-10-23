@@ -30,7 +30,7 @@ export function Onboarding({ visible, onDone, onSkip }) {
                 <Text style={[s.body, { fontWeight: '600', marginTop: 16 }]}>¿Qué día cobras?</Text>
                 <View style={{ flexDirection: 'row', marginTop: 8 }}>
                   {DAY_ORDER.map((d) => (
-                    <Pressable key={d} onPress={() => setPayDay(d)} style={[s.dayChip, payDay === d && { backgroundColor: '#007AFF' }]}>
+                    <Pressable key={d} onPress={() => setPayDay(d)} style={[s.dayChip, payDay === d && { backgroundColor: '#2D8A4E' }]}>
                       <Text style={[s.chipText, { fontSize: 13 }, payDay === d && { color: '#fff' }]}>{DAYS[d]}</Text>
                     </Pressable>
                   ))}

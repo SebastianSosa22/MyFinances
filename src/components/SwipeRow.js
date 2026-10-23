@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
 import { View, Text, Pressable, Animated, PanResponder } from 'react-native';
 import { DEL_W, s } from '../theme/styles';
+import { C } from '../theme/colors';
+
 
 export function SwipeRow({ children, onDelete, first }) {
   const x = useRef(new Animated.Value(0)).current;
@@ -19,7 +21,8 @@ export function SwipeRow({ children, onDelete, first }) {
   return (
     <View style={!first && s.sep}>
       <View style={s.delBg}><Pressable style={s.delBtn} onPress={onDelete}><Text style={s.delText}>Borrar</Text></Pressable></View>
-      <Animated.View style={{ transform: [{ translateX: x }], backgroundColor: '#fff' }} {...pan.panHandlers}>{children}</Animated.View>
+      <Animated.View style={{ transform: [{ translateX: x }], backgroundColor: C.card }} {...pan.panHandlers}>{children}</Animated.View>
     </View>
   );
 }
+

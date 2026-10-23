@@ -14,16 +14,16 @@ export function SavingsCard({ info, cycle }) {
       <View style={s.boxHead}>
         <View>
           <Text style={[s.caption, { paddingHorizontal: 0 }]}>🐷 Caja de ahorro</Text>
-          <Text style={[s.big3, { color: box < 0 ? '#FF3B30' : '#34C759' }]}>{money(box)}</Text>
+          <Text style={[s.big3, { color: box < 0 ? '#F87171' : '#4ADE80' }]}>{money(box)}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={[s.caption, { paddingHorizontal: 0 }]}>Disponible {CYCLES[cycle].this}</Text>
-          <Text style={[s.big3, { color: available < 0 ? '#FF3B30' : '#007AFF' }]}>{money(available)}</Text>
+          <Text style={[s.big3, { color: available < 0 ? '#F87171' : '#2D8A4E' }]}>{money(available)}</Text>
         </View>
       </View>
       {cur.income > 0 ? (
         <>
-          <Bar spent={cur.total} budget={budget} color={available < 0 ? '#FF3B30' : '#007AFF'} />
+          <Bar spent={cur.total} budget={budget} color={available < 0 ? '#F87171' : '#2D8A4E'} />
           <Text style={[s.caption, { paddingHorizontal: 0, marginTop: 6 }]}>
             {money(cur.total)} gastados de {money(budget)}{reserved > 0 ? ' (ya apartaste ' + money(reserved) + ')' : ''}
           </Text>
