@@ -25,6 +25,13 @@ export function firstName(user) {
   return full.split(/\s+/)[0] || '';
 }
 
+// Iniciales para el círculo de perfil: nombre y apellido, o las dos primeras letras del correo
+export function initials(user) {
+  const parts = ((user.user_metadata && user.user_metadata.full_name) || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length) return ((parts[0][0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+  return (user.email || '?').slice(0, 2).toUpperCase();
+}
+
 // Traduce los errores de Supabase Auth
 export function authErrorMessage(error) {
   const m = (error.message || '').toLowerCase();

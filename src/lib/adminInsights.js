@@ -57,7 +57,7 @@ export function buildAdminInsights(d) {
   }
   const noLimits = usersList.filter((u) => !u.limits).length;
   if (users > 0 && noLimits === users) {
-    out.push({ tone: 'info', text: 'Nadie usa límites por categoría. Quizá conviene sugerirlos desde el Resumen en lugar de tenerlos solo en Ajustes.' });
+    out.push({ tone: 'info', text: 'Nadie usa límites por categoría. Quizá conviene mostrar las sugerencias de Presupuestos desde el Inicio.' });
   }
   const noGoals = usersList.filter((u) => !u.goals).length;
   if (users > 1 && noGoals >= users - 1) {

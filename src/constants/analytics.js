@@ -3,9 +3,11 @@
 export const SCREEN_LABELS = {
   home: 'Resumen',
   moves: 'Movimientos',
+  savings_budgets: 'Presupuestos',
+  savings_saving: 'Ahorro y metas',
   savings_box: 'Caja de ahorro',
   savings_goals: 'Metas',
-  history: 'Historial',
+  history: 'Análisis',
   settings: 'Ajustes',
   admin: 'Admin',
 };

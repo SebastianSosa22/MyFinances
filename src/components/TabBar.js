@@ -1,6 +1,8 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { Icon } from './Icon';
 import { TABS } from '../constants/navigation';
+import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
 // Ajustes va en el encabezado (círculo verde); el resto va en la barra inferior
@@ -14,8 +16,8 @@ export function TabBar({ tab, setTab, onAdd }) {
     const on = tab === item.key;
     return (
       <Pressable key={item.key} style={s.tab} onPress={() => setTab(item.key)}>
-        <Text style={{ fontSize: 22, opacity: on ? 1 : 0.5 }}>{item.icon}</Text>
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[s.tabLabel, on && { color: '#6FD18F', fontWeight: '600' }]}>{item.label}</Text>
+        <Icon name={item.glyph} size={24} color={on ? C.link : C.muted} />
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[s.tabLabel, on && { color: C.link, fontWeight: '600' }]}>{item.label}</Text>
       </Pressable>
     );
   };

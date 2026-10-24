@@ -44,7 +44,7 @@ export function PushCard({ push }) {
           {MESSAGES[status] && <Text style={s.body}>{MESSAGES[status]}</Text>}
           {status === 'ready' && (
             <>
-              <Text style={s.body}>Recibe avisos de tus pagos y de tu caja de ahorro en este dispositivo.</Text>
+              <Text style={s.body}>Recibe avisos de tus pagos y de tu ahorro en este dispositivo.</Text>
               <Pressable style={[s.button, busy && { opacity: 0.6 }]} onPress={enable} disabled={busy}><Text style={s.buttonText}>{busy ? 'Un momento…' : 'Activar notificaciones'}</Text></Pressable>
             </>
           )}

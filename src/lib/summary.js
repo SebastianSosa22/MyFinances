@@ -1,6 +1,6 @@
 import { DAY_MS, daysIn, endOfDay, midnight, periodEnd, periodStart, startOfMonth } from './dates';
 import { BUCKETS } from '../constants/budget';
-import { asExp, bucketOf, isRecurring, isSpreadable, occurrences, report, spreadSpent } from './finance';
+import { asExp, bucketOf, isRecurring, isSpreadable, isSpreadableIncome, occurrences, report, spreadSpent } from './finance';
 import { money } from './format';
 
 // Cálculos que usan las pantallas (separados de la interfaz para poder reutilizarlos y probarlos)
@@ -73,6 +73,54 @@ export function homeSummary(moves, limits, period, now = new Date(), payDay = 1)
   };
 }
 
+// Lo que se guarda (Ahorro e Inversión) sigue siendo tuyo; todo lo demás que sale, deudas incluidas, es gasto
+export const KEPT = ['Ahorro', 'Inversión'];
+export const keptOf = (byCat) => KEPT.reduce((a, cat) => a + (byCat[cat] || 0), 0);
+// Gasto de un reporte sin contar lo guardado
+export const outflowOf = (r) => r.total - keptOf(r.byCat);
+
+// Cifras de las tarjetas del Resumen (tarjeta verde, Por pagar y reparto), todas con la misma regla.
+// En semana/quincena la renta, los pagos mensuales y la nómina mensual se reparten entre los días que cubren,
+// para que la semana en que se pagan no se vea vacía ni desbordada.
+export function periodView(moves, period, now = new Date(), payDay = 1) {
+  const start = periodStart(period, now, payDay);
+  const end = periodEnd(period, start);
+  const smooth = period !== 'monthly';
+  const spread = smooth ? moves.filter((m) => isSpreadable(m) || isSpreadableIncome(m)) : [];
+  const ids = new Set(spread.map((m) => m.id));
+  const rest = spread.length ? moves.filter((m) => !ids.has(m.id)) : moves;
+  const r = report(rest, start, now);
+  const shareOut = spreadSpent(spread.filter((m) => m.kind === 'expense'), start, end);
+  const shareIn = spreadSpent(spread.filter((m) => m.kind === 'income'), start, end);
+  const income = r.income + shareIn.needs + shareIn.wants + shareIn.savings;
+  const spent = { needs: r.spent.needs + shareOut.needs, wants: r.spent.wants + shareOut.wants, savings: r.spent.savings };
+  const saved = keptOf(r.byCat);
+  const total = spent.needs + spent.wants + spent.savings;
+  // "Por pagar" muestra todos los pagos que faltan; "Te quedan" solo descuenta los que no se repartieron,
+  // porque la parte del periodo de lo repartido (renta, suscripciones...) ya cuenta en lo gastado
+  const pending = pendingBills(moves, now, end);
+  const pendingRest = pendingBills(rest, now, end);
+  return {
+    start, end, income, spent, saved, pending,
+    pendingSpread: pending - pendingRest,
+    outflow: total - saved,
+    left: income - total - pendingRest,
+    fixedShare: shareOut.needs + shareOut.wants,
+    spentPct: income > 0 ? Math.round((total / income) * 100) : 0,
+  };
+}
+
+// Saldo acumulado ("Tienes"): todo lo que ha entrado menos todo lo que ha salido hasta hoy.
+// Lo enviado a Ahorro o Inversión sigue siendo tuyo, así que se separa como "Ahorro" en lugar de restarse.
+export function balanceSummary(moves, now = new Date()) {
+  if (!moves.length) return { cash: 0, saved: 0, total: 0 };
+  const first = moves.reduce((a, m) => Math.min(a, new Date(m.occurred_at).getTime()), now.getTime());
+  const r = report(moves, new Date(first), now);
+  const saved = keptOf(r.byCat);
+  const cash = r.income - r.total;
+  return { cash, saved, total: cash + saved };
+}
+
 // Pagos fijos (recurrentes, sin contar Ahorro) que aún faltan por cobrarse hasta el fin del periodo
 export function pendingFixed(moves, now, end) {
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
@@ -82,10 +130,20 @@ export function pendingFixed(moves, now, end) {
     .reduce((sum, m) => sum + m.amount * occurrences(asExp(m), tomorrow, end), 0);
 }
 
-// Gastos recurrentes que vencen en los próximos N días
+// Pagos que de verdad salen de tu bolsillo: gastos recurrentes, sin contar lo que mandas a Ahorro o Inversión
+const isBill = (m) => m.kind === 'expense' && isRecurring(m) && !KEPT.includes(m.cat);
+
+// "Por pagar": pagos recurrentes que faltan desde mañana hasta el fin del periodo
+export function pendingBills(moves, now, end) {
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  if (tomorrow > end) return 0;
+  return moves.filter(isBill).reduce((sum, m) => sum + m.amount * occurrences(asExp(m), tomorrow, end), 0);
+}
+
+// Pagos recurrentes que vencen en los próximos N días (campana y "Próximos 7 días"; misma regla que "Por pagar")
 export function upcomingPayments(moves, now, days) {
   const out = [];
-  const recurring = moves.filter((m) => m.kind === 'expense' && isRecurring(m));
+  const recurring = moves.filter(isBill);
   for (let i = 1; i <= days; i++) {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
     recurring.forEach((m) => { if (occurrences(asExp(m), d, d) > 0) out.push({ m, d }); });

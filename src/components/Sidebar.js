@@ -4,12 +4,12 @@ import { TABS } from '../constants/navigation';
 import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
-export function Sidebar({ tab, setTab, onAdd, email, goalsMode, tabs = TABS }) {
+export function Sidebar({ tab, setTab, onAdd, email, tabs = TABS }) {
   return (
     <View style={s.sidebar}>
       <Text style={s.brand}>Finanzas Personales</Text>
       <Pressable style={s.addBtn} onPress={onAdd}>
-        <Text style={s.addBtnText}>{goalsMode ? '+ Nueva meta' : '+ Nuevo movimiento'}</Text>
+        <Text style={s.addBtnText}>+ Nuevo movimiento</Text>
       </Pressable>
       {tabs.map((item) => (
         <Pressable key={item.key} onPress={() => setTab(item.key)} style={[s.navItem, tab === item.key && s.navActive]}>

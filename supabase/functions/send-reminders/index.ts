@@ -93,7 +93,7 @@ function buildMessages(sub: any, moves: any[], cycle: string, payDay: number) {
       const left = income - spent;
       out.push({
         title: 'Cerró tu ' + closed.name,
-        body: left >= 0 ? 'Ahorraste ' + money(left) + ': ya se sumaron a tu caja de ahorro.' : 'Gastaste ' + money(-left) + ' más de lo que ingresaste.',
+        body: left >= 0 ? 'Te sobraron ' + money(left) + '. Mándalos a Ahorro para que no se te vayan.' : 'Gastaste ' + money(-left) + ' más de lo que ingresaste.',
       });
     }
   }

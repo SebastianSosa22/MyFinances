@@ -23,9 +23,16 @@ export function applySplit(key) {
 export const CATS = [
   { name: 'Renta', icon: '🏠', bucket: 'needs' }, { name: 'Comida', icon: '🛒', bucket: 'needs' },
   { name: 'Transporte', icon: '🚌', bucket: 'needs' }, { name: 'Servicios', icon: '💡', bucket: 'needs' },
-  { name: 'Salud', icon: '🩺', bucket: 'needs' },
+  { name: 'Salud', icon: '🩺', bucket: 'needs' }, { name: 'Hogar', icon: '🏡', bucket: 'needs' },
+  { name: 'Educación', icon: '📚', bucket: 'needs' }, { name: 'Auto', icon: '⛽', bucket: 'needs' },
+  { name: 'Seguros', icon: '🛡️', bucket: 'needs' }, { name: 'Hijos', icon: '🧸', bucket: 'needs' },
+  { name: 'Mascotas', icon: '🐾', bucket: 'needs' }, { name: 'Impuestos', icon: '🏛️', bucket: 'needs' },
   { name: 'Restaurantes', icon: '🍔', bucket: 'wants' }, { name: 'Ocio', icon: '🎬', bucket: 'wants' },
   { name: 'Compras', icon: '🛍️', bucket: 'wants' }, { name: 'Suscripciones', icon: '📺', bucket: 'wants' },
+  { name: 'Ropa', icon: '👕', bucket: 'wants' }, { name: 'Viajes', icon: '✈️', bucket: 'wants' },
+  { name: 'Regalos', icon: '🎁', bucket: 'wants' }, { name: 'Belleza', icon: '💇', bucket: 'wants' },
+  { name: 'Deporte', icon: '🏋️', bucket: 'wants' }, { name: 'Tecnología', icon: '💻', bucket: 'wants' },
+  { name: 'Café', icon: '☕', bucket: 'wants' }, { name: 'Otros gastos', icon: '🧾', bucket: 'wants' },
   { name: 'Ahorro', icon: '🐷', bucket: 'savings' }, { name: 'Inversión', icon: '📈', bucket: 'savings' },
   { name: 'Deudas', icon: '💳', bucket: 'savings' },
 ];
@@ -41,7 +48,7 @@ export const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 export const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
-// Ciclo en que el usuario recibe su ingreso (define cuándo "cierra" la caja de ahorro)
+// Ciclo en que el usuario recibe su ingreso (define la semana, quincena o mes del Inicio)
 export const CYCLES = {
   weekly: { label: 'Semanal', this: 'esta semana' },
   biweekly: { label: 'Quincenal', this: 'esta quincena' },

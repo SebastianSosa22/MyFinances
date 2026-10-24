@@ -49,6 +49,9 @@ export function isSpreadable(m) {
   return f === 'monthly' || f === 'yearly';
 }
 
+// Ingresos que cubren varias semanas (nómina mensual, quincenal o anual): en la vista semanal se reparten igual que la renta
+export const isSpreadableIncome = (m) => m.kind === 'income' && ['biweekly', 'monthly', 'yearly'].includes(m.freq);
+
 // Parte de los gastos fijos que le corresponde a los días entre from y to, por bucket
 export function spreadSpent(moves, from, to) {
   const spent = { needs: 0, wants: 0, savings: 0 };
@@ -87,6 +90,18 @@ export function moveTitle(m) {
 }
 // ¿El título ya es la categoría? (para no repetirla debajo)
 export const titleIsCat = (m) => m.kind !== 'income' && moveTitle(m) === m.cat;
+
+// Días de un mes con movimientos para el calendario: { 'YYYY-MM-DD': { inc, exp } } (los recurrentes cuentan cada día que ocurren)
+export function calendarDays(moves, month) {
+  const end = endOfDayLocal(new Date(month.getFullYear(), month.getMonth() + 1, 0));
+  const days = {};
+  moves.forEach((m) => occurrenceDates(asExp(m), month, end).forEach((d) => {
+    const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const x = days[k] || (days[k] = { inc: 0, exp: 0 });
+    if (m.kind === 'income') x.inc += m.amount; else x.exp += m.amount;
+  }));
+  return days;
+}
 
 export const asExp = (m) => ({ freq: m.freq, day: m.day, date: m.occurred_at, ends: m.ends_at });
 

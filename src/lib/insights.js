@@ -15,14 +15,28 @@ const icon = (cat) => { const c = CATS.find((z) => z.name === cat); return c ? c
 // Arranque en frío: palabras comunes para quien aún no tiene historial
 const DEFAULT_WORDS = {
   Comida: ['super', 'walmart', 'soriana', 'chedraui', 'oxxo', 'despensa', 'mercado', 'tortilleria', 'fruta', 'verdura', 'bodega', 'costco'],
-  Restaurantes: ['restaurante', 'taco', 'tacos', 'pizza', 'sushi', 'cafe', 'starbucks', 'mcdonalds', 'uber eats', 'didi food', 'rappi', 'hamburguesa', 'comida rapida'],
-  Transporte: ['gasolina', 'uber', 'didi', 'metro', 'camion', 'pasaje', 'estacionamiento', 'caseta', 'taxi', 'metrobus'],
+  Restaurantes: ['restaurante', 'taco', 'tacos', 'pizza', 'sushi', 'mcdonalds', 'uber eats', 'didi food', 'rappi', 'hamburguesa', 'comida rapida'],
+  Transporte: ['uber', 'didi', 'metro', 'camion', 'pasaje', 'taxi', 'metrobus', 'boleto avion'],
+  Auto: ['gasolina', 'gas auto', 'estacionamiento', 'caseta', 'verificacion', 'tenencia', 'taller', 'llantas', 'aceite', 'lavado'],
+  Hogar: ['muebles', 'limpieza', 'detergente', 'ferreteria', 'home depot', 'reparacion', 'plomero', 'electricista'],
+  Educación: ['colegiatura', 'escuela', 'universidad', 'curso', 'libro', 'libros', 'utiles', 'clase', 'clases'],
+  Seguros: ['seguro', 'poliza', 'gnp', 'axa', 'qualitas'],
+  Hijos: ['panales', 'guarderia', 'juguete', 'juguetes', 'bebe'],
+  Mascotas: ['veterinario', 'croquetas', 'mascota', 'perro', 'gato'],
+  Impuestos: ['sat', 'impuesto', 'predial', 'isr', 'iva'],
+  Ropa: ['ropa', 'zapatos', 'tenis', 'zara', 'shein', 'h&m', 'pull and bear'],
+  Viajes: ['hotel', 'vuelo', 'airbnb', 'aeromexico', 'volaris', 'viva aerobus', 'viaje', 'vacaciones'],
+  Regalos: ['regalo', 'cumpleanos', 'detalle'],
+  Belleza: ['corte', 'peluqueria', 'barberia', 'unas', 'maquillaje', 'spa'],
+  Deporte: ['gimnasio', 'gym', 'smart fit', 'futbol', 'deporte', 'yoga'],
+  Tecnología: ['celular nuevo', 'audifonos', 'laptop', 'computadora', 'cargador', 'apple store'],
+  Café: ['cafe', 'starbucks', 'cafeteria', 'latte'],
   Servicios: ['luz', 'cfe', 'agua', 'internet', 'telmex', 'telcel', 'gas', 'celular', 'izzi', 'totalplay', 'recarga'],
   Renta: ['renta', 'alquiler'],
   Salud: ['farmacia', 'medico', 'doctor', 'dentista', 'consulta', 'medicina', 'hospital', 'laboratorio'],
   Suscripciones: ['spotify', 'netflix', 'disney', 'hbo', 'prime', 'youtube', 'icloud', 'apple', 'chatgpt', 'claude', 'suscripcion', 'membresia'],
-  Ocio: ['cine', 'concierto', 'boleto', 'juego', 'steam', 'playstation', 'bar', 'fiesta', 'gimnasio', 'gym'],
-  Compras: ['amazon', 'mercado libre', 'ropa', 'zapatos', 'liverpool', 'shein', 'zara', 'tienda'],
+  Ocio: ['cine', 'concierto', 'boleto', 'juego', 'steam', 'playstation', 'bar', 'fiesta'],
+  Compras: ['amazon', 'mercado libre', 'liverpool', 'tienda', 'coppel'],
   Ahorro: ['ahorro', 'apartado'],
   Inversión: ['inversion', 'cetes', 'gbm', 'etf', 'bolsa'],
   Deudas: ['tarjeta', 'credito', 'prestamo', 'deuda', 'mensualidad'],
@@ -55,20 +69,27 @@ export function suggestFromNote(moves, text) {
 }
 
 // Límites mensuales sugeridos: promedio de los últimos 3 meses con datos + 10%, redondeado a $50
-export function suggestLimits(moves, now = new Date()) {
+// Sugerencias por categoría: tu promedio mensual de los últimos 3 meses con datos, + 10% redondeado a $50.
+// Si aún no tienes un mes anterior con gastos (cuenta nueva), usa lo que llevas en el mes en curso.
+// Devuelve { items: [{ cat, avg, amount }] de mayor a menor, months: meses usados (0 = el mes en curso) }.
+export function limitSuggestions(moves, now = new Date()) {
   const months = [];
   for (let k = 1; k <= 3; k++) {
     const from = new Date(now.getFullYear(), now.getMonth() - k, 1);
     const r = report(moves, from, endOfDay(new Date(from.getFullYear(), from.getMonth() + 1, 0)));
     if (r.total > 0) months.push(r.byCat);
   }
-  const out = {};
-  if (!months.length) return out;
-  CATS.filter((c) => c.bucket !== 'savings').forEach((c) => {
-    const avg = months.reduce((a, byCat) => a + (byCat[c.name] || 0), 0) / months.length;
-    if (avg > 0) out[c.name] = Math.max(Math.ceil((avg * 1.1) / 50) * 50, 50);
-  });
-  return out;
+  const base = months.length ? months : [report(moves, startOfMonth(now), now).byCat];
+  const items = CATS.filter((c) => c.bucket !== 'savings')
+    .map((c) => ({ cat: c.name, avg: base.reduce((a, byCat) => a + (byCat[c.name] || 0), 0) / base.length }))
+    .filter((x) => x.avg > 0)
+    .map((x) => ({ ...x, amount: Math.max(Math.ceil((x.avg * 1.1) / 50) * 50, 50) }))
+    .sort((a, b) => b.avg - a.avg);
+  return { items, months: months.length };
+}
+
+export function suggestLimits(moves, now = new Date()) {
+  return Object.fromEntries(limitSuggestions(moves, now).items.map((x) => [x.cat, x.amount]));
 }
 
 const FACTOR = { weekly: 52 / 12, biweekly: 26 / 12, monthly: 1, yearly: 1 / 12 };
