@@ -26,12 +26,16 @@ import { useIdleLogout } from './hooks/useIdleLogout';
 import { periodStart } from './lib/dates';
 import { C } from './theme/colors';
 import { firstName } from './lib/auth';
+import { ADMIN_TAB, TABS } from './constants/navigation';
+import { useRole } from './hooks/useRole';
+import { track, trackScreen } from './lib/analytics';
+import { AdminScreen } from './screens/AdminScreen';
 
 // Estructura de la app: barra lateral (escritorio) o barra inferior (móvil), pantalla activa y hojas
 export function AppShell({ session }) {
   const wide = useWide();
-  const [tab, setTab] = useState('home');
-  const [backTab, setBackTab] = useState('home'); // pestaña a la que regresa Ajustes
+  const [pickedTab, setTab] = useState('home');
+  const [backTab, setBackTab] = useState('home'); // pestaña a la que regresan Ajustes y Admin
   const [savingsView, setSavingsView] = useState('box'); // dentro de Ahorro: 'box' (caja) o 'goals' (metas)
   const [addOpen, setAddOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
@@ -45,13 +49,20 @@ export function AppShell({ session }) {
   const push = usePush(rem);
   const notice = useReleaseNotice(session);
   const idle = useIdleLogout();
+  const { isAdmin } = useRole(session);
+  // Si la cuenta deja de ser admin, sale del panel
+  const tab = pickedTab === 'admin' && !isAdmin ? 'home' : pickedTab;
   const { moves, goals, limits } = data;
 
   // Al cambiar de pestaña (o entre Caja y Metas) la pantalla vuelve arriba
   const scrollRef = useRef(null);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTo({ y: 0, animated: false }); }, [tab, savingsView]);
+  // Bitácora de uso: qué pantalla se abre (Ahorro se separa en Caja y Metas)
+  useEffect(() => { trackScreen(tab === 'savings' ? 'savings_' + savingsView : tab); }, [tab, savingsView]);
 
-  const toggleSettings = () => { if (tab === 'settings') setTab(backTab); else { setBackTab(tab); setTab('settings'); } };
+  // Ajustes y Admin se abren desde el encabezado del móvil y regresan a la pestaña anterior
+  const toggleHeader = (key) => { if (tab === key) setTab(backTab); else { if (tab !== 'settings' && tab !== 'admin') setBackTab(tab); setTab(key); } };
+  const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
 
   const goalsMode = tab === 'savings' && savingsView === 'goals';
   const openAdd = () => (goalsMode ? setGoalSheet({ open: true, goal: null }) : (setEditRow(null), setAddOpen(true)));
@@ -63,6 +74,7 @@ export function AppShell({ session }) {
   const showOnboarding = data.loaded && settingsLoaded && !settings.onboarded && moves.length === 0;
   const finishOnboarding = async ({ cycle, payDay, mday, split, amount }) => {
     await saveSettings({ cycle, payDay, split, onboarded: true });
+    track('onboarding_done', { cycle, split, income: amount > 0 });
     if (amount > 0) {
       // El ingreso recurrente empieza al inicio del ciclo en curso para que ya cuente en este periodo
       const startAt = periodStart(cycle, new Date(), payDay);
@@ -76,10 +88,11 @@ export function AppShell({ session }) {
 
   return (
     <View style={wide ? s.shellWide : s.container} {...idle.activityProps}>
-      {wide && <Sidebar tab={tab} setTab={setTab} email={session.user.email} onAdd={openAdd} goalsMode={goalsMode} />}
+      {wide && <Sidebar tab={tab} setTab={setTab} email={session.user.email} onAdd={openAdd} goalsMode={goalsMode} tabs={tabs} />}
       {!wide && (
         <View style={s.headerBar}>
-          <Pressable style={[s.circleBtn, s.circleGreen, tab === 'settings' && s.circleOn]} onPress={toggleSettings}><Text style={s.circleGlyph}>⚙</Text></Pressable>
+          {isAdmin && <Pressable style={[s.circleBtn, tab === 'admin' && s.circleOn]} onPress={() => toggleHeader('admin')}><Text style={{ fontSize: 20 }}>📈</Text></Pressable>}
+          <Pressable style={[s.circleBtn, s.circleGreen, tab === 'settings' && s.circleOn]} onPress={() => toggleHeader('settings')}><Text style={s.circleGlyph}>⚙</Text></Pressable>
         </View>
       )}
       <ScrollView
@@ -104,6 +117,7 @@ export function AppShell({ session }) {
         )}
         {tab === 'moves' && <MovesScreen moves={moves} loading={!data.loaded} onDelete={data.delMove} onEdit={openEdit} />}
         {tab === 'history' && <HistoryScreen moves={moves} />}
+        {tab === 'admin' && isAdmin && <AdminScreen me={session.user.id} />}
         {tab === 'settings' && (
           <SettingsScreen onBack={wide ? null : () => setTab(backTab)} session={session} moves={moves} limits={limits} settings={settings} onSaveSettings={saveSettings} push={push} idle={idle} rem={rem} setReminders={setReminders} onSaveLimit={data.saveLimit} onApplyLimits={data.applyLimits} />
         )}
@@ -125,7 +139,7 @@ export function AppShell({ session }) {
       <IdleWarning visible={idle.warning} seconds={idle.secondsLeft} onStay={idle.stay} onLogout={idle.logoutNow} />
       <ReleaseNotice visible={notice.visible} onClose={notice.dismiss} />
       <ContributeSheet goal={contrib} onClose={() => setContrib(null)} onSubmit={data.contribute} />
-      <Onboarding visible={showOnboarding} onDone={finishOnboarding} onSkip={() => saveSettings({ onboarded: true })} />
+      <Onboarding visible={showOnboarding} onDone={finishOnboarding} onSkip={() => { track('onboarding_skip'); saveSettings({ onboarded: true }); }} />
     </View>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { DEFAULT_SPLIT, applySplit } from '../constants/budget';
+import { track } from '../lib/analytics';
 
 const DEFAULTS = { cycle: 'weekly', reservePct: 0, payDay: 1, split: DEFAULT_SPLIT, onboarded: false };
 
@@ -26,6 +27,7 @@ export function useUserSettings(session) {
 
   const saveSettings = async (patch) => {
     const next = { ...settings, ...patch };
+    Object.keys(patch).forEach((k) => { if (k !== 'onboarded') track('settings_change', { key: k, value: String(patch[k]) }); });
     setSettings(next);
     AsyncStorage.setItem('user_settings', JSON.stringify(next));
     const { error } = await supabase.from('user_settings').upsert({

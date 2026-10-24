@@ -7,3 +7,6 @@ export const TABS = [
   { key: 'history', icon: '🗓️', label: 'Historial' },
   { key: 'settings', icon: '⚙️', label: 'Ajustes' },
 ];
+
+// Pestaña extra que solo ven las cuentas con rol de administrador
+export const ADMIN_TAB = { key: 'admin', icon: '📈', label: 'Admin' };

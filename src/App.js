@@ -9,6 +9,7 @@ import { ResetPasswordScreen } from './screens/ResetPasswordScreen';
 import { s } from './theme/styles';
 import { C } from './theme/colors';
 import { setupPwa } from './lib/pwa';
+import { startAnalytics, stopAnalytics } from './lib/analytics';
 
 setupPwa();
 
@@ -16,10 +17,11 @@ export default function App() {
   const [session, setSession] = useState(undefined);
   const [recovery, setRecovery] = useState(false); // entró desde el enlace de "olvidé mi contraseña"
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); if (data.session) startAnalytics(data.session.user); });
     const { data } = supabase.auth.onAuthStateChange((event, sess) => {
       if (event === 'PASSWORD_RECOVERY') setRecovery(true);
-      if (event === 'SIGNED_OUT') clearCachedData();
+      if (event === 'SIGNED_OUT') { clearCachedData(); stopAnalytics(); }
+      if (sess) startAnalytics(sess.user);
       setSession(sess);
     });
     return () => data.subscription.unsubscribe();

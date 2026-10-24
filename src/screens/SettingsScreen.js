@@ -5,6 +5,7 @@ import { BUCKETS, CATS, CYCLES, DAYS, DAY_ORDER, SPLITS } from '../constants/bud
 import { useWide } from '../hooks/useWide';
 import { startOfMonth } from '../lib/dates';
 import { exportMovesCsv } from '../lib/exportCsv';
+import { track } from '../lib/analytics';
 import { report } from '../lib/finance';
 import { cleanAmount, money, showAmount } from '../lib/format';
 import { suggestLimits } from '../lib/insights';
@@ -46,7 +47,7 @@ export function SettingsScreen({ onBack, session, moves, limits, settings, onSav
 
   const exportCsv = async () => {
     setExportMsg('');
-    try { await exportMovesCsv(moves); } catch (e) { setExportMsg('No se pudo exportar: ' + (e instanceof Error ? e.message : String(e))); }
+    try { await exportMovesCsv(moves); track('export_csv', { rows: moves.length }); } catch (e) { setExportMsg('No se pudo exportar: ' + (e instanceof Error ? e.message : String(e))); }
   };
 
   const remB = (<>
