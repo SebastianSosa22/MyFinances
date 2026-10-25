@@ -90,6 +90,7 @@ export function SettingsScreen({ session, settings, onSaveSettings, push, rem, s
             <Segmented options={{ 8: { label: '8:00' }, 9: { label: '9:00' }, 12: { label: '12:00' }, 18: { label: '18:00' } }} value={String(rem.hour)} onChange={(k) => setReminders({ ...rem, hour: Number(k) })} />
           </View>
         )}
+        <Row label="Avisarme del corte y pago de mis tarjetas" note="Si debes algo: el día del corte, 3 días antes del pago y el día del pago" right={<Switch {...SWITCH} value={rem.cards !== false} onValueChange={(v) => setReminders({ ...rem, cards: v })} />} />
         <Row label="Recordarme registrar mis gastos" note="Todos los días a las 9 pm" right={<Switch {...SWITCH} value={rem.daily} onValueChange={(v) => setReminders({ ...rem, daily: v })} />} />
         {Platform.OS === 'web' && <Row label="Avisarme al cerrar mi ciclo" note="Con cuánto ahorraste" right={<Switch {...SWITCH} value={rem.close !== false} onValueChange={(v) => setReminders({ ...rem, close: v })} />} />}
       </Section>

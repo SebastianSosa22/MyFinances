@@ -7,8 +7,9 @@ import { WheelBand, WheelColumn } from '../components/WheelPicker';
 import { Segmented } from '../components/ui';
 import { CATS, DAYS, DAY_ORDER } from '../constants/budget';
 import { daysIn, midnight } from '../lib/dates';
-import { parseDay } from '../lib/finance';
-import { commas, isoLocal, money } from '../lib/format';
+import { ACCOUNT_TYPES, accountBalance, isCredit } from '../lib/accounts';
+import { moveTitle, msiAdvance, msiPending, parseDay } from '../lib/finance';
+import { commas, isoLocal, money, shortDate } from '../lib/format';
 import { suggestFromNote } from '../lib/insights';
 import { KEPT, periodView } from '../lib/summary';
 import { C } from '../theme/colors';
@@ -120,6 +121,57 @@ function MsiSheet({ visible, onClose, value, onApply, amount }) {
   );
 }
 
+// Adelantar mensualidades de una compra a meses sin intereses: se pagan hoy las últimas y la compra termina antes
+function AdvanceSheet({ visible, onClose, move, onApply }) {
+  const pending = msiPending(move);
+  const [k, setK] = useState(1);
+  const plan = msiAdvance(move, k);
+  const all = plan.left === 0;
+  return (
+    <BottomSheet visible={visible} onClose={onClose} title="Adelantar pagos" subtitle={pending.length + (pending.length === 1 ? ' mensualidad pendiente' : ' mensualidades pendientes') + ' de ' + money(move.amount, true)}>
+      <View style={s.stepperBig}>
+        <Pressable style={s.stepBig} onPress={() => setK(Math.max(1, k - 1))} accessibilityLabel="Menos"><Text style={s.stepBigText}>−</Text></Pressable>
+        <Text style={[s.body, { fontWeight: '600', fontSize: 18 }]}>{k} {k === 1 ? 'mensualidad' : 'mensualidades'}</Text>
+        <Pressable style={s.stepBig} onPress={() => setK(Math.min(pending.length, k + 1))} accessibilityLabel="Más"><Text style={s.stepBigText}>+</Text></Pressable>
+      </View>
+      <Text style={[s.balanceSub, { textAlign: 'center', fontSize: 15 }]}>
+        {all ? 'Liquidas la compra hoy' : 'Te quedan ' + plan.left + (plan.left === 1 ? ' mensualidad' : ' mensualidades') + ', la última el ' + shortDate(plan.ends)}
+      </Text>
+      <Pressable style={[s.saveBtn, { backgroundColor: C.primary, marginTop: 14 }]} onPress={() => onApply(k)}><Text style={s.saveBtnText}>Pagar hoy {money(plan.amount, true)}</Text></Pressable>
+      {!all && <Pressable onPress={() => setK(pending.length)} style={{ marginTop: 14 }}><Text style={[s.link, { textAlign: 'center' }]}>Liquidar todo ({money(msiAdvance(move, pending.length).amount, true)})</Text></Pressable>}
+    </BottomSheet>
+  );
+}
+
+// Elegir la cuenta del movimiento: cada cuenta con su saldo (en crédito, lo disponible) y "Sin cuenta"
+function AccountPickSheet({ visible, title, accounts, selected, onPick, onClose, moves, transfers }) {
+  const info = (a) => {
+    const b = accountBalance(a, moves, transfers);
+    if (!isCredit(a)) return 'Saldo ' + money(b.balance, true);
+    return b.available != null ? 'Disponible ' + money(b.available, true) : 'Debes ' + money(b.debt, true);
+  };
+  return (
+    <BottomSheet visible={visible} onClose={onClose} title={title}>
+      <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
+        {accounts.map((a, i) => (
+          <Pressable key={a.id} style={[s.row, { paddingHorizontal: 0, paddingVertical: 14 }, i > 0 && s.sep]} onPress={() => onPick(a.id)}>
+            <Text style={{ fontSize: 24, marginRight: 12 }}>{ACCOUNT_TYPES[a.type].icon}</Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[s.body, { fontSize: 18 }]} numberOfLines={1}>{a.name}{a.last4 ? ' •••• ' + a.last4 : ''}</Text>
+              <Text style={[s.balanceSub, { marginTop: 2 }]} numberOfLines={1}>{ACCOUNT_TYPES[a.type].label} · {info(a)}</Text>
+            </View>
+            {selected === a.id && <Text style={{ color: C.link, fontSize: 20 }}>✓</Text>}
+          </Pressable>
+        ))}
+        <Pressable style={[s.row, s.sep, { paddingHorizontal: 0, paddingVertical: 14 }]} onPress={() => onPick(null)}>
+          <Text style={[s.body, { flex: 1, fontSize: 18, color: C.muted }]}>Sin cuenta</Text>
+          {!selected && <Text style={{ color: C.link, fontSize: 20 }}>✓</Text>}
+        </Pressable>
+      </ScrollView>
+    </BottomSheet>
+  );
+}
+
 // Ventana desde abajo con todas las categorías del tipo elegido (en orden alfabético)
 function AllCats({ visible, cats, selected, onPick, onClose }) {
   const sorted = [...cats].sort((a, b) => a.name.localeCompare(b.name));
@@ -141,7 +193,7 @@ function AllCats({ visible, cats, selected, onPick, onClose }) {
 
 // Pantalla para registrar un movimiento nuevo o editar uno existente (edit).
 // Quien la usa le pone un `key` distinto cada vez que se abre, así arranca con los valores de `edit`.
-export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, edit, moves, goals = [] }) {
+export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, edit, moves, goals = [], accounts = [], transfers = [] }) {
   const insets = useSafeAreaInsets();
   const now = new Date();
   const startKind = edit ? (edit.kind === 'income' ? 'income' : KEPT.includes(edit.cat) ? 'saving' : 'expense') : 'expense';
@@ -157,8 +209,16 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
   const [date, setDateRaw] = useState(midnight(editDate));
   const [touchedDate, setTouchedDate] = useState(false);
   const [msi, setMsi] = useState(null); // meses sin intereses (solo gastos nuevos)
-  const [sheet, setSheet] = useState(null); // 'date' | 'repeat' | 'msi' | 'cats'
+  // Cuenta con la que se pagó: la del movimiento que se edita o, en uno nuevo, la última que usaste
+  const [accountId, setAccountId] = useState(() => {
+    if (edit) return edit.account_id || null;
+    const last = (moves || []).find((m) => m.account_id && accounts.some((a) => a.id === m.account_id && !a.archived));
+    return last ? last.account_id : null;
+  });
+  const [sheet, setSheet] = useState(null); // 'date' | 'repeat' | 'msi' | 'cats' | 'account' | 'advance'
   const [error, setError] = useState('');
+  const [pad, setPad] = useState(false); // teclado numérico: oculto hasta que tocas el monto
+  const openPad = () => { Keyboard.dismiss(); setPad(true); };
 
   const isIncome = kind === 'income', isSaving = kind === 'saving';
   const pool = isIncome ? INCOME_CATS : isSaving ? SAVE_CATS : SPEND_CATS;
@@ -185,6 +245,10 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
     setKind(k); setError('');
     setCat(k === 'saving' ? 'Ahorro' : ''); setGoalId(null);
   };
+  // A meses sin intereses solo se puede pagar con tarjeta de crédito
+  const payAccounts = accounts.filter((a) => (!a.archived && (!msi || isCredit(a))) || a.id === (edit && edit.account_id));
+  const account = accounts.find((a) => a.id === accountId) || null;
+  const applyMsi = (v) => { setMsi(v); if (v && account && !isCredit(account)) setAccountId(null); setSheet(null); };
   const pickCat = (name) => { setCat(name); setError(''); setSheet(null); };
   const setDate = (d) => { setTouchedDate(true); setDateRaw(midnight(d)); };
 
@@ -200,7 +264,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
 
   const n = parseFloat(amount) || 0;
   const save = async () => {
-    if (!(n > 0)) { setError('Escribe un monto mayor a $0.'); return; }
+    if (!(n > 0)) { setError('Escribe un monto mayor a $0.'); openPad(); return; }
     if (kind === 'expense' && !cat) { setError('Elige una categoría.'); return; }
     if (msi && kind === 'expense' && round2(n / msi) < 0.01) { setError('El monto es muy chico para dividirlo en ' + msi + ' meses.'); return; }
     const day = freq === 'weekly' ? wday : freq === 'monthly' ? mday : null;
@@ -211,6 +275,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
       const end = new Date(last.getFullYear(), last.getMonth(), Math.min(date.getDate(), daysIn(last.getFullYear(), last.getMonth())));
       common = { amount: round2(n / msi), freq: 'monthly', day: date.getDate(), occurred_at: when(), ends_at: isoLocal(end) };
     }
+    common.account_id = account ? account.id : null;
     const goal = goals.find((g) => g.id === goalId);
     const patch = isIncome
       ? { ...common, note: note.trim() || cat || 'Ingreso' }
@@ -222,6 +287,16 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
   const endIt = async () => { if (await onUpdate(edit.id, { ends_at: isoLocal(new Date()) })) onClose(); };
   const reactivate = async () => { if (await onUpdate(edit.id, { ends_at: null })) onClose(); };
   const remove = () => { onDelete(edit.id); onClose(); };
+  // Adelanto MSI: la compra termina antes y lo adelantado se registra hoy como un gasto aparte de la misma categoría
+  const pendingMsi = edit ? msiPending(edit).length : 0;
+  const advance = async (k) => {
+    const plan = msiAdvance(edit, k);
+    if (!plan.count) return;
+    if (!(await onUpdate(edit.id, { ends_at: isoLocal(plan.ends) }))) return;
+    const what = plan.count === 1 ? '1 mensualidad' : plan.count + ' mensualidades';
+    await onAdd({ kind: 'expense', cat: edit.cat, account_id: edit.account_id || null, amount: plan.amount, freq: 'once', day: null, ends_at: null, occurred_at: new Date().toISOString(), note: 'Adelanto · ' + moveTitle(edit) + ' · ' + what });
+    onClose();
+  };
 
   const [int, dec] = amount.split('.');
   const recurring = freq !== 'once';
@@ -237,10 +312,22 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
         {!edit && <Segmented options={TABS} value={kind} onChange={switchKind} style={s.segCard} />}
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <Text style={s.addAmount} numberOfLines={1} adjustsFontSizeToFit>
-            <Text style={s.addDollar}>$</Text>{commas(int || '0')}{amount.includes('.') ? '.' + (dec || '') : ''}
-          </Text>
+          <Pressable onPress={() => (pad ? setPad(false) : openPad())} accessibilityLabel="Escribir el monto">
+            <Text style={[s.addAmount, !amount && !pad && { color: C.muted }]} numberOfLines={1} adjustsFontSizeToFit>
+              <Text style={s.addDollar}>$</Text>{commas(int || '0')}{amount.includes('.') ? '.' + (dec || '') : ''}{pad && <Text style={{ color: C.link, fontWeight: '300' }}>|</Text>}
+            </Text>
+            {!pad && <Text style={[s.balanceSub, { textAlign: 'center', marginTop: 0, marginBottom: 8 }]}>{amount ? 'Toca para cambiar el monto' : 'Toca para escribir el monto'}</Text>}
+          </Pressable>
           {!!error && <Text style={[s.hint, { color: C.red, marginTop: 0 }]}>{error}</Text>}
+          {/* Cuenta del movimiento: arriba y siempre a la vista */}
+          {payAccounts.length > 0 && (
+            <Pressable onPress={() => setSheet('account')} style={[s.fChip, s.optChip, { alignSelf: 'center', marginTop: 0, marginBottom: 8 }, account && { borderColor: C.link }]} accessibilityLabel="Elegir cuenta">
+              <Text style={[s.fChipText, account && { fontWeight: '600' }]} numberOfLines={1}>
+                {(isIncome ? 'Entra a ' : 'Desde ') + (account ? ACCOUNT_TYPES[account.type].icon + ' ' + account.name + (account.last4 ? ' ' + account.last4 : '') : 'ninguna cuenta')}
+              </Text>
+              <Icon name="chevronDown" size={16} color={C.muted} />
+            </Pressable>
+          )}
           {!error && (
             <View style={s.leftPill}>
               <Text style={s.leftPillText}>{left >= 0 ? 'Este mes te quedan ' + money(left, true) : 'Este mes vas ' + money(-left, true) + ' arriba'}</Text>
@@ -288,7 +375,11 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
             )}
           </View>
 
-          <TextInput style={[s.input, { backgroundColor: C.card, marginTop: 12 }]} placeholder={isIncome ? '¿De dónde vino? (opcional)' : '¿En qué fue? (opcional)'} placeholderTextColor={C.muted} value={note} onChangeText={setNote} maxLength={80} returnKeyType="done" />
+          {!!account && isCredit(account) && account.credit_limit > 0 && kind === 'expense' && !edit && n > 0 && (
+            <Text style={[s.balanceSub, { marginTop: 8 }]}>Te quedarían {money(accountBalance(account, moves || [], transfers).available - n, true)} de crédito disponible en {account.name}</Text>
+          )}
+
+          <TextInput style={[s.input, { backgroundColor: C.card, marginTop: 12 }]} placeholder={isIncome ? '¿De dónde vino? (opcional)' : '¿En qué fue? (opcional)'} placeholderTextColor={C.muted} value={note} onChangeText={setNote} maxLength={80} returnKeyType="done" onFocus={() => setPad(false)} />
           {!!suggestion && (suggestion.cat !== cat || (suggestion.amount && !amount)) && (
             <Pressable onPress={() => { setCat(suggestion.cat); setError(''); if (!amount && suggestion.amount) setAmount(String(suggestion.amount)); }} style={[s.fChip, { alignSelf: 'flex-start', backgroundColor: C.hero, borderColor: C.hero }]}>
               <Text style={[s.fChipText, { color: C.link }]}>💡 {sugCat ? sugCat.icon : ''} {suggestion.cat}{suggestion.amount ? ' · ' + money(suggestion.amount) : ''}{suggestion.source === 'historial' ? ' (como la última vez)' : ''}</Text>
@@ -297,6 +388,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
 
           {!!edit && (
             <View style={[s.chipsRow, { marginTop: 4 }]}>
+              {pendingMsi > 0 && <Pressable onPress={() => setSheet('advance')} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>Adelantar pagos ({pendingMsi} {pendingMsi === 1 ? 'pendiente' : 'pendientes'})</Text></Pressable>}
               {edit.freq && edit.freq !== 'once' && (edit.ends_at
                 ? <Pressable onPress={reactivate} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>Reactivar (terminó el {parseDay(edit.ends_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })})</Text></Pressable>
                 : <Pressable onPress={endIt} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>{isIncome ? 'Terminar este ingreso' : 'Terminar este pago'}</Text></Pressable>)}
@@ -305,21 +397,33 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
           )}
         </ScrollView>
 
-        <View style={s.keypad}>
-          {KEYS.map((k) => (
-            <Pressable key={k} style={[s.key, (k === '.' || k === 'del') && s.keyFlat]} onPress={() => { setAmount((a) => press(a, k)); setError(''); }} accessibilityLabel={k === 'del' ? 'Borrar' : k}>
-              {k === 'del' ? <Text style={s.keyText}>⌫</Text> : <Text style={s.keyText}>{k}</Text>}
+        {pad && (
+          <>
+            <Pressable onPress={() => setPad(false)} hitSlop={10} style={{ alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 4 }} accessibilityLabel="Ocultar teclado">
+              <Text style={[s.link, { fontWeight: '600' }]}>Listo</Text>
             </Pressable>
-          ))}
-        </View>
+            <View style={s.keypad}>
+              {KEYS.map((k) => (
+                <Pressable key={k} style={[s.key, (k === '.' || k === 'del') && s.keyFlat]} onPress={() => { setAmount((a) => press(a, k)); setError(''); }} accessibilityLabel={k === 'del' ? 'Borrar' : k}>
+                  {k === 'del' ? <Text style={s.keyText}>⌫</Text> : <Text style={s.keyText}>{k}</Text>}
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
         <Pressable style={[s.saveBtn, n > 0 && { backgroundColor: C.primary }]} onPress={save}>
           <Text style={[s.saveBtnText, !(n > 0) && { color: C.muted }]}>{saveLabel}</Text>
         </Pressable>
       </View>
+      {sheet === 'account' && (
+        <AccountPickSheet visible title={isIncome ? '¿A qué cuenta entró?' : isSaving ? '¿De qué cuenta salió?' : msi ? '¿Con qué tarjeta?' : '¿Con qué pagaste?'} accounts={payAccounts} selected={accountId}
+          moves={moves || []} transfers={transfers} onPick={(id) => { setAccountId(id); setSheet(null); }} onClose={() => setSheet(null)} />
+      )}
       <AllCats visible={sheet === 'cats'} cats={pool} selected={cat} onPick={pickCat} onClose={() => setSheet(null)} />
       <DateSheet visible={sheet === 'date'} onClose={() => setSheet(null)} date={date} setDate={setDate} />
       <RepeatSheet visible={sheet === 'repeat'} onClose={() => setSheet(null)} freq={freq} setFreq={setFreq} wday={wday} setWday={setWday} mday={mday} setMday={setMday} isIncome={isIncome} />
-      {sheet === 'msi' && <MsiSheet visible onClose={() => setSheet(null)} value={msi} amount={n} onApply={(v) => { setMsi(v); setSheet(null); }} />}
+      {sheet === 'msi' && <MsiSheet visible onClose={() => setSheet(null)} value={msi} amount={n} onApply={applyMsi} />}
+      {sheet === 'advance' && <AdvanceSheet visible onClose={() => setSheet(null)} move={edit} onApply={(k) => { setSheet(null); advance(k); }} />}
     </Modal>
   );
 }

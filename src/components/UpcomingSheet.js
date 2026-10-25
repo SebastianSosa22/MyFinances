@@ -5,7 +5,7 @@ import { money } from '../lib/format';
 import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
-// Ventana de la campana: pagos fijos que vencen en los próximos 7 días
+// Ventana de la campana: pagos fijos y pagos de tarjeta que vencen en los próximos 7 días
 export function UpcomingSheet({ visible, items, hide, onClose }) {
   const total = items.reduce((a, u) => a + u.m.amount, 0);
   return (
@@ -13,13 +13,13 @@ export function UpcomingSheet({ visible, items, hide, onClose }) {
       <Pressable style={s.noticeOverlay} onPress={onClose}>
         <Pressable style={s.noticeCard} onPress={() => {}}>
           <Text style={s.noticeTitle}>Próximos 7 días</Text>
-          {items.length === 0 && <Text style={[s.body, { fontSize: 15, marginTop: 10, color: C.muted }]}>No tienes pagos fijos en los próximos 7 días.</Text>}
+          {items.length === 0 && <Text style={[s.body, { fontSize: 15, marginTop: 10, color: C.muted }]}>No tienes pagos fijos ni de tarjeta en los próximos 7 días.</Text>}
           <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={false}>
             {items.map((u, i) => {
               const c = CATS.find((z) => z.name === u.m.cat);
               return (
                 <View key={u.m.id + '-' + i} style={[s.row, { paddingHorizontal: 0 }, i > 0 && s.sep]}>
-                  <Text style={{ fontSize: 22, marginRight: 12 }}>{c ? c.icon : '🧾'}</Text>
+                  <Text style={{ fontSize: 22, marginRight: 12 }}>{u.icon || (c ? c.icon : '🧾')}</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={s.body} numberOfLines={1}>{u.m.note || u.m.cat}</Text>
                     <Text style={[s.caption, { paddingHorizontal: 0 }]}>{u.d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' })}</Text>

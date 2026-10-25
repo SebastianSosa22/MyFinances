@@ -3,16 +3,18 @@ import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { BalanceCard, BudgetCard, Greeting, HIDDEN, SpentHero } from '../components/HomeCards';
 import { Delta } from '../components/Delta';
 import { MonthCalendar } from '../components/MonthCalendar';
-import { Bar, Card, Segmented, Title } from '../components/ui';
+import { Card, Segmented, Title } from '../components/ui';
 import { CATS, PERIODS } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
 import { startOfMonth } from '../lib/dates';
+import { accountsSummary, cardsDue } from '../lib/accounts';
 import { calendarDays } from '../lib/finance';
 import { money, shortDate } from '../lib/format';
 import { balanceSummary, homeSummary, outflowOf, periodView } from '../lib/summary';
+import { AccountRow } from './AccountsScreen';
 import { s } from '../theme/styles';
 
-export function HomeScreen({ name, moves, limits, settings, loading, hide, onToggleHide, onSeeAll, onSeeDay, onSeeHistory, onSeeSavings }) {
+export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAccounts, limits, settings, loading, hide, onToggleHide, onSeeAll, onSeeDay, onSeeHistory, onSeeSavings }) {
   const wide = useWide();
   const [pick, setPick] = useState(null);
   const [calMonth, setCalMonth] = useState(() => startOfMonth(new Date()));
@@ -22,8 +24,10 @@ export function HomeScreen({ name, moves, limits, settings, loading, hide, onTog
   const view = useMemo(() => periodView(moves, period, new Date(), settings.payDay), [moves, period, settings.payDay, dayKey]);
   const balance = useMemo(() => balanceSummary(moves), [moves, dayKey]);
   const hasIncome = moves.some((m) => m.kind === 'income');
+  const acc = useMemo(() => accountsSummary(accounts, moves, transfers), [accounts, moves, transfers, dayKey]);
+  const cards = useMemo(() => cardsDue(accounts, moves, transfers, new Date(), sm.end), [accounts, moves, transfers, sm.end, dayKey]);
   const calDays = useMemo(() => calendarDays(moves, calMonth), [moves, calMonth]);
-  const { now, start, end, limitRows, prev, upcoming } = sm;
+  const { now, start, end, prev, upcoming } = sm;
   const { income } = view;
 
   const greeting = <Greeting name={name} hide={hide} onToggleHide={onToggleHide} />;
@@ -47,8 +51,27 @@ export function HomeScreen({ name, moves, limits, settings, loading, hide, onTog
           <SpentHero period={period} now={now} income={income} spent={view.outflow} saved={view.saved} left={view.left} hide={hide} onPress={onSeeHistory} onSaved={onSeeSavings} />
         </View>
         <View style={wide ? [s.col, { justifyContent: 'flex-end' }] : null}>
-          <BalanceCard balance={balance} pending={view.pending} pendingSpread={view.pendingSpread} end={end} hide={hide} onBalance={onSeeSavings} onPending={onSeeAll} />
+          <BalanceCard balance={balance} pending={view.pending} pendingSpread={view.pendingSpread} cards={cards} end={end} hide={hide} onBalance={onSeeSavings} onPending={onSeeAll} onCards={onSeeAccounts} />
         </View>
+      </View>
+      <Title>Tus cuentas</Title>
+      <View style={s.card}>
+        {acc.rows.length === 0
+          ? (
+            <Pressable style={{ padding: 16 }} onPress={onSeeAccounts}>
+              <Text style={[s.body, { fontWeight: '600' }]}>Registra tus tarjetas y tu efectivo</Text>
+              <Text style={s.balanceSub}>Lleva el saldo de cada cuenta y lo que debes en tus tarjetas de crédito.</Text>
+            </Pressable>
+          ) : (
+            <>
+              <View style={[s.row, { justifyContent: 'space-between', flexWrap: 'wrap' }]}>
+                <Text style={s.balanceSub}>Disponible <Text style={{ color: acc.cash < 0 ? '#F87171' : '#fff', fontWeight: '600' }}>{fmt(acc.cash, true)}</Text></Text>
+                {acc.debt > 0 && <Text style={s.balanceSub}>Deuda en tarjetas <Text style={{ color: '#F87171', fontWeight: '600' }}>{fmt(acc.debt, true)}</Text></Text>}
+              </View>
+              {acc.rows.slice(0, 4).map((r) => <AccountRow key={r.a.id} row={r} hide={hide} onPress={onSeeAccounts} />)}
+            </>
+          )}
+        <Pressable style={[s.row, s.sep, { justifyContent: 'center' }]} onPress={onSeeAccounts}><Text style={s.link}>{acc.rows.length ? 'Ver cuentas' : '+ Agregar cuenta'}</Text></Pressable>
       </View>
       {!hasIncome && (
         <View style={[s.card, { padding: 16 }]}>
@@ -94,27 +117,6 @@ export function HomeScreen({ name, moves, limits, settings, loading, hide, onTog
 
         </View>
         <View style={wide ? s.col : null}>
-
-          {limitRows.length > 0 && (
-            <>
-              <Title>Límites del mes</Title>
-              <Card>
-                {limitRows.map(([cat, lim, sp], i) => {
-                  const c = CATS.find((z) => z.name === cat), ratio = sp / lim;
-                  const col = ratio >= 1 ? '#F87171' : ratio >= 0.8 ? '#FBBF24' : '#4ADE80';
-                  return (
-                    <View key={cat} style={[s.row, i > 0 && s.sep, { flexDirection: 'column', alignItems: 'stretch' }]}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <Text style={s.body}>{c ? c.icon : '🧾'} {cat}</Text>
-                        <Text style={[s.body, ratio >= 0.8 && { color: col }]}>{fmt(sp)} / {fmt(lim)}</Text>
-                      </View>
-                      <Bar spent={sp} budget={lim} color={col} />
-                    </View>
-                  );
-                })}
-              </Card>
-            </>
-          )}
 
           {prev && (prev.total > 0 || prev.income > 0) && (
             <>

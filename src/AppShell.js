@@ -12,6 +12,9 @@ import { HomeScreen } from './screens/HomeScreen';
 import { MovesScreen } from './screens/MovesScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { AddMovementSheet } from './sheets/AddMovementSheet';
+import { AccountSheet } from './sheets/AccountSheet';
+import { AdjustSheet, TransferSheet } from './sheets/TransferSheet';
+import { AccountsScreen } from './screens/AccountsScreen';
 import { ContributeSheet } from './sheets/ContributeSheet';
 import { GoalSheet } from './sheets/GoalSheet';
 import { s } from './theme/styles';
@@ -36,6 +39,7 @@ import { SideDrawer } from './components/SideDrawer';
 import { UpcomingSheet } from './components/UpcomingSheet';
 import { useHideAmounts } from './hooks/useHideAmounts';
 import { upcomingPayments } from './lib/summary';
+import { cardAlerts } from './lib/accounts';
 
 // Estructura de la app: barra lateral (escritorio) o barra inferior (móvil), pantalla activa y hojas
 export function AppShell({ session }) {
@@ -49,6 +53,9 @@ export function AppShell({ session }) {
   const [editRow, setEditRow] = useState(null);
   const [goalSheet, setGoalSheet] = useState({ open: false, goal: null });
   const [contrib, setContrib] = useState(null);
+  const [accountSheet, setAccountSheet] = useState({ open: false, account: null, n: 0 });
+  const [transferSheet, setTransferSheet] = useState({ open: false, start: {}, edit: null, n: 0 });
+  const [adjustAccount, setAdjustAccount] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false); // móvil: Ajustes en el panel lateral
@@ -56,7 +63,7 @@ export function AppShell({ session }) {
   const [hide, toggleHide] = useHideAmounts();
 
   const data = useFinanceData(session);
-  const [rem, setReminders] = useReminders(data.moves, data.setNotice);
+  const [rem, setReminders] = useReminders(data.moves, data.setNotice, data.accounts, data.transfers);
   const [settings, saveSettings, settingsLoaded] = useUserSettings(session);
   const push = usePush(rem);
   const notice = useReleaseNotice(session);
@@ -64,9 +71,14 @@ export function AppShell({ session }) {
   const { isAdmin } = useRole(session);
   // Si la cuenta deja de ser admin, sale del panel
   const tab = pickedTab === 'admin' && !isAdmin ? 'home' : pickedTab;
-  const { moves, goals, limits } = data;
+  const { moves, goals, limits, accounts, transfers } = data;
   const dayKey = new Date().toDateString();
-  const upcoming = useMemo(() => upcomingPayments(moves, new Date(), 7), [moves, dayKey]);
+  // Campana: pagos fijos de los próximos 7 días y pagos de tarjetas de crédito que vencen en ese tiempo
+  const upcoming = useMemo(() => {
+    const cards = cardAlerts(accounts, moves, transfers, new Date(), 7).filter((x) => x.kind === 'due')
+      .map((x) => ({ m: { id: 'card-' + x.a.id, note: 'Pago de tarjeta ' + x.a.name, amount: x.debt }, d: x.d, icon: '💳' }));
+    return [...upcomingPayments(moves, new Date(), 7), ...cards].sort((a, b) => a.d - b.d);
+  }, [moves, accounts, transfers, dayKey]);
 
   // Al cambiar de pestaña (o entre Presupuestos y Ahorro) la pantalla vuelve arriba
   const scrollRef = useRef(null);
@@ -83,6 +95,8 @@ export function AppShell({ session }) {
   const openAdd = () => { setEditRow(null); setAddKey((k) => k + 1); setAddOpen(true); };
   const openBudget = (edit) => setBudgetSheet((b) => ({ open: true, edit, n: b.n + 1 }));
   const openEdit = (m) => { setEditRow(m); setAddKey((k) => k + 1); setAddOpen(true); };
+  const openAccount = (account) => setAccountSheet((x) => ({ open: true, account, n: x.n + 1 }));
+  const openTransfer = (start, edit = null) => setTransferSheet((x) => ({ open: true, start: start || {}, edit, n: x.n + 1 }));
   const closeAdd = () => { setAddOpen(false); setEditRow(null); };
   const refresh = async () => { setRefreshing(true); await data.load(); setRefreshing(false); };
 
@@ -132,7 +146,7 @@ export function AppShell({ session }) {
         {!!data.err && <Text style={[s.hint, { color: '#F87171', marginBottom: 8 }]}>{data.err}</Text>}
         {!!data.notice && <Pressable onPress={() => data.setNotice('')}><Text style={[s.hint, { color: '#FBBF24', marginBottom: 8 }]}>{data.notice}</Text></Pressable>}
 
-        {tab === 'home' && <HomeScreen name={firstName(session.user)} moves={moves} limits={limits} settings={settings} loading={!data.loaded} hide={hide} onToggleHide={toggleHide} onSeeAll={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} onSeeHistory={() => setTab('history')} onSeeSavings={() => { setSavingsView('saving'); setTab('savings'); }} />}
+        {tab === 'home' && <HomeScreen name={firstName(session.user)} moves={moves} accounts={accounts} transfers={transfers} onSeeAccounts={() => setTab('accounts')} limits={limits} settings={settings} loading={!data.loaded} hide={hide} onToggleHide={toggleHide} onSeeAll={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} onSeeHistory={() => setTab('history')} onSeeSavings={() => { setSavingsView('saving'); setTab('savings'); }} />}
         {tab === 'savings' && (
           <>
             <View style={s.screenHead}><Text style={s.screenTitle}>{savingsView === 'budgets' ? 'Presupuestos' : 'Ahorro'}</Text></View>
@@ -143,8 +157,10 @@ export function AppShell({ session }) {
                 onEditGoal={(goal) => setGoalSheet({ open: true, goal })} onDeleteGoal={data.delGoal} onContribute={setContrib} onEditMove={openEdit} />}
           </>
         )}
-        {tab === 'moves' && <MovesScreen key={movesDay || 'all'} initialDay={movesDay} moves={moves} loading={!data.loaded} onDelete={data.delMove} onEdit={openEdit} />}
+        {tab === 'moves' && <MovesScreen key={movesDay || 'all'} initialDay={movesDay} moves={moves} accounts={accounts} loading={!data.loaded} onDelete={data.delMove} onEdit={openEdit} />}
         {tab === 'history' && <AnalysisScreen moves={moves} onAdd={openAdd} onSeeMoves={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} />}
+        {tab === 'accounts' && <AccountsScreen accounts={accounts} moves={moves} transfers={transfers} hide={hide} onBack={() => setTab('home')} onNew={() => openAccount(null)} onEdit={openAccount} onEditMove={openEdit}
+          onTransfer={(start) => openTransfer(start)} onEditTransfer={(t) => openTransfer(null, t)} onAdjust={setAdjustAccount} />}
         {tab === 'admin' && isAdmin && <AdminScreen me={session.user.id} />}
         {tab === 'settings' && wide && settingsScreen}
       </ScrollView>
@@ -160,7 +176,11 @@ export function AppShell({ session }) {
         </View>
       )}
 
-      <AddMovementSheet key={addKey} visible={addOpen} edit={editRow} moves={moves} goals={goals} onClose={closeAdd} onAdd={data.addMove} onUpdate={data.updateMove} onDelete={data.delMove} />
+      <AddMovementSheet key={'add' + addKey} visible={addOpen} edit={editRow} moves={moves} goals={goals} accounts={accounts} transfers={transfers} onClose={closeAdd} onAdd={data.addMove} onUpdate={data.updateMove} onDelete={data.delMove} />
+      <AccountSheet key={'acc' + accountSheet.n} visible={accountSheet.open} account={accountSheet.account} onClose={() => setAccountSheet((x) => ({ ...x, open: false }))} onSave={data.saveAccount} onDelete={data.delAccount} />
+      <TransferSheet key={'tr' + transferSheet.n} visible={transferSheet.open} accounts={accounts} moves={moves} transfers={transfers} start={transferSheet.start} edit={transferSheet.edit}
+        onClose={() => setTransferSheet((x) => ({ ...x, open: false }))} onSave={data.saveTransfer} onDelete={data.delTransfer} />
+      {!!adjustAccount && <AdjustSheet visible account={adjustAccount} moves={moves} transfers={transfers} onClose={() => setAdjustAccount(null)} onSave={data.saveTransfer} />}
       <GoalSheet visible={goalSheet.open} goal={goalSheet.goal} onClose={() => setGoalSheet({ open: false, goal: null })} onSave={data.saveGoal} />
       {!wide && (
         <SideDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} activityProps={idle.activityProps}>
@@ -170,7 +190,7 @@ export function AppShell({ session }) {
       <UpcomingSheet visible={bellOpen} items={upcoming} hide={hide} onClose={() => setBellOpen(false)} />
       <IdleWarning visible={idle.warning} seconds={idle.secondsLeft} onStay={idle.stay} onLogout={idle.logoutNow} />
       <ReleaseNotice visible={notice.visible} onClose={notice.dismiss} />
-      <BudgetSheet key={budgetSheet.n} visible={budgetSheet.open} edit={budgetSheet.edit} limits={limits} onClose={() => setBudgetSheet((b) => ({ ...b, open: false }))} onSave={data.saveLimit} />
+      <BudgetSheet key={'budget' + budgetSheet.n} visible={budgetSheet.open} edit={budgetSheet.edit} limits={limits} onClose={() => setBudgetSheet((b) => ({ ...b, open: false }))} onSave={data.saveLimit} />
       <ContributeSheet goal={contrib} onClose={() => setContrib(null)} onSubmit={data.contribute} />
       <Onboarding visible={showOnboarding} onDone={finishOnboarding} onSkip={() => { track('onboarding_skip'); saveSettings({ onboarded: true }); }} />
     </View>

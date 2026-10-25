@@ -6,6 +6,7 @@ import { MonthNav } from '../components/MonthNav';
 import { SwipeRow } from '../components/SwipeRow';
 import { BUCKETS, CATS } from '../constants/budget';
 import { endOfDay, startOfMonth } from '../lib/dates';
+import { ACCOUNT_TYPES } from '../lib/accounts';
 import { asExp, bucketOf, isActive, isRecurring, moveTitle, occurrenceDates, parseDay, titleIsCat } from '../lib/finance';
 import { cleanAmount, money, shortDate } from '../lib/format';
 import { KEPT } from '../lib/summary';
@@ -16,7 +17,7 @@ const KINDS = { all: 'Todo', expense: 'Gastos', income: 'Ingresos' };
 const SORTS = { new: 'Más recientes', old: 'Más antiguos', high: 'Más caros', low: 'Más baratos' };
 const RANGES = { month: 'Todo el mes', '7d': 'Últimos 7 días', '30d': 'Últimos 30 días' };
 const ORIGINS = { all: 'De todos lados', recurring: 'Recurrentes', once: 'Una sola vez' };
-const DEFAULTS = { kind: 'all', cat: null, min: '', max: '', sort: 'new', range: 'month', origin: 'all', onlySaved: false };
+const DEFAULTS = { kind: 'all', account: null, cat: null, min: '', max: '', sort: 'new', range: 'month', origin: 'all', onlySaved: false };
 
 // Etiqueta de día para agrupar la lista: Hoy, Ayer o la fecha
 function dayLabel(d, now) {
@@ -34,7 +35,7 @@ const Pill = ({ label, on, onPress }) => (
 
 // Movimientos de un mes: cada pago recurrente aparece en cada día en que ocurre.
 // Lo que ya pasó se agrupa por día; lo que aún no llega va en "Programados este mes".
-export function MovesScreen({ moves, loading, onDelete, onEdit, initialDay }) {
+export function MovesScreen({ moves, accounts = [], loading, onDelete, onEdit, initialDay }) {
   const now = new Date();
   // Si se llega desde el calendario del Resumen, abre en ese día
   const [month, setMonth] = useState(() => startOfMonth(initialDay ? parseDay(initialDay) : now));
@@ -68,6 +69,7 @@ export function MovesScreen({ moves, loading, onDelete, onEdit, initialDay }) {
   const shown = all.filter(({ m, at }) => {
     if (f.kind !== 'all' && m.kind !== f.kind) return false;
     if (f.cat && (m.kind === 'income' || m.cat !== f.cat)) return false;
+    if (f.account && (f.account === 'none' ? !!m.account_id : m.account_id !== f.account)) return false;
     if (f.onlySaved && !(m.kind === 'expense' && KEPT.includes(m.cat))) return false;
     if (f.origin === 'recurring' && !isRecurring(m)) return false;
     if (f.origin === 'once' && isRecurring(m)) return false;
@@ -92,7 +94,7 @@ export function MovesScreen({ moves, loading, onDelete, onEdit, initialDay }) {
     if (last && last.label === label) last.items.push(x); else groups.push({ label, items: [x] });
   });
 
-  const filterCount = ['kind', 'cat', 'min', 'max', 'sort', 'range', 'origin', 'onlySaved'].filter((k) => f[k] !== DEFAULTS[k] && k !== 'kind').length;
+  const filterCount = ['kind', 'account', 'cat', 'min', 'max', 'sort', 'range', 'origin', 'onlySaved'].filter((k) => f[k] !== DEFAULTS[k] && k !== 'kind').length;
   const clear = () => { setF(DEFAULTS); setQ(''); setDay(null); };
 
   // Una fila: tocar abre la edición; deslizar a la izquierda borra
@@ -101,7 +103,8 @@ export function MovesScreen({ moves, loading, onDelete, onEdit, initialDay }) {
     const isInc = m.kind === 'income', kept = KEPT.includes(m.cat), c = CATS.find((z) => z.name === m.cat), b = BUCKETS[bucketOf(m.cat)];
     const ended = isRecurring(m) && !isActive(m, now);
     const color = isInc ? C.green : kept ? '#A78BFA' : C.text;
-    const sub = [isInc ? 'Ingreso' : !titleIsCat(m) ? m.cat : b.label, isRecurring(m) ? 'Recurrente' : null, !byDate ? shortDate(x.at) : null].filter(Boolean).join(' · ');
+    const acc = m.account_id && accounts.find((a) => a.id === m.account_id);
+    const sub = [isInc ? 'Ingreso' : !titleIsCat(m) ? m.cat : b.label, acc ? acc.name : null, isRecurring(m) ? 'Recurrente' : null, !byDate ? shortDate(x.at) : null].filter(Boolean).join(' · ');
     return (
       <SwipeRow key={x.key} first={i === 0} onDelete={() => onDelete(m.id)}>
         <Pressable style={[s.row, { paddingVertical: 14 }, ended && { opacity: 0.5 }]} onPress={() => onEdit(m)}>
@@ -145,6 +148,16 @@ export function MovesScreen({ moves, loading, onDelete, onEdit, initialDay }) {
 
       {panel && (
         <View style={[s.card, { padding: 16 }]}>
+          {accounts.length > 0 && (
+            <>
+              <Text style={s.balanceLabel}>Cuenta</Text>
+              <View style={[s.chipsRow, { marginBottom: 18 }]}>
+                <Pill label="Todas" on={!f.account} onPress={() => set({ account: null })} />
+                {accounts.map((a) => <Pill key={a.id} label={ACCOUNT_TYPES[a.type].icon + ' ' + a.name + (a.last4 ? ' ' + a.last4 : '')} on={f.account === a.id} onPress={() => set({ account: a.id })} />)}
+                <Pill label="Sin cuenta" on={f.account === 'none'} onPress={() => set({ account: 'none' })} />
+              </View>
+            </>
+          )}
           <Pressable style={[s.balanceHead, { marginBottom: 0 }]} onPress={() => setShowCats(!showCats)}>
             <Text style={s.body}>Categoría</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Text style={s.balanceLabel}>{f.cat || 'Todas'}</Text><Icon name={showCats ? 'chevronUp' : 'chevronDown'} size={18} color={C.muted} /></View>

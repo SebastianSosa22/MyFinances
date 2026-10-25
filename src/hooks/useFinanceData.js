@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { startOfMonth } from '../lib/dates';
+import { accountBalance, spendWarning } from '../lib/accounts';
 import { isRecurring, report } from '../lib/finance';
+import { money } from '../lib/format';
 import { limitMessage } from '../lib/summary';
 import { supabase } from '../lib/supabase';
 import { CACHE_PREFIX } from '../lib/session';
@@ -11,14 +13,18 @@ import { track, trackError, trackPerf } from '../lib/analytics';
 const byDateDesc = (list) => [...list].sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at));
 const clean = (x) => ({ ...x, amount: Number(x.amount) });
 const isTemp = (id) => String(id).startsWith('tmp-');
+const cleanTransfer = (x) => ({ ...x, amount: Number(x.amount) });
+const cleanAccount = (a) => ({ ...a, opening_balance: Number(a.opening_balance), credit_limit: a.credit_limit == null ? null : Number(a.credit_limit) });
 
-// Datos de la cuenta (movimientos, metas y límites) y sus operaciones contra Supabase.
+// Datos de la cuenta (movimientos, metas, límites y tarjetas/cuentas de dinero) y sus operaciones contra Supabase.
 // Abre al instante con la última copia guardada en el dispositivo y se actualiza en cuanto llegan los datos.
 export function useFinanceData(session) {
   const cacheKey = CACHE_PREFIX + session.user.id;
   const [moves, setMoves] = useState([]);
   const [goals, setGoals] = useState([]);
   const [limits, setLimits] = useState({});
+  const [accounts, setAccounts] = useState([]);
+  const [transfers, setTransfers] = useState([]); // transferencias entre cuentas y ajustes de saldo
   const [err, setErr] = useState('');
   const [notice, setNotice] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -28,21 +34,24 @@ export function useFinanceData(session) {
 
   const load = async () => {
     const t0 = Date.now();
-    const [m, g, l] = await Promise.all([
+    const [m, g, l, a, tr] = await Promise.all([
       supabase.from('movements').select('*').order('occurred_at', { ascending: false }),
       supabase.from('goals').select('*').order('created_at', { ascending: true }),
       supabase.from('category_limits').select('*'),
+      supabase.from('money_accounts').select('*').order('created_at', { ascending: true }),
+      supabase.from('account_transfers').select('*').order('occurred_at', { ascending: false }),
     ]);
-    const error = m.error || g.error || l.error;
+    const error = m.error || g.error || l.error || a.error || tr.error;
     if (error) { setErr('No se pudieron cargar los datos: ' + error.message); setLoaded(true); trackError(error, 'data_load'); return; }
     trackPerf('data_load', Date.now() - t0, { rows: m.data.length });
     const mv = m.data.map(clean);
     const gl = g.data.map((x) => ({ ...x, target: Number(x.target) }));
     const lim = {};
     l.data.forEach((x) => { lim[x.cat] = Number(x.amount); });
+    const ac = a.data.map(cleanAccount), tf = tr.data.map(cleanTransfer);
     fresh.current = true;
-    setMoves(mv); setGoals(gl); setLimits(lim); setErr(''); setLoaded(true);
-    AsyncStorage.setItem(cacheKey, JSON.stringify({ moves: mv, goals: gl, limits: lim })).catch(() => {});
+    setMoves(mv); setGoals(gl); setLimits(lim); setAccounts(ac); setTransfers(tf); setErr(''); setLoaded(true);
+    AsyncStorage.setItem(cacheKey, JSON.stringify({ moves: mv, goals: gl, limits: lim, accounts: ac, transfers: tf })).catch(() => {});
   };
 
   // 1) copia local (instantánea)  2) datos frescos de Supabase
@@ -50,7 +59,7 @@ export function useFinanceData(session) {
     let alive = true;
     AsyncStorage.getItem(cacheKey).then((raw) => {
       if (!alive || !raw || fresh.current) return;
-      try { const c = JSON.parse(raw); setMoves(c.moves || []); setGoals(c.goals || []); setLimits(c.limits || {}); setLoaded(true); } catch (e) { /* copia dañada: se ignora */ }
+      try { const c = JSON.parse(raw); setMoves(c.moves || []); setGoals(c.goals || []); setLimits(c.limits || {}); setAccounts(c.accounts || []); setTransfers(c.transfers || []); setLoaded(true); } catch (e) { /* copia dañada: se ignora */ }
     });
     load();
     return () => { alive = false; clearTimeout(undoTimer.current); };
@@ -71,6 +80,12 @@ export function useFinanceData(session) {
       const monthByCat = report(moves, startOfMonth(now), now).byCat;
       setNotice(limitMessage(row.cat, (monthByCat[row.cat] || 0) + row.amount, lim));
     } else setNotice('');
+    // Gasto con una cuenta: avisa si la tarjeta queda casi al límite o la cuenta de débito/efectivo en negativo
+    const acc = row.kind === 'expense' && row.account_id && accounts.find((a) => a.id === row.account_id);
+    if (acc) {
+      const warn = spendWarning(acc, accountBalance(acc, moves, transfers), accountBalance(acc, [temp, ...moves], transfers), (v) => money(v, true));
+      if (warn) setNotice((prev) => (prev ? prev + '\n' + warn : warn));
+    }
     track('movement_add', { kind: row.kind, cat: row.cat || null, freq: row.freq || 'once', note: !!row.note, goal: !!row.goal_id });
     const t0 = Date.now();
     supabase.from('movements').insert(row).select().single().then(({ data, error }) => {
@@ -161,5 +176,50 @@ export function useFinanceData(session) {
     return true;
   };
 
-  return { moves, goals, limits, err, notice, setNotice, loaded, undo, undoDelete, load, addMove, updateMove, delMove, saveGoal, delGoal, contribute, saveLimit, applyLimits };
+  // Alta o edición de una tarjeta/cuenta de dinero
+  const saveAccount = async (row, id) => {
+    const q = id ? supabase.from('money_accounts').update(row).eq('id', id) : supabase.from('money_accounts').insert(row);
+    const { data, error } = await q.select().single();
+    if (error) { setErr('No se pudo guardar la cuenta: ' + error.message); return false; }
+    track(id ? 'account_edit' : 'account_create', { type: row.type });
+    const acc = cleanAccount(data);
+    setAccounts((prev) => (id ? prev.map((x) => (x.id === id ? acc : x)) : [...prev, acc]));
+    setErr('');
+    return acc;
+  };
+
+  // Al borrar una cuenta sus movimientos se conservan, ya sin cuenta (sus transferencias y ajustes sí se borran)
+  const delAccount = async (id) => {
+    const prev = accounts, prevMoves = moves, prevTransfers = transfers;
+    setAccounts(accounts.filter((x) => x.id !== id));
+    setMoves(moves.map((m) => (m.account_id === id ? { ...m, account_id: null } : m)));
+    setTransfers(transfers.filter((t) => t.from_account_id !== id && t.to_account_id !== id));
+    track('account_delete');
+    const { error } = await supabase.from('money_accounts').delete().eq('id', id);
+    if (error) { setAccounts(prev); setMoves(prevMoves); setTransfers(prevTransfers); setErr('No se pudo borrar la cuenta: ' + error.message); return false; }
+    return true;
+  };
+
+  // Transferencia entre cuentas (pagar la tarjeta, mover dinero) o ajuste de saldo
+  const saveTransfer = async (row, id) => {
+    const q = id ? supabase.from('account_transfers').update(row).eq('id', id) : supabase.from('account_transfers').insert(row);
+    const { data, error } = await q.select().single();
+    if (error) { setErr('No se pudo guardar: ' + error.message); trackError(error, 'transfer_save'); return false; }
+    track(row.kind === 'adjust' ? 'account_adjust' : id ? 'transfer_edit' : 'transfer_add');
+    const t = cleanTransfer(data);
+    setTransfers((prev) => byDateDesc(id ? prev.map((x) => (x.id === id ? t : x)) : [t, ...prev]));
+    setErr('');
+    return true;
+  };
+
+  const delTransfer = async (id) => {
+    const prev = transfers;
+    setTransfers(transfers.filter((x) => x.id !== id));
+    track('transfer_delete');
+    const { error } = await supabase.from('account_transfers').delete().eq('id', id);
+    if (error) { setTransfers(prev); setErr('No se pudo borrar: ' + error.message); return false; }
+    return true;
+  };
+
+  return { moves, goals, limits, accounts, saveAccount, delAccount, transfers, saveTransfer, delTransfer, err, notice, setNotice, loaded, undo, undoDelete, load, addMove, updateMove, delMove, saveGoal, delGoal, contribute, saveLimit, applyLimits };
 }

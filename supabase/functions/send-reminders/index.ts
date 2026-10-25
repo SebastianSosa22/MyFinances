@@ -61,7 +61,32 @@ function justClosed(cycle: string, payDay: number, now: { y: number; m: number; 
   return null;
 }
 
-function buildMessages(sub: any, moves: any[], cycle: string, payDay: number) {
+// Deuda de una tarjeta de crédito a hoy (misma regla que la app): lo que debías al registrarla + compras − pagos,
+// contando desde el día en que se registró; las transferencias y los ajustes mueven la deuda sin ser gasto.
+function cardDebt(a: any, moves: any[], transfers: any[], today: number, tz: string) {
+  const from = localDay(new Date(a.created_at), tz);
+  let debt = Number(a.opening_balance);
+  moves.forEach((m) => {
+    if (m.account_id !== a.id) return;
+    for (let t = Math.max(from, localDay(new Date(m.occurred_at), tz)); t <= today; t += DAY) {
+      if (occursOn(m, t, tz)) debt += (m.kind === 'income' ? -1 : 1) * Number(m.amount);
+      if (!m.freq || m.freq === 'once') break;
+    }
+  });
+  transfers.forEach((x) => {
+    const d = localDay(new Date(x.occurred_at), tz);
+    if (d < from || d > today) return;
+    if (x.to_account_id === a.id) debt -= Number(x.amount);
+    if (x.from_account_id === a.id) debt += Number(x.amount);
+  });
+  return Math.round(debt * 100) / 100;
+}
+
+// ¿El día `t` es el día `day` del mes? (si el mes es más corto, cuenta el último día)
+const isMonthDay = (t: number, day: number) => { const x = fromU(t); return x.d === Math.min(day, daysIn(x.y, x.m)); };
+const DUE_NOTICE_DAYS = 3;
+
+function buildMessages(sub: any, moves: any[], cycle: string, payDay: number, accounts: any[] = [], transfers: any[] = []) {
   const tz = sub.tz, prefs = sub.prefs || {}, now = localParts(new Date(), tz), today = toU(now.y, now.m, now.d);
   const out: { title: string; body: string }[] = [];
 
@@ -76,6 +101,17 @@ function buildMessages(sub: any, moves: any[], cycle: string, payDay: number) {
         body: names + (due.length > 3 ? ' y ' + (due.length - 3) + ' más' : '') + ' · Total ' + money(due.reduce((a, m) => a + Number(m.amount), 0)),
       });
     }
+  }
+
+  // 1b) Tarjetas de crédito con deuda: el día del corte, 3 días antes del pago y el día del pago (a la hora elegida)
+  if (prefs.cards !== false && now.hour === (prefs.hour ?? 9)) {
+    accounts.filter((a) => a.type === 'credit' && !a.archived && (a.cut_day || a.due_day)).forEach((a) => {
+      const debt = cardDebt(a, moves, transfers, today, tz);
+      if (!(debt > 0)) return;
+      if (a.cut_day && isMonthDay(today, a.cut_day)) out.push({ title: 'Hoy es el corte de ' + a.name, body: 'Tu deuda es de ' + money(debt) + '. Lo que compres desde mañana entra al siguiente estado de cuenta.' });
+      if (a.due_day && isMonthDay(today, a.due_day)) out.push({ title: 'Hoy vence el pago de ' + a.name, body: 'Debes ' + money(debt) + '. Págala hoy para no pagar intereses.' });
+      if (a.due_day && isMonthDay(today + DUE_NOTICE_DAYS * DAY, a.due_day)) out.push({ title: 'Paga tu tarjeta ' + a.name, body: 'El pago vence en ' + DUE_NOTICE_DAYS + ' días. Debes ' + money(debt) + '.' });
+    });
   }
 
   // 2) Recordatorio diario a las 9 pm
@@ -113,12 +149,14 @@ Deno.serve(async (req) => {
 
   let sent = 0;
   for (const [userId, list] of byUser) {
-    const [{ data: moves }, { data: st }] = await Promise.all([
+    const [{ data: moves }, { data: st }, { data: accounts }, { data: transfers }] = await Promise.all([
       sb.from('movements').select('*').eq('user_id', userId),
       sb.from('user_settings').select('cycle,pay_day').eq('user_id', userId).maybeSingle(),
+      sb.from('money_accounts').select('*').eq('user_id', userId),
+      sb.from('account_transfers').select('*').eq('user_id', userId),
     ]);
     for (const sub of list) {
-      const msgs = body.test ? [{ title: 'Finanzas', body: 'Notificación de prueba desde el servidor 🎉' }] : buildMessages(sub, moves ?? [], st?.cycle ?? 'weekly', st?.pay_day ?? 1);
+      const msgs = body.test ? [{ title: 'Finanzas', body: 'Notificación de prueba desde el servidor 🎉' }] : buildMessages(sub, moves ?? [], st?.cycle ?? 'weekly', st?.pay_day ?? 1, accounts ?? [], transfers ?? []);
       for (const msg of msgs) {
         try {
           await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify({ ...msg, url: '/' }));
