@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, Text, Pressable, ScrollView, RefreshControl } from 'react-native';
 import { Sidebar } from './components/Sidebar';
 import { TabBar } from './components/TabBar';
@@ -36,6 +37,7 @@ import { track, trackScreen } from './lib/analytics';
 import { AdminScreen } from './screens/AdminScreen';
 import { Icon } from './components/Icon';
 import { SideDrawer } from './components/SideDrawer';
+import { Tour, TourTargets } from './components/Tour';
 import { UpcomingSheet } from './components/UpcomingSheet';
 import { useHideAmounts } from './hooks/useHideAmounts';
 import { upcomingPayments } from './lib/summary';
@@ -102,6 +104,39 @@ export function AppShell({ session }) {
 
   // Asistente de bienvenida: solo para cuentas nuevas (sin movimientos y que no lo han completado)
   const showOnboarding = data.loaded && settingsLoaded && !settings.onboarded && moves.length === 0;
+
+  // Guía interactiva: se muestra una vez (después de la bienvenida) y se puede repetir desde Ajustes. Se recuerda en el dispositivo.
+  const [tourTargets] = useState(() => new Map());
+  const [tour, setTour] = useState({ on: false, n: 0 });
+  const [tourDone, setTourDone] = useState(null); // null mientras se lee del dispositivo
+  const tourKey = 'tour_done_' + session.user.id;
+  const bellRef = useRef(null), profileRef = useRef(null);
+  const scrollY = useRef(0);
+  useEffect(() => { AsyncStorage.getItem(tourKey).then((v) => setTourDone(v === '1')).catch(() => setTourDone(false)); }, [tourKey]);
+  // En el móvil, la campana y el círculo de perfil del encabezado también se señalan en la guía
+  useEffect(() => {
+    if (wide) return undefined;
+    tourTargets.set('bell', bellRef); tourTargets.set('profile', profileRef);
+    return () => { if (tourTargets.get('bell') === bellRef) tourTargets.delete('bell'); if (tourTargets.get('profile') === profileRef) tourTargets.delete('profile'); };
+  }, [wide, tourTargets]);
+  const openTour = () => setTour((t) => ({ on: true, n: t.n + 1 }));
+  useEffect(() => {
+    if (tourDone !== false || tour.on || !data.loaded || !settingsLoaded || showOnboarding || notice.visible || tab !== 'home') return undefined;
+    const t = setTimeout(() => { track('tour_start', { auto: true }); openTour(); }, 800);
+    return () => clearTimeout(t);
+  }, [tourDone, tour.on, data.loaded, settingsLoaded, showOnboarding, notice.visible, tab]);
+  const startTour = () => {
+    track('tour_start', { auto: false });
+    setSettingsOpen(false); setTab('home');
+    if (scrollRef.current) scrollRef.current.scrollTo({ y: 0, animated: false });
+    setTimeout(openTour, 450); // espera a que se cierre el panel de Ajustes y se dibuje el Inicio
+  };
+  const closeTour = () => {
+    setTour((t) => ({ ...t, on: false })); setTourDone(true);
+    AsyncStorage.setItem(tourKey, '1').catch(() => {});
+    track('tour_close');
+  };
+  const scrollBy = useCallback((dy) => { if (scrollRef.current) scrollRef.current.scrollTo({ y: Math.max(0, scrollY.current + dy), animated: false }); }, []);
   const finishOnboarding = async ({ cycle, payDay, mday, split, amount }) => {
     await saveSettings({ cycle, payDay, split, onboarded: true });
     track('onboarding_done', { cycle, split, income: amount > 0 });
@@ -117,20 +152,21 @@ export function AppShell({ session }) {
   };
 
   const settingsScreen = (
-    <SettingsScreen session={session} moves={moves} settings={settings} onSaveSettings={saveSettings} push={push} rem={rem} setReminders={setReminders} />
+    <SettingsScreen session={session} moves={moves} settings={settings} onSaveSettings={saveSettings} push={push} rem={rem} setReminders={setReminders} onStartTour={startTour} />
   );
 
   return (
+    <TourTargets.Provider value={tourTargets}>
     <View style={wide ? s.shellWide : s.container} {...idle.activityProps}>
       {wide && <Sidebar tab={tab} setTab={goTab} email={session.user.email} onAdd={openAdd} tabs={tabs} />}
       {!wide && (
         <View style={s.headerBar}>
-          <Pressable style={s.avatar} onPress={() => setSettingsOpen(true)} accessibilityLabel="Ajustes y perfil">
+          <Pressable ref={profileRef} style={s.avatar} onPress={() => setSettingsOpen(true)} accessibilityLabel="Ajustes y perfil">
             <Text style={s.avatarText}>{initials(session.user)}</Text>
           </Pressable>
           <View style={s.headerRight}>
             {isAdmin && <Pressable style={[s.avatar, tab === 'admin' && s.circleOn]} onPress={() => toggleHeader('admin')} accessibilityLabel="Panel de administrador"><Text style={{ fontSize: 20 }}>📈</Text></Pressable>}
-            <Pressable style={s.avatar} onPress={() => { track('bell_open', { count: upcoming.length }); setBellOpen(true); }} accessibilityLabel="Próximos pagos">
+            <Pressable ref={bellRef} style={s.avatar} onPress={() => { track('bell_open', { count: upcoming.length }); setBellOpen(true); }} accessibilityLabel="Próximos pagos">
               <Icon name="bell" size={22} />
               {upcoming.length > 0 && <View style={s.badge}><Text style={s.badgeText}>{upcoming.length > 9 ? '9+' : upcoming.length}</Text></View>}
             </Pressable>
@@ -139,6 +175,8 @@ export function AppShell({ session }) {
       )}
       <ScrollView
         ref={scrollRef}
+        onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={32}
         style={wide ? { flex: 1 } : null}
         contentContainerStyle={wide ? s.contentWide : { padding: 16, paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.muted} />}
@@ -193,6 +231,8 @@ export function AppShell({ session }) {
       <BudgetSheet key={'budget' + budgetSheet.n} visible={budgetSheet.open} edit={budgetSheet.edit} limits={limits} onClose={() => setBudgetSheet((b) => ({ ...b, open: false }))} onSave={data.saveLimit} />
       <ContributeSheet goal={contrib} onClose={() => setContrib(null)} onSubmit={data.contribute} />
       <Onboarding visible={showOnboarding} onDone={finishOnboarding} onSkip={() => { track('onboarding_skip'); saveSettings({ onboarded: true }); }} />
+      {tour.on && <Tour key={'tour' + tour.n} visible targets={tourTargets} onClose={closeTour} scrollBy={scrollBy} />}
     </View>
+    </TourTargets.Provider>
   );
 }

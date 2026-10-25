@@ -37,7 +37,7 @@ const Row = ({ label, note, right, onPress, first, danger }) => {
 
 // Ajustes: perfil, tu dinero (cada cuánto cobras), notificaciones y cuenta.
 // En el móvil se muestra dentro del panel lateral que abre el círculo de perfil.
-export function SettingsScreen({ session, settings, onSaveSettings, push, rem, setReminders, moves }) {
+export function SettingsScreen({ session, settings, onSaveSettings, push, rem, setReminders, moves, onStartTour }) {
   const wide = useWide();
   const name = ((session.user.user_metadata && session.user.user_metadata.full_name) || '').trim();
   const [exportMsg, setExportMsg] = useState('');
@@ -103,7 +103,8 @@ export function SettingsScreen({ session, settings, onSaveSettings, push, rem, s
   const account = (
     <>
       <Section title="Cuenta">
-        <Row first label="Exportar mis movimientos" note="Archivo CSV para Excel o Numbers" onPress={exportCsv} />
+        {!!onStartTour && <Row first label="Ver la guía de la app" note="Un recorrido corto por cada sección" onPress={onStartTour} />}
+        <Row first={!onStartTour} label="Exportar mis movimientos" note="Archivo CSV para Excel o Numbers" onPress={exportCsv} />
         <Row label="Cerrar sesión" note="Solo en este dispositivo; borra la copia local de tus datos" danger onPress={() => signOutLocal()} right={null} />
       </Section>
       {!!exportMsg && <Text style={[s.balanceSub, { color: C.red, paddingHorizontal: 4 }]}>{exportMsg}</Text>}
