@@ -105,6 +105,21 @@ export function calendarDays(moves, month) {
 
 export const asExp = (m) => ({ freq: m.freq, day: m.day, date: m.occurred_at, ends: m.ends_at });
 
+// Compra a meses sin intereses: gasto mensual con fecha de fin y "N MSI" en la descripción
+export const isMsi = (m) => m.kind === 'expense' && m.freq === 'monthly' && !!m.ends_at && /\d+ MSI$/.test(m.note || '');
+
+// Mensualidades que faltan por pagar (las de después de hoy, hasta la fecha de fin)
+export const msiPending = (m, now = new Date()) => (isMsi(m) ? occurrenceDates(asExp(m), nextDay(midnight(now)), parseDay(m.ends_at)) : []);
+
+// Adelantar k mensualidades: se pagan hoy las últimas k y la compra termina antes.
+// Devuelve la nueva fecha de fin (las que quedan siguen en sus fechas) y cuánto se paga hoy.
+export function msiAdvance(m, k, now = new Date()) {
+  const pending = msiPending(m, now);
+  const n = Math.max(0, Math.min(k, pending.length));
+  const left = pending.length - n;
+  return { ends: left > 0 ? pending[left - 1] : midnight(now), amount: Math.round(m.amount * n * 100) / 100, count: n, left };
+}
+
 export const bucketOf = (cat) => (CATS.find((c) => c.name === cat) || { bucket: 'wants' }).bucket;
 
 export function report(moves, from, to) {

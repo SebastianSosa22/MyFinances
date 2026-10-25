@@ -9,6 +9,7 @@ export const SCREEN_LABELS = {
   savings_goals: 'Metas',
   history: 'Análisis',
   settings: 'Ajustes',
+  accounts: 'Cuentas',
   admin: 'Admin',
 };
 
@@ -24,6 +25,13 @@ export const ACTION_LABELS = {
   limit_set: 'Poner límite de categoría',
   limit_remove: 'Quitar límite',
   limits_apply_suggested: 'Aplicar límites sugeridos',
+  account_create: 'Agregar cuenta',
+  account_edit: 'Editar cuenta',
+  account_delete: 'Borrar cuenta',
+  account_adjust: 'Ajustar saldo',
+  transfer_add: 'Transferir entre cuentas',
+  transfer_edit: 'Editar transferencia',
+  transfer_delete: 'Borrar transferencia',
   settings_change: 'Cambiar ajustes',
   push_enable: 'Activar notificaciones',
   push_disable: 'Desactivar notificaciones',

@@ -69,8 +69,11 @@ const HeroStat = ({ label, value, hide, color }) => (
   </View>
 );
 
-// Tienes (saldo acumulado: efectivo + ahorro) y Por pagar (pagos fijos que faltan en el periodo)
-export function BalanceCard({ balance, pending, pendingSpread = 0, end, hide, onBalance, onPending }) {
+// Tienes (saldo acumulado: efectivo + ahorro) y Por pagar (pagos fijos que faltan en el periodo y pagos de tarjeta que vencen en él).
+// Los pagos de tarjeta solo se muestran aquí: no se restan de "Te quedan" porque las compras ya contaron como gasto al hacerlas.
+export function BalanceCard({ balance, pending, pendingSpread = 0, cards = { items: [], total: 0, missing: [] }, end, hide, onBalance, onPending, onCards }) {
+  const fmt = (v) => (hide ? HIDDEN : money(v, true));
+  const withCards = cards.total > 0;
   return (
     <View style={[s.card, s.balanceCard]}>
       <Pressable style={s.balanceHalf} onPress={onBalance}>
@@ -84,8 +87,24 @@ export function BalanceCard({ balance, pending, pendingSpread = 0, end, hide, on
       <View style={s.balanceDivider} />
       <Pressable style={s.balanceHalf} onPress={onPending}>
         <View style={s.balanceHead}><Text style={s.balanceLabel}>Por pagar</Text><Icon name="chevron" size={20} color={C.muted} /></View>
-        <Amount value={pending} size={30} hide={hide} fit />
-        <Text style={s.balanceSub}>{pending > 0 ? 'Pagos fijos hasta el ' + shortDate(end) + (pendingSpread > 0 ? '; su parte de estos días ya va en lo gastado' : '') : 'Sin pagos fijos pendientes'}</Text>
+        <Amount value={pending + cards.total} size={30} hide={hide} fit />
+        {withCards ? (
+          <>
+            <Text style={s.balanceSub}>Pagos fijos {fmt(pending)} · Tarjetas {fmt(cards.total)}</Text>
+            <Pressable onPress={onCards} hitSlop={6}>
+              <Text style={[s.balanceSub, { marginTop: 4 }]}>
+                {cards.items.map((x) => '💳 ' + x.a.name + ' vence el ' + shortDate(x.d)).join('\n')}{'\nNo se resta de «Te quedan»: tus compras ya contaron.'}
+              </Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={s.balanceSub}>{pending > 0 ? 'Pagos fijos hasta el ' + shortDate(end) + (pendingSpread > 0 ? '; su parte de estos días ya va en lo gastado' : '') : 'Sin pagos fijos pendientes'}</Text>
+        )}
+        {cards.missing.length > 0 && (
+          <Pressable onPress={onCards} hitSlop={6}>
+            <Text style={[s.balanceSub, { marginTop: 4, color: C.link }]}>Agrega el día de pago de {cards.missing.map((a) => a.name).join(', ')} para verlo aquí</Text>
+          </Pressable>
+        )}
       </Pressable>
     </View>
   );
