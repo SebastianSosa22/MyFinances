@@ -20,13 +20,13 @@ export function TopSheet({ visible, onClose, title, onSave, saveLabel = 'Guardar
       <View style={s.sheetWrap}>
         <DismissKeyboard style={[s.sheet, { paddingTop: insets.top + 12 }]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Pressable onPress={onClose}><Text style={s.link}>Cancelar</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={onClose}><Text style={s.link}>Cancelar</Text></Pressable>
             <Text numberOfLines={1} style={[s.body, { fontWeight: '600', flexShrink: 1, marginHorizontal: 8 }]}>{title}</Text>
-            <Pressable onPress={onSave}><Text style={[s.link, { fontWeight: '600' }]}>{saveLabel}</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={onSave}><Text style={[s.link, { fontWeight: '600' }]}>{saveLabel}</Text></Pressable>
           </View>
           <ScrollView style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{children}</ScrollView>
         </DismissKeyboard>
-        <Pressable style={{ flex: 1 }} onPress={() => (kb ? Keyboard.dismiss() : onClose())} />
+        <Pressable accessibilityRole="button" style={{ flex: 1 }} onPress={() => (kb ? Keyboard.dismiss() : onClose())} />
       </View>
     </Modal>
   );

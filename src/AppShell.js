@@ -151,44 +151,44 @@ export function AppShell({ session }) {
     }
   };
 
+  // Móvil: botones de la cuenta en el encabezado del Inicio (campana y círculo de perfil que abre Ajustes; el panel de admin se abre desde Ajustes)
+  const headerActions = wide ? null : (
+    <>
+      <Pressable accessibilityRole="button" ref={bellRef} style={s.circleBtn} onPress={() => { track('bell_open', { count: upcoming.length }); setBellOpen(true); }} accessibilityLabel="Próximos pagos">
+        <Icon name="bell" size={20} />
+        {upcoming.length > 0 && <View style={s.badge}><Text style={s.badgeText}>{upcoming.length > 9 ? '9+' : upcoming.length}</Text></View>}
+      </Pressable>
+      <Pressable accessibilityRole="button" ref={profileRef} style={s.avatar} onPress={() => setSettingsOpen(true)} accessibilityLabel="Ajustes y perfil">
+        <Text style={s.avatarText}>{initials(session.user)}</Text>
+      </Pressable>
+    </>
+  );
+
   const settingsScreen = (
-    <SettingsScreen session={session} moves={moves} settings={settings} onSaveSettings={saveSettings} push={push} rem={rem} setReminders={setReminders} onStartTour={startTour} />
+    <SettingsScreen session={session} moves={moves} settings={settings} onSaveSettings={saveSettings} push={push} rem={rem} setReminders={setReminders} onStartTour={startTour}
+      isAdmin={isAdmin} onOpenAdmin={() => { setSettingsOpen(false); if (tab !== 'admin') toggleHeader('admin'); }} />
   );
 
   return (
     <TourTargets.Provider value={tourTargets}>
     <View style={wide ? s.shellWide : s.container} {...idle.activityProps}>
       {wide && <Sidebar tab={tab} setTab={goTab} email={session.user.email} onAdd={openAdd} tabs={tabs} />}
-      {!wide && (
-        <View style={s.headerBar}>
-          <Pressable ref={profileRef} style={s.avatar} onPress={() => setSettingsOpen(true)} accessibilityLabel="Ajustes y perfil">
-            <Text style={s.avatarText}>{initials(session.user)}</Text>
-          </Pressable>
-          <View style={s.headerRight}>
-            {isAdmin && <Pressable style={[s.avatar, tab === 'admin' && s.circleOn]} onPress={() => toggleHeader('admin')} accessibilityLabel="Panel de administrador"><Text style={{ fontSize: 20 }}>📈</Text></Pressable>}
-            <Pressable ref={bellRef} style={s.avatar} onPress={() => { track('bell_open', { count: upcoming.length }); setBellOpen(true); }} accessibilityLabel="Próximos pagos">
-              <Icon name="bell" size={22} />
-              {upcoming.length > 0 && <View style={s.badge}><Text style={s.badgeText}>{upcoming.length > 9 ? '9+' : upcoming.length}</Text></View>}
-            </Pressable>
-          </View>
-        </View>
-      )}
       <ScrollView
         ref={scrollRef}
         onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
         scrollEventThrottle={32}
         style={wide ? { flex: 1 } : null}
-        contentContainerStyle={wide ? s.contentWide : { padding: 16, paddingBottom: 120 }}
+        contentContainerStyle={wide ? s.contentWide : { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.muted} />}
       >
-        {!!data.err && <Text style={[s.hint, { color: '#F87171', marginBottom: 8 }]}>{data.err}</Text>}
-        {!!data.notice && <Pressable onPress={() => data.setNotice('')}><Text style={[s.hint, { color: '#FBBF24', marginBottom: 8 }]}>{data.notice}</Text></Pressable>}
+        {!!data.err && <Text style={[s.hint, { color: C.red, marginBottom: 8 }]}>{data.err}</Text>}
+        {!!data.notice && <Pressable accessibilityRole="button" onPress={() => data.setNotice('')}><Text style={[s.hint, { color: C.orange, marginBottom: 8 }]}>{data.notice}</Text></Pressable>}
 
-        {tab === 'home' && <HomeScreen name={firstName(session.user)} moves={moves} accounts={accounts} transfers={transfers} onSeeAccounts={() => setTab('accounts')} limits={limits} settings={settings} loading={!data.loaded} hide={hide} onToggleHide={toggleHide} onSeeAll={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} onSeeHistory={() => setTab('history')} onSeeSavings={() => { setSavingsView('saving'); setTab('savings'); }} />}
+        {tab === 'home' && <HomeScreen name={firstName(session.user)} moves={moves} accounts={accounts} transfers={transfers} onSeeAccounts={() => setTab('accounts')} limits={limits} settings={settings} loading={!data.loaded} hide={hide} onToggleHide={toggleHide} onSeeAll={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} onSeeHistory={() => setTab('history')} onSeeSavings={() => { setSavingsView('saving'); setTab('savings'); }} headerActions={headerActions} onAdd={openAdd} />}
         {tab === 'savings' && (
           <>
-            <View style={s.screenHead}><Text style={s.screenTitle}>{savingsView === 'budgets' ? 'Presupuestos' : 'Ahorro'}</Text></View>
-            <Segmented options={{ budgets: { label: 'Presupuestos' }, saving: { label: 'Ahorro' } }} value={savingsView} onChange={setSavingsView} style={s.segCard} />
+            <View style={s.screenHead}><Text style={s.screenTitle}>{savingsView === 'budgets' ? 'Presupuestos' : 'Ahorro y metas'}</Text></View>
+            <Segmented options={{ budgets: { label: 'Presupuestos' }, saving: { label: 'Ahorro' } }} value={savingsView} onChange={setSavingsView} style={{ marginTop: 10 }} />
             {savingsView === 'budgets'
               ? <BudgetsScreen moves={moves} limits={limits} onSaveLimit={data.saveLimit} onApplyLimits={data.applyLimits} onEdit={openBudget} />
               : <SavingScreen moves={moves} goals={goals} onNewGoal={() => setGoalSheet({ open: true, goal: null })}
@@ -199,7 +199,7 @@ export function AppShell({ session }) {
         {tab === 'history' && <AnalysisScreen moves={moves} onAdd={openAdd} onSeeMoves={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} />}
         {tab === 'accounts' && <AccountsScreen accounts={accounts} moves={moves} transfers={transfers} hide={hide} onBack={() => setTab('home')} onNew={() => openAccount(null)} onEdit={openAccount} onEditMove={openEdit}
           onTransfer={(start) => openTransfer(start)} onEditTransfer={(t) => openTransfer(null, t)} onAdjust={setAdjustAccount} />}
-        {tab === 'admin' && isAdmin && <AdminScreen me={session.user.id} />}
+        {tab === 'admin' && isAdmin && <AdminScreen me={session.user.id} onBack={() => toggleHeader('admin')} />}
         {tab === 'settings' && wide && settingsScreen}
       </ScrollView>
 
@@ -210,7 +210,7 @@ export function AppShell({ session }) {
       {!!data.undo && (
         <View style={[s.snackbar, wide && { bottom: 24 }]}>
           <Text style={s.snackText}>Movimiento borrado</Text>
-          <Pressable onPress={data.undoDelete} hitSlop={10}><Text style={s.snackLink}>Deshacer</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={data.undoDelete} hitSlop={10}><Text style={s.snackLink}>Deshacer</Text></Pressable>
         </View>
       )}
 

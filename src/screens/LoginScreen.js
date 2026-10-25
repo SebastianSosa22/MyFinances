@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, Animated, Easing, Platform } from 'react-native';
 import { authErrorMessage, MIN_PASSWORD, validateCredentials, validateSignUpStep } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 import { DismissKeyboard } from '../components/DismissKeyboard';
+import { Icon } from '../components/Icon';
 
-const PLACEHOLDER = 'rgba(255,255,255,0.5)';
+const PLACEHOLDER = '#5D6A80';
 const NATIVE = Platform.OS !== 'web';
 const SIGNUP_PROMPTS = ['¿Cómo te llamas?', '¿Cuál es tu correo?', 'Crea tu contraseña'];
 const LAST_STEP = SIGNUP_PROMPTS.length - 1;
@@ -15,7 +17,7 @@ function StepDots({ step }) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 4 }}>
       {SIGNUP_PROMPTS.map((_, i) => (
-        <View key={i} style={{ width: i === step ? 28 : 10, height: 6, borderRadius: 3, marginHorizontal: 4, backgroundColor: i <= step ? '#FFD84D' : 'rgba(255,255,255,0.25)' }} />
+        <View key={i} style={{ width: i === step ? 28 : 10, height: 6, borderRadius: 3, marginHorizontal: 4, backgroundColor: i <= step ? C.primary : C.border }} />
       ))}
     </View>
   );
@@ -34,7 +36,7 @@ function Field({ icon, secure, isNew, onSubmitEditing, ...props }) {
         textContentType={secure ? (isNew ? 'newPassword' : 'password') : 'emailAddress'}
         {...props}
       />
-      {secure && <Pressable onPress={() => setShow(!show)} hitSlop={8}><Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 15 }}>{show ? 'Ocultar' : 'Mostrar'}</Text></Pressable>}
+      {secure && <Pressable accessibilityRole="button" onPress={() => setShow(!show)} hitSlop={8}><Text style={{ color: C.muted, fontSize: 15 }}>{show ? 'Ocultar' : 'Mostrar'}</Text></Pressable>}
     </View>
   );
 }
@@ -49,7 +51,7 @@ export function PasswordField({ value, onChangeText, placeholder, isNew, onSubmi
         autoComplete={isNew ? 'new-password' : 'current-password'} textContentType={isNew ? 'newPassword' : 'password'}
         value={value} onChangeText={onChangeText} onSubmitEditing={onSubmitEditing}
       />
-      <Pressable onPress={() => setShow(!show)} hitSlop={8}><Text style={s.link}>{show ? 'Ocultar' : 'Mostrar'}</Text></Pressable>
+      <Pressable accessibilityRole="button" onPress={() => setShow(!show)} hitSlop={8}><Text style={s.link}>{show ? 'Ocultar' : 'Mostrar'}</Text></Pressable>
     </View>
   );
 }
@@ -132,6 +134,7 @@ export function LoginScreen() {
 
   return (
     <DismissKeyboard style={[s.container, s.loginWrap]}>
+      <View style={s.loginLogo}><Icon name="vault" size={32} color={C.primary} width={1.7} /></View>
       <Text style={s.loginTitle}>¡Hola!</Text>
       <Text style={s.loginSub}>{isSignUp ? SIGNUP_PROMPTS[step] : 'Inicia sesión para tomar control de tus finanzas'}</Text>
       {isSignUp ? (
@@ -150,7 +153,7 @@ export function LoginScreen() {
               <>
                 <Field key="pass" icon="🔒" secure isNew placeholder="Contraseña" autoFocus value={pass} onChangeText={setPass} />
                 <Field key="confirm" icon="🔒" secure isNew placeholder="Confirmar contraseña" value={confirm} onChangeText={setConfirm} onSubmitEditing={next} />
-                <Text style={[s.caption, { color: 'rgba(255,255,255,0.6)', paddingHorizontal: 6, marginTop: 8 }]}>Mínimo {MIN_PASSWORD} caracteres.</Text>
+                <Text style={[s.caption, { color: C.muted, paddingHorizontal: 6, marginTop: 8 }]}>Mínimo {MIN_PASSWORD} caracteres.</Text>
               </>
             )}
           </Animated.View>
@@ -161,21 +164,21 @@ export function LoginScreen() {
           <Field icon="🔒" secure placeholder="Contraseña" value={pass} onChangeText={setPass} onSubmitEditing={submit} />
         </>
       )}
-      <Pressable style={[s.loginButton, busy && { opacity: 0.6 }]} onPress={isSignUp ? next : submit} disabled={busy}>
+      <Pressable accessibilityRole="button" style={[s.loginButton, busy && { opacity: 0.6 }]} onPress={isSignUp ? next : submit} disabled={busy}>
         <Text style={s.loginButtonText}>{busy ? 'Un momento…' : !isSignUp ? 'Iniciar sesión  →' : step < LAST_STEP ? 'Siguiente  →' : 'Crear cuenta  →'}</Text>
       </Pressable>
       {isSignUp && step > 0 && (
-        <Pressable onPress={() => goTo(step - 1)} disabled={busy}>
-          <Text style={{ color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginTop: 16, fontSize: 15 }}>‹ Atrás</Text>
+        <Pressable accessibilityRole="button" onPress={() => goTo(step - 1)} disabled={busy}>
+          <Text style={{ color: C.muted, textAlign: 'center', marginTop: 16, fontSize: 15 }}>‹ Atrás</Text>
         </Pressable>
       )}
       {!isSignUp && (
-        <Pressable onPress={forgot} disabled={busy}>
-          <Text style={{ color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginTop: 16, fontSize: 15 }}>¿Olvidaste tu contraseña?</Text>
+        <Pressable accessibilityRole="button" onPress={forgot} disabled={busy}>
+          <Text style={{ color: C.muted, textAlign: 'center', marginTop: 16, fontSize: 15 }}>¿Olvidaste tu contraseña?</Text>
         </Pressable>
       )}
-      {!!msg.text && <Text style={[s.hint, { color: msg.type === 'error' ? '#FFB4B4' : '#C6F6D5' }]}>{msg.text}</Text>}
-      <Pressable onPress={() => changeMode(isSignUp ? 'signin' : 'signup')}>
+      {!!msg.text && <Text style={[s.hint, { color: msg.type === 'error' ? C.red : C.green }]}>{msg.text}</Text>}
+      <Pressable accessibilityRole="button" onPress={() => changeMode(isSignUp ? 'signin' : 'signup')}>
         <Text style={s.loginLink}>{isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate aquí'}</Text>
       </Pressable>
     </DismissKeyboard>

@@ -1,17 +1,22 @@
-// Paleta de la app (tema oscuro tipo Finno). Para cambiar el look, toca solo este archivo.
+// Paleta de la app (tema "Bóveda nocturna"). Para cambiar el look, toca solo este archivo.
 export const C = {
-    bg: '#111A2B',        // fondo de pantallas
-    card: '#1E2736',      // tarjetas
-    raised: '#2A3446',    // inputs, chips, barras de fondo
-    raisedHi: '#3B475C',  // opción activa de los selectores
-    border: '#2B3547',
-    text: '#FFFFFF',
-    muted: '#9AA3B2',
-    primary: '#2D8A4E',   // botones y acentos rellenos
-    link: '#6FD18F',      // texto verde claro (enlaces y pestaña activa)
-    hero: '#22563A',      // tarjeta destacada verde
-    green: '#4ADE80',
-    red: '#F87171',
-    orange: '#FBBF24',
-    loginBg: '#1B4D2E',
+    bg: '#0B1220',        // fondo de pantallas
+    card: '#141C2B',      // tarjetas
+    inset: '#0F1726',     // recuadros dentro de una tarjeta
+    raised: '#1E2A40',    // inputs, chips, barras de fondo
+    raisedHi: '#2A3854',  // opción activa de los selectores
+    border: '#243047',
+    cardBorder: '#1F2A3D',
+    text: '#E8EDF5',
+    muted: '#8B97AA',
+    primary: '#5EE6A8',   // botones y acentos rellenos (menta)
+    onPrimary: '#0B1220', // texto sobre botones menta
+    link: '#5EE6A8',      // texto menta (enlaces y pestaña activa)
+    hero: '#141C2B',      // tarjeta destacada
+    green: '#5EE6A8',
+    greenSoft: '#13362A', // fondo de etiquetas y chips verdes
+    blue: '#6EA8FF',
+    red: '#FF8A8A',
+    orange: '#FFB25B',
+    loginBg: '#0B1220',
 };

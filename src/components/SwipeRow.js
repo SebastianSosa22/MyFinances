@@ -4,7 +4,9 @@ import { DEL_W, s } from '../theme/styles';
 import { C } from '../theme/colors';
 
 
-export function SwipeRow({ children, onDelete, first }) {
+// flat: fila suelta sobre el fondo de la pantalla (sin tarjeta), con su propia línea abajo
+// card: la fila ya es una tarjeta redondeada; se desliza completa sobre el botón de borrar
+export function SwipeRow({ children, onDelete, first, flat, card }) {
   const x = useRef(new Animated.Value(0)).current;
   const open = useRef(false);
   const snap = (end) => {
@@ -19,9 +21,9 @@ export function SwipeRow({ children, onDelete, first }) {
     onPanResponderTerminate: (_, g) => snap((open.current ? -DEL_W : 0) + g.dx),
   })).current;
   return (
-    <View style={!first && s.sep}>
-      <View style={s.delBg}><Pressable style={s.delBtn} onPress={onDelete}><Text style={s.delText}>Borrar</Text></Pressable></View>
-      <Animated.View style={{ transform: [{ translateX: x }], backgroundColor: C.card }} {...pan.panHandlers}>{children}</Animated.View>
+    <View style={card ? { overflow: 'hidden', borderRadius: 20, marginTop: 12 } : flat ? { overflow: 'hidden', borderBottomWidth: 1, borderBottomColor: '#1A2436' } : !first && s.sep}>
+      <View style={s.delBg}><Pressable accessibilityRole="button" style={s.delBtn} onPress={onDelete}><Text style={s.delText}>Borrar</Text></Pressable></View>
+      <Animated.View style={{ transform: [{ translateX: x }], backgroundColor: card ? 'transparent' : flat ? C.bg : C.card }} {...pan.panHandlers}>{children}</Animated.View>
     </View>
   );
 }

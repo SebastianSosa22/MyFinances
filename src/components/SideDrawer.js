@@ -26,11 +26,11 @@ export function SideDrawer({ open, onClose, children, activityProps }) {
     <Modal visible={open} transparent animationType="none" onRequestClose={close}>
       <View style={{ flex: 1 }} {...activityProps}>
         {/* La zona que recibe el toque es un Pressable fijo; la sombra animada va dentro y no recibe toques */}
-        <Pressable style={s.drawerTouch} onPress={close} accessibilityLabel="Cerrar ajustes">
+        <Pressable accessibilityRole="button" style={s.drawerTouch} onPress={close} accessibilityLabel="Cerrar ajustes">
           <Animated.View pointerEvents="none" style={[s.drawerShade, { opacity: fade }]} />
         </Pressable>
         <Animated.View style={[s.drawer, { width: panelW, paddingTop: insets.top, transform: [{ translateX: x }] }]}>
-          <Pressable style={[s.drawerClose, { top: insets.top + 12 }]} onPress={close} hitSlop={12} accessibilityLabel="Cerrar">
+          <Pressable accessibilityRole="button" style={[s.drawerClose, { top: insets.top + 12 }]} onPress={close} hitSlop={12} accessibilityLabel="Cerrar">
             <Icon name="x" size={20} color={C.text} />
           </Pressable>
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled">

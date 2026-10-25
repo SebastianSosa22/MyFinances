@@ -4,6 +4,7 @@ import { Card } from '../components/ui';
 import { DismissKeyboard } from '../components/DismissKeyboard';
 import { MIN_PASSWORD, authErrorMessage } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 import { PasswordField } from './LoginScreen';
 
@@ -32,11 +33,11 @@ export function ResetPasswordScreen({ onDone }) {
         <PasswordField placeholder="Contraseña nueva" value={pass} onChangeText={setPass} isNew />
         <PasswordField placeholder="Confirmar contraseña" value={confirm} onChangeText={setConfirm} isNew onSubmitEditing={submit} />
         <Text style={[s.caption, { paddingHorizontal: 4 }]}>Mínimo {MIN_PASSWORD} caracteres.</Text>
-        <Pressable style={[s.button, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
+        <Pressable accessibilityRole="button" style={[s.button, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
           <Text style={s.buttonText}>{busy ? 'Un momento…' : 'Guardar contraseña'}</Text>
         </Pressable>
       </Card>
-      {!!msg.text && <Text style={[s.hint, { color: msg.type === 'error' ? '#F87171' : '#4ADE80' }]}>{msg.text}</Text>}
+      {!!msg.text && <Text style={[s.hint, { color: msg.type === 'error' ? C.red : C.green }]}>{msg.text}</Text>}
     </DismissKeyboard>
   );
 }

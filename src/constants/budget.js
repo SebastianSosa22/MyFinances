@@ -1,7 +1,7 @@
 export const BUCKETS = {
-  needs: { label: 'Necesidades', pct: 50, color: '#5B9BFF' },
-  wants: { label: 'Deseos', pct: 30, color: '#FF9F43' },
-  savings: { label: 'Ahorro', pct: 20, color: '#4ADE80' },
+  needs: { label: 'Necesidades', pct: 50, color: '#6EA8FF' },
+  wants: { label: 'Deseos', pct: 30, color: '#FFB25B' },
+  savings: { label: 'Ahorro', pct: 20, color: '#5EE6A8' },
 };
 // Reparto del presupuesto que cada usuario puede elegir en Ajustes (se guarda en su cuenta)
 export const SPLITS = {

@@ -26,8 +26,8 @@ export function BudgetSheet({ visible, edit, limits, onClose, onSave }) {
           <Text style={[s.sectionTitle, { marginLeft: 4, marginTop: 8 }]}>Categoría</Text>
           <View style={s.chipsRow}>
             {free.map((c) => (
-              <Pressable key={c.name} onPress={() => setCat(c.name)} style={[s.chip, cat === c.name && { backgroundColor: C.primary }]}>
-                <Text style={[s.chipText, cat === c.name && { color: '#fff' }]}>{c.icon} {c.name}</Text>
+              <Pressable accessibilityRole="button" key={c.name} onPress={() => setCat(c.name)} style={[s.chip, cat === c.name && { backgroundColor: C.primary }]}>
+                <Text style={[s.chipText, cat === c.name && { color: C.onPrimary }]}>{c.icon} {c.name}</Text>
               </Pressable>
             ))}
           </View>
@@ -35,7 +35,7 @@ export function BudgetSheet({ visible, edit, limits, onClose, onSave }) {
       )}
       <TextInput value={showAmount(amount)} onChangeText={(x) => setAmount(cleanAmount(x))} keyboardType="decimal-pad" placeholder="$0.00" style={s.amountInput} autoFocus={!!edit} />
       <Text style={[s.caption, { paddingHorizontal: 4, textAlign: 'center' }]}>Al mes. Te avisamos al llegar al 80% y al 100%.</Text>
-      {!!edit && <Pressable onPress={remove} style={{ marginTop: 14 }}><Text style={[s.link, { color: C.red, textAlign: 'center' }]}>Quitar presupuesto</Text></Pressable>}
+      {!!edit && <Pressable accessibilityRole="button" onPress={remove} style={{ marginTop: 14 }}><Text style={[s.link, { color: C.red, textAlign: 'center' }]}>Quitar presupuesto</Text></Pressable>}
     </TopSheet>
   );
 }

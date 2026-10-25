@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { TopSheet } from '../components/TopSheet';
 import { cleanAmount, isoLocal, showAmount } from '../lib/format';
+import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
 export function GoalSheet({ visible, goal, onClose, onSave }) {
@@ -26,7 +27,7 @@ export function GoalSheet({ visible, goal, onClose, onSave }) {
       <Text style={[s.sectionTitle, { marginLeft: 4, marginTop: 0 }]}>Fecha objetivo</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {Object.entries(opts).map(([k, l]) => (
-          <Pressable key={k} onPress={() => setDl(k)} style={[s.chip, dl === k && { backgroundColor: '#2D8A4E' }]}><Text style={[s.chipText, dl === k && { color: '#fff' }]}>{l}</Text></Pressable>
+          <Pressable accessibilityRole="button" key={k} onPress={() => setDl(k)} style={[s.chip, dl === k && { backgroundColor: C.primary }]}><Text style={[s.chipText, dl === k && { color: C.onPrimary }]}>{l}</Text></Pressable>
         ))}
       </View>
     </TopSheet>

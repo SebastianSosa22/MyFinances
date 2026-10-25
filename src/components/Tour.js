@@ -7,10 +7,9 @@ import { s } from '../theme/styles';
 // Cada elemento se marca con useTourRef('id') (o <TourTarget id>) y la guía lo busca por su id.
 // fixed: el elemento no se mueve con el scroll (barra de abajo, menú lateral, encabezado).
 export const TOUR_STEPS = [
-  { target: 'hero', title: 'Lo que llevas gastado', body: 'Cuánto has gastado en el periodo, lo que entró y lo que te queda. Tócala para ver el análisis.' },
+  { target: 'hero', title: 'Lo que tienes disponible', body: 'Lo que te queda en el periodo, lo que entró y lo que has gastado. Tócala para ver el análisis.' },
   { target: 'period', title: 'Elige el periodo', body: 'Cambia entre semana, quincena o mes. Al abrir la app se usa tu ciclo de cobro.' },
-  { target: 'balance', title: 'Tienes y Por pagar', body: 'A la izquierda, tu dinero. A la derecha, los pagos fijos y de tarjeta que faltan en el periodo.' },
-  { target: 'accounts', title: 'Tus cuentas', body: 'El saldo de cada tarjeta y de tu efectivo. Toca una cuenta para pagar tu tarjeta, transferir o ajustar el saldo.' },
+  { target: 'accounts', title: 'Tus cuentas y tu ahorro', body: 'Toca Tus cuentas para ver el saldo de cada tarjeta y de tu efectivo, pagar tu tarjeta o transferir. Caja de ahorro te lleva a tus metas.' },
   { target: 'add', fixed: true, title: 'Registra un movimiento', body: 'Toca + para anotar un gasto, ingreso o ahorro. Toca el monto para escribirlo, elige la cuenta y, si quieres, ponlo a meses sin intereses.' },
   { target: 'tab-moves', fixed: true, title: 'Movimientos', body: 'Tu historial del mes. Toca uno para editarlo, deslízalo para borrarlo y filtra por cuenta o categoría.' },
   { target: 'tab-history', fixed: true, title: 'Análisis', body: 'Descubre en qué gastas más, por categoría y comparado con el mes anterior.' },
@@ -86,7 +85,7 @@ export function Tour({ visible, targets, onClose, scrollBy }) {
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       {/* Bloquea los toques a la app mientras dura la guía */}
-      <Pressable style={{ flex: 1 }} onPress={() => {}} accessible={false}>
+      <Pressable accessibilityRole="button" style={{ flex: 1 }} onPress={() => {}} accessible={false}>
         {hole ? (
           <>
             <View style={{ position: 'absolute', left: 0, right: 0, top: 0, height: Math.max(hole.y, 0), backgroundColor: shade }} />
@@ -105,10 +104,10 @@ export function Tour({ visible, targets, onClose, scrollBy }) {
             {steps.map((st, k) => <View key={st.target} style={[s.tourDot, k === i && s.tourDotOn]} />)}
           </View>
           <View style={s.tourRow}>
-            <Pressable onPress={onClose} hitSlop={10}><Text style={s.tourGhost}>{last ? '' : 'Saltar guía'}</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10}><Text style={s.tourGhost}>{last ? '' : 'Saltar guía'}</Text></Pressable>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-              {i > 0 && <Pressable onPress={() => go(i - 1)} hitSlop={10}><Text style={s.tourGhost}>Atrás</Text></Pressable>}
-              <Pressable onPress={() => (last ? onClose() : go(i + 1))} style={s.tourBtn}><Text style={s.tourBtnText}>{last ? 'Terminar' : 'Siguiente'}</Text></Pressable>
+              {i > 0 && <Pressable accessibilityRole="button" onPress={() => go(i - 1)} hitSlop={10}><Text style={s.tourGhost}>Atrás</Text></Pressable>}
+              <Pressable accessibilityRole="button" onPress={() => (last ? onClose() : go(i + 1))} style={s.tourBtn}><Text style={s.tourBtnText}>{last ? 'Terminar' : 'Siguiente'}</Text></Pressable>
             </View>
           </View>
         </View>}

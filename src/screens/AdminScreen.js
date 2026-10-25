@@ -16,7 +16,7 @@ const dayLabel = (iso) => { const [, m, d] = iso.split('-'); return Number(d) + 
 const entries = (obj, labels = {}) => Object.entries(obj || {}).map(([k, v]) => ({ label: (labels[k] && (labels[k].label || labels[k])) || k, value: Number(v) })).sort((a, b) => b.value - a.value);
 
 // Panel de administrador: uso de la app, usuarios, funciones y rendimiento. Solo conteos, nunca montos.
-export function AdminScreen({ me }) {
+export function AdminScreen({ me, onBack }) {
   const wide = useWide();
   const [view, setView] = useState('overview');
   const [days, setDays] = useState('30');
@@ -24,11 +24,12 @@ export function AdminScreen({ me }) {
 
   return (
     <>
-      <Text style={s.largeTitle}>Panel de administrador</Text>
-      <Segmented options={ADMIN_VIEWS} value={view} onChange={setView} />
-      <View style={[s.dateRow, { alignItems: 'center' }]}>
+      {!!onBack && <Pressable accessibilityRole="button" onPress={onBack} hitSlop={10} style={{ alignSelf: 'flex-start', paddingVertical: 6 }} accessibilityLabel="Regresar"><Text style={[s.linkSm, { fontSize: 15 }]}>‹ Regresar</Text></Pressable>}
+      <Text style={s.screenTitle}>Panel de administrador</Text>
+      <Segmented options={ADMIN_VIEWS} value={view} onChange={setView} style={{ marginTop: 12 }} />
+      <View style={[s.tileRow, { alignItems: 'center', marginTop: 10, gap: 8 }]}>
         <Segmented options={RANGES} value={days} onChange={setDays} style={{ marginTop: 0, flex: 1, maxWidth: 300 }} />
-        <Pressable onPress={reload} hitSlop={8} style={{ paddingLeft: 12 }}><Text style={[s.link, { fontSize: 15 }]}>{loading ? 'Cargando…' : 'Actualizar'}</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={reload} style={s.squareBtn} accessibilityLabel="Actualizar">{loading ? <ActivityIndicator color={C.muted} /> : <Text style={[s.panelTitle, { fontSize: 18 }]}>↻</Text>}</Pressable>
       </View>
       {!!data && <Text style={[s.caption, { paddingHorizontal: 4, marginTop: 8 }]}>Actualizado {ago(data.generated_at)} · Solo conteos de uso: no se muestran montos ni descripciones de nadie.</Text>}
       {!!error && <Text style={[s.hint, { color: C.red }]}>{error}</Text>}
@@ -75,7 +76,7 @@ function Overview({ d, wide }) {
           </Card>
           <Card>
             <CardHead title="Transacciones registradas por día" sub="Todos los usuarios" />
-            <Columns data={series.map((x) => ({ label: dayLabel(x.day), value: x.movements }))} color="#5B9BFF" />
+            <Columns data={series.map((x) => ({ label: dayLabel(x.day), value: x.movements }))} color={C.blue} />
           </Card>
         </View>
         <View style={wide ? s.col : null}>
@@ -153,7 +154,7 @@ function Users({ d, me, onSetRole }) {
             {!u.onboarded && <Tag text="Sin bienvenida" />}
           </View>
           {u.id !== me && (
-            <Pressable onPress={() => changeRole(u)} hitSlop={6}>
+            <Pressable accessibilityRole="button" onPress={() => changeRole(u)} hitSlop={6}>
               <Text style={[s.link, { fontSize: 15, marginTop: 10 }, confirm === u.id && { color: C.orange }]}>
                 {confirm === u.id ? 'Toca otra vez para confirmar' : u.role === 'admin' ? 'Quitar rol de administrador' : 'Hacer administrador'}
               </Text>
@@ -189,7 +190,7 @@ function Usage({ d, wide }) {
         </Card>
         <Card>
           <CardHead title="Acciones más usadas" sub="Qué hacen los usuarios dentro de la app" />
-          <HBars rows={actions} color="#5B9BFF" />
+          <HBars rows={actions} color={C.blue} />
         </Card>
         <Card>
           <CardHead title="Horario de uso" sub="Actividad por hora del día (hora de CDMX)" />
@@ -203,11 +204,11 @@ function Usage({ d, wide }) {
         </Card>
         <Card>
           <CardHead title="Dispositivos" sub="Usuarios por plataforma" />
-          <HBars rows={platforms} color="#A78BFA" />
+          <HBars rows={platforms} color="#C9A7FF" />
         </Card>
         <Card>
           <CardHead title="Cómo registran" sub={d.with_note_pct + '% de las transacciones llevan descripción'} />
-          <HBars rows={[...entries(d.by_freq, EFREQ), ...entries(d.by_source, SOURCE_LABELS).map((x) => ({ ...x, label: 'Origen: ' + x.label, color: '#5B9BFF' }))]} />
+          <HBars rows={[...entries(d.by_freq, EFREQ), ...entries(d.by_source, SOURCE_LABELS).map((x) => ({ ...x, label: 'Origen: ' + x.label, color: C.blue }))]} />
         </Card>
         <Card>
           <CardHead title="Configuración elegida" sub="Reparto del presupuesto y ciclo de cobro" />

@@ -7,8 +7,8 @@ import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
 const Chip = ({ a, on, onPress }) => (
-  <Pressable onPress={onPress} style={[s.fChip, on && s.fChipOn]}>
-    <Text style={[s.fChipText, on && { color: '#fff', fontWeight: '600' }]}>{ACCOUNT_TYPES[a.type].icon} {a.name}{a.last4 ? ' ' + a.last4 : ''}</Text>
+  <Pressable accessibilityRole="button" onPress={onPress} style={[s.fChip, on && s.fChipOn]}>
+    <Text style={[s.fChipText, on && { color: C.onPrimary, fontWeight: '600' }]}>{ACCOUNT_TYPES[a.type].icon} {a.name}{a.last4 ? ' ' + a.last4 : ''}</Text>
   </Pressable>
 );
 
@@ -22,7 +22,7 @@ function AdjustInfo({ visible, edit, accounts, onClose, onDelete }) {
       <Text style={[s.balanceSub, { textAlign: 'center' }]}>
         {(a ? a.name + ': ' : '') + (isCredit(a) ? (up ? 'la deuda bajó' : 'la deuda subió') : up ? 'el saldo subió' : 'el saldo bajó') + ' el ' + new Date(edit.occurred_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) + '. No cuenta como gasto ni ingreso.'}
       </Text>
-      <Pressable onPress={async () => { if (await onDelete(edit.id)) onClose(); }} style={{ marginTop: 18, marginBottom: 6 }}>
+      <Pressable accessibilityRole="button" onPress={async () => { if (await onDelete(edit.id)) onClose(); }} style={{ marginTop: 18, marginBottom: 6 }}>
         <Text style={[s.link, { color: C.red, textAlign: 'center' }]}>Borrar ajuste</Text>
       </Pressable>
     </TopSheet>
@@ -66,7 +66,7 @@ function TransferForm({ visible, accounts, moves, transfers, start = {}, edit, o
       <TextInput value={showAmount(amount)} onChangeText={(x) => { setAmount(cleanAmount(x)); setError(''); }} keyboardType="decimal-pad" placeholder="$0.00" placeholderTextColor={C.muted} style={s.amountInput} autoFocus={!edit} />
       {paying && debt > 0 && (
         <View style={[s.chipsRow, { justifyContent: 'center', marginTop: -4 }]}>
-          <Pressable onPress={() => setAmount(String(debt))} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>Deuda total {money(debt, true)}</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => setAmount(String(debt))} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>Deuda total {money(debt, true)}</Text></Pressable>
         </View>
       )}
       <Text style={[s.balanceSub, { marginTop: 12 }]}>Sale de</Text>
@@ -77,7 +77,7 @@ function TransferForm({ visible, accounts, moves, transfers, start = {}, edit, o
       {!!error && <Text style={[s.hint, { color: C.red }]}>{error}</Text>}
       <Text style={[s.balanceSub, { marginTop: 12 }]}>Mover dinero entre tus cuentas no cuenta como gasto ni ingreso, así que no afecta tus presupuestos.</Text>
       {!!edit && (
-        <Pressable onPress={async () => { if (await onDelete(edit.id)) onClose(); }} style={{ marginTop: 18, marginBottom: 6 }}>
+        <Pressable accessibilityRole="button" onPress={async () => { if (await onDelete(edit.id)) onClose(); }} style={{ marginTop: 18, marginBottom: 6 }}>
           <Text style={[s.link, { color: C.red, textAlign: 'center' }]}>Borrar transferencia</Text>
         </Pressable>
       )}

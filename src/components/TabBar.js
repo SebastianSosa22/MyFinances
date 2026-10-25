@@ -19,16 +19,17 @@ export function TabBar({ tab, setTab, onAdd }) {
   const render = (item) => {
     const on = tab === item.key;
     return (
-      <Pressable key={item.key} ref={refs[item.key]} style={s.tab} onPress={() => setTab(item.key)}>
-        <Icon name={item.glyph} size={24} color={on ? C.link : C.muted} />
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[s.tabLabel, on && { color: C.link, fontWeight: '600' }]}>{item.label}</Text>
-      </Pressable>
+      <View key={item.key} style={s.tabSlot}>
+        <Pressable accessibilityRole="button" ref={refs[item.key]} style={[s.tab, on && s.tabOn]} onPress={() => setTab(item.key)} accessibilityLabel={item.label} accessibilityState={{ selected: on }}>
+          <Icon name={item.glyph} size={22} color={on ? C.link : C.muted} />
+        </Pressable>
+      </View>
     );
   };
   return (
     <View style={s.tabbar}>
       <View style={s.tabGroup}>{items.slice(0, mid).map(render)}</View>
-      <Pressable ref={addRef} style={s.tabFab} onPress={onAdd}><Text style={s.tabFabText}>+</Text></Pressable>
+      <Pressable accessibilityRole="button" ref={addRef} style={s.tabFab} onPress={onAdd} accessibilityLabel="Nuevo movimiento"><Text style={s.tabFabText}>+</Text></Pressable>
       <View style={s.tabGroup}>{items.slice(mid).map(render)}</View>
     </View>
   );

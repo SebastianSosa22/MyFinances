@@ -5,10 +5,10 @@ import { BUCKETS } from '../constants/budget';
 
 // Dona única: cada tramo es una parte del plan 50/30/20 y se llena conforme gastas (rojo si te pasas)
 export function BudgetDonut({ spent, income, center, size = 200 }) {
-  const sw = 24, r = size / 2 - sw / 2 - 2, C = 2 * Math.PI * r, gap = 6;
+  const sw = Math.round(size * 0.1), r = size / 2 - sw / 2 - 2, C = 2 * Math.PI * r, gap = Math.max(size * 0.03, 3);
   let acc = 0;
   return (
-    <View style={{ width: size, height: size, alignSelf: 'center', marginTop: 16 }}>
+    <View style={{ width: size, height: size, alignSelf: 'center' }}>
       <Svg width={size} height={size}>
         <G rotation="-90" origin={`${size / 2}, ${size / 2}`}>
           {Object.keys(BUCKETS).map((k) => {
@@ -16,11 +16,11 @@ export function BudgetDonut({ spent, income, center, size = 200 }) {
             acc += seg;
             const target = (income * BUCKETS[k].pct) / 100;
             const fill = target > 0 ? Math.min(spent[k] / target, 1) * len : 0;
-            const col = target > 0 && spent[k] > target ? '#F87171' : BUCKETS[k].color;
+            const col = target > 0 && spent[k] > target ? '#FF8A8A' : BUCKETS[k].color;
             const common = { cx: size / 2, cy: size / 2, r, strokeWidth: sw, fill: 'none', strokeDashoffset: -start };
             return (
               <G key={k}>
-                <Circle {...common} stroke={BUCKETS[k].color} strokeOpacity={0.2} strokeDasharray={`${len} ${C - len}`} />
+                <Circle {...common} stroke={BUCKETS[k].color} strokeOpacity={0.22} strokeDasharray={`${len} ${C - len}`} />
                 {fill > 0 && <Circle {...common} stroke={col} strokeDasharray={`${fill} ${C - fill}`} />}
               </G>
             );

@@ -11,9 +11,15 @@ export function setupPwa() {
   const missing = (selector) => !document.head.querySelector(selector);
 
   // Fondo oscuro desde el primer pintado (evita destello blanco)
-  document.documentElement.style.backgroundColor = '#111A2B';
-  if (document.body) document.body.style.backgroundColor = '#111A2B';
+  document.documentElement.style.backgroundColor = '#0B1220';
+  if (document.body) document.body.style.backgroundColor = '#0B1220';
   if (missing('meta[name="color-scheme"]')) add('meta', { name: 'color-scheme', content: 'dark' });
+
+  // Tipografías del tema "Bóveda nocturna": Inter Tight (texto) e IBM Plex Mono (montos)
+  if (missing('link[data-fonts]')) {
+    add('link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' });
+    add('link', { rel: 'stylesheet', 'data-fonts': '1', href: 'https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap' });
+  }
 
   // Ícono de la pestaña del navegador
   const favicon = document.head.querySelector('link[rel~="icon"]');
@@ -26,7 +32,7 @@ export function setupPwa() {
   if (missing('meta[name="mobile-web-app-capable"]')) add('meta', { name: 'mobile-web-app-capable', content: 'yes' });
   if (missing('meta[name="apple-mobile-web-app-title"]')) add('meta', { name: 'apple-mobile-web-app-title', content: 'Finanzas' });
   if (missing('meta[name="apple-mobile-web-app-status-bar-style"]')) add('meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black' });
-  if (missing('meta[name="theme-color"]')) add('meta', { name: 'theme-color', content: '#111A2B' });
+  if (missing('meta[name="theme-color"]')) add('meta', { name: 'theme-color', content: '#0B1220' });
 
   if ('serviceWorker' in navigator) {
     const register = () => navigator.serviceWorker.register('/sw.js').catch(() => { });

@@ -12,11 +12,11 @@ export function Sidebar({ tab, setTab, onAdd, email, tabs = TABS }) {
   return (
     <View style={s.sidebar}>
       <Text style={s.brand}>Finanzas Personales</Text>
-      <Pressable ref={addRef} style={s.addBtn} onPress={onAdd}>
+      <Pressable accessibilityRole="button" ref={addRef} style={s.addBtn} onPress={onAdd}>
         <Text style={s.addBtnText}>+ Nuevo movimiento</Text>
       </Pressable>
       {tabs.map((item) => (
-        <Pressable key={item.key} ref={refs[item.key]} onPress={() => setTab(item.key)} style={[s.navItem, tab === item.key && s.navActive]}>
+        <Pressable accessibilityRole="button" key={item.key} ref={refs[item.key]} onPress={() => setTab(item.key)} style={[s.navItem, tab === item.key && s.navActive]}>
           <Text style={{ fontSize: 18, marginRight: 10 }}>{item.icon}</Text>
           <Text style={[s.navText, tab === item.key && { color: C.link, fontWeight: '600' }]}>{item.label}</Text>
         </Pressable>

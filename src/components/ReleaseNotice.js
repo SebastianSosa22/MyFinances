@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, Modal } from 'react-native';
 import { RELEASE } from '../constants/release';
+import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
 // Ventana de novedades. Si la versión trae pasos (RELEASE.steps), muestra también la guía y la dirección para reinstalar la app.
@@ -32,15 +33,15 @@ export function ReleaseNotice({ visible, onClose }) {
                   </View>
                 ))}
                 <View style={s.urlBox}>
-                  <Text selectable style={[s.body, { flex: 1, fontSize: 15, color: '#2D8A4E' }]}>{url}</Text>
-                  <Pressable onPress={copy} hitSlop={8}><Text style={s.link}>{copied ? '¡Copiado!' : 'Copiar'}</Text></Pressable>
+                  <Text selectable style={[s.body, { flex: 1, fontSize: 15, color: C.link }]}>{url}</Text>
+                  <Pressable accessibilityRole="button" onPress={copy} hitSlop={8}><Text style={s.link}>{copied ? '¡Copiado!' : 'Copiar'}</Text></Pressable>
                 </View>
                 {!!RELEASE.androidNote && <Text style={[s.caption, { paddingHorizontal: 0, marginTop: 8 }]}>{RELEASE.androidNote}</Text>}
               </>
             )}
             {!!RELEASE.note && <Text style={[s.caption, { paddingHorizontal: 0, marginTop: 12 }]}>{RELEASE.note}</Text>}
           </ScrollView>
-          <Pressable style={s.button} onPress={onClose}><Text style={s.buttonText}>Entendido</Text></Pressable>
+          <Pressable accessibilityRole="button" style={s.button} onPress={onClose}><Text style={s.buttonText}>Entendido</Text></Pressable>
         </View>
       </View>
     </Modal>

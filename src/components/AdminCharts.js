@@ -5,7 +5,7 @@ import { s } from '../theme/styles';
 
 // Piezas del panel de administrador: tarjetas de número, columnas por día/hora y barras horizontales
 
-export const TONE = { good: C.green, warn: C.orange, bad: C.red, info: '#5B9BFF' };
+export const TONE = { good: C.green, warn: C.orange, bad: C.red, info: C.blue };
 
 export function StatTile({ label, value, sub, tone }) {
   return (

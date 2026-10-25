@@ -21,10 +21,11 @@ const PATHS = {
   search: [<Circle key="a" cx="11" cy="11" r="8" />, <Line key="b" x1="21" y1="21" x2="16.65" y2="16.65" />],
   filter: [<Path key="a" d="M22 3H2l8 9.46V19l4 2v-8.54z" />],
   calendar: [<Rect key="a" x="3" y="4" width="18" height="18" rx="2" />, <Line key="b" x1="16" y1="2" x2="16" y2="6" />, <Line key="c" x1="8" y1="2" x2="8" y2="6" />, <Line key="d" x1="3" y1="10" x2="21" y2="10" />],
+  vault: [<Rect key="a" x="3" y="4" width="18" height="15" rx="2.5" />, <Circle key="b" cx="12" cy="11.5" r="3.5" />, <Path key="c" d="M12 8v1M12 14v1M15.5 11.5h-1M9.5 11.5h-1M6 19v2M18 19v2" />],
   x: [<Line key="a" x1="18" y1="6" x2="6" y2="18" />, <Line key="b" x1="6" y1="6" x2="18" y2="18" />],
 };
 
-export function Icon({ name, size = 22, color = '#fff', width = 2 }) {
+export function Icon({ name, size = 22, color = '#E8EDF5', width = 1.8 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round">
       {PATHS[name]}
