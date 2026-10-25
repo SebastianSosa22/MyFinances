@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Switch } from 'react-native';
 import { Card, Title } from './ui';
+import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
 const INSTALL_STEPS = [
@@ -8,7 +9,7 @@ const INSTALL_STEPS = [
   'Toca el botón Compartir (el cuadro con una flecha hacia arriba) en la barra de abajo.',
   'Desliza y toca "Añadir a pantalla de inicio", y confirma con "Añadir".',
   'Cierra Safari y abre la app desde el nuevo ícono "Finanzas".',
-  'Entra a Ajustes y toca "Activar notificaciones".',
+  'Entra a Ajustes y enciende "Notificaciones en este dispositivo".',
 ];
 
 function InstallGuide() {
@@ -32,31 +33,29 @@ const MESSAGES = {
   denied: 'Bloqueaste las notificaciones. Actívalas en Ajustes del iPhone > Notificaciones > Finanzas (en computadora, desde el candado del navegador).',
 };
 
-// Tarjeta de Ajustes para activar las notificaciones push de este dispositivo (solo web)
+// Tarjeta de Ajustes para activar o desactivar las notificaciones push de este dispositivo con un interruptor (solo web)
 export function PushCard({ push }) {
-  const { status, busy, error, enable, disable, test } = push;
+  const { status, busy, error, enable, disable } = push;
   if (status === 'loading') return null;
+  const canToggle = status === 'ready' || status === 'enabled';
+  const on = status === 'enabled';
   return (
     <>
       <Title>Notificaciones push</Title>
       {status === 'needs-install' ? <InstallGuide /> : (
-        <Card style={{ padding: 16 }}>
-          {MESSAGES[status] && <Text style={s.body}>{MESSAGES[status]}</Text>}
-          {status === 'ready' && (
-            <>
-              <Text style={s.body}>Recibe avisos de tus pagos y de tu ahorro en este dispositivo.</Text>
-              <Pressable style={[s.button, busy && { opacity: 0.6 }]} onPress={enable} disabled={busy}><Text style={s.buttonText}>{busy ? 'Un momento…' : 'Activar notificaciones'}</Text></Pressable>
-            </>
+        <Card>
+          {canToggle ? (
+            <View style={[s.row, { paddingVertical: 14 }]}>
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <Text style={s.body}>Notificaciones en este dispositivo</Text>
+                <Text style={[s.balanceSub, { marginTop: 3 }]}>{busy ? 'Un momento…' : on ? 'Elige qué avisos quieres en Recordatorios' : 'Avisos de tus pagos, tarjetas y ahorro'}</Text>
+              </View>
+              <Switch value={on} disabled={busy} onValueChange={(v) => (v ? enable() : disable())} trackColor={{ false: C.raisedHi, true: C.primary }} thumbColor="#fff" />
+            </View>
+          ) : (
+            MESSAGES[status] && <Text style={[s.body, { padding: 16 }]}>{MESSAGES[status]}</Text>
           )}
-          {status === 'enabled' && (
-            <>
-              <Text style={[s.body, { color: '#4ADE80' }]}>✓ Notificaciones activas en este dispositivo</Text>
-              <Text style={[s.caption, { paddingHorizontal: 0, marginTop: 4 }]}>Elige qué avisos quieres en la tarjeta Recordatorios.</Text>
-              <Pressable onPress={test} disabled={busy}><Text style={[s.link, { marginTop: 12 }]}>Enviar notificación de prueba</Text></Pressable>
-              <Pressable onPress={disable} disabled={busy}><Text style={[s.link, { color: '#F87171', marginTop: 12 }]}>Desactivar en este dispositivo</Text></Pressable>
-            </>
-          )}
-          {!!error && <Text style={[s.hint, { color: '#F87171' }]}>{error}</Text>}
+          {!!error && <Text style={[s.hint, { color: C.red, marginTop: 0, marginBottom: 14, paddingHorizontal: 16 }]}>{error}</Text>}
         </Card>
       )}
     </>

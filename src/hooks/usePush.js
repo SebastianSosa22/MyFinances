@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
-import { disablePush, enablePush, getPushStatus, showTestNotification, updatePushPrefs } from '../lib/push';
+import { disablePush, enablePush, getPushStatus, updatePushPrefs } from '../lib/push';
 import { track, trackError } from '../lib/analytics';
 
 // Estado y acciones de las notificaciones push (solo web). `prefs` son las preferencias de recordatorios.
@@ -24,7 +24,6 @@ export function usePush(prefs) {
   };
   const enable = () => run(async () => { setStatus(await enablePush(prefs)); track('push_enable'); });
   const disable = () => run(async () => { await disablePush(); setStatus('ready'); track('push_disable'); });
-  const test = () => run(showTestNotification);
 
-  return { status, busy, error, enable, disable, test };
+  return { status, busy, error, enable, disable };
 }
