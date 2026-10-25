@@ -72,7 +72,8 @@ export function spreadSpent(moves, from, to) {
 
 export function freqLabel(e) {
   const f = e.freq || 'once';
-  const ended = e.ends ? ' · terminó el ' + parseDay(e.ends).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';
+  // "terminó" si la fecha de fin ya pasó; "termina" si aún no llega (por ejemplo, una compra a MSI en curso)
+  const ended = e.ends ? (parseDay(e.ends) < midnight(new Date()) ? ' · terminó el ' : ' · termina el ') + parseDay(e.ends).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '';
   if (f === 'weekly') return 'Cada ' + DAYS[e.day] + ended;
   if (f === 'biweekly') return 'Cada 2 semanas' + ended;
   if (f === 'monthly') return 'Mensual · día ' + e.day + ended;

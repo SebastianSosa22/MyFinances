@@ -8,7 +8,7 @@ import { Segmented } from '../components/ui';
 import { CATS, DAYS, DAY_ORDER } from '../constants/budget';
 import { daysIn, midnight } from '../lib/dates';
 import { ACCOUNT_TYPES, accountBalance, isCredit } from '../lib/accounts';
-import { moveTitle, msiAdvance, msiPending, parseDay } from '../lib/finance';
+import { isActive, moveTitle, msiAdvance, msiPending, parseDay } from '../lib/finance';
 import { commas, isoLocal, money, shortDate } from '../lib/format';
 import { suggestFromNote } from '../lib/insights';
 import { KEPT, periodView } from '../lib/summary';
@@ -135,7 +135,7 @@ function AdvanceSheet({ visible, onClose, move, onApply }) {
         <Pressable style={s.stepBig} onPress={() => setK(Math.min(pending.length, k + 1))} accessibilityLabel="Más"><Text style={s.stepBigText}>+</Text></Pressable>
       </View>
       <Text style={[s.balanceSub, { textAlign: 'center', fontSize: 15 }]}>
-        {all ? 'Liquidas la compra hoy' : 'Te quedan ' + plan.left + (plan.left === 1 ? ' mensualidad' : ' mensualidades') + ', la última el ' + shortDate(plan.ends)}
+        {all ? 'Liquidas la compra hoy' : (plan.left === 1 ? 'Te queda 1 mensualidad' : 'Te quedan ' + plan.left + ' mensualidades') + ', la última el ' + shortDate(plan.ends)}
       </Text>
       <Pressable style={[s.saveBtn, { backgroundColor: C.primary, marginTop: 14 }]} onPress={() => onApply(k)}><Text style={s.saveBtnText}>Pagar hoy {money(plan.amount, true)}</Text></Pressable>
       {!all && <Pressable onPress={() => setK(pending.length)} style={{ marginTop: 14 }}><Text style={[s.link, { textAlign: 'center' }]}>Liquidar todo ({money(msiAdvance(move, pending.length).amount, true)})</Text></Pressable>}
@@ -389,9 +389,10 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
           {!!edit && (
             <View style={[s.chipsRow, { marginTop: 4 }]}>
               {pendingMsi > 0 && <Pressable onPress={() => setSheet('advance')} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>Adelantar pagos ({pendingMsi} {pendingMsi === 1 ? 'pendiente' : 'pendientes'})</Text></Pressable>}
-              {edit.freq && edit.freq !== 'once' && (edit.ends_at
+              {/* Reactivar solo si ya terminó; una compra a MSI con pagos pendientes se cierra con "Adelantar pagos", no con "Terminar" */}
+              {edit.freq && edit.freq !== 'once' && (!isActive(edit)
                 ? <Pressable onPress={reactivate} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>Reactivar (terminó el {parseDay(edit.ends_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })})</Text></Pressable>
-                : <Pressable onPress={endIt} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>{isIncome ? 'Terminar este ingreso' : 'Terminar este pago'}</Text></Pressable>)}
+                : !(pendingMsi > 0) && <Pressable onPress={endIt} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>{isIncome ? 'Terminar este ingreso' : 'Terminar este pago'}</Text></Pressable>)}
               <Pressable onPress={remove} style={s.fChip}><Text style={[s.fChipText, { color: C.red }]}>Borrar movimiento</Text></Pressable>
             </View>
           )}
