@@ -64,7 +64,7 @@ export function AccountSheet({ visible, account, onClose, onSave, onDelete }) {
         {a ? 'El saldo es el que tenías al registrar la cuenta; los movimientos desde ese día se suman o restan solos.' : 'Desde hoy, los movimientos que registres con esta cuenta se suman o restan solos.'}
       </Text>
       {!!a && (
-        <Pressable onPress={() => { onDelete(a.id); onClose(); }} style={{ marginTop: 18, marginBottom: 6 }}>
+        <Pressable accessibilityRole="button" onPress={() => { onDelete(a.id); onClose(); }} style={{ marginTop: 18, marginBottom: 6 }}>
           <Text style={[s.link, { color: C.red, textAlign: 'center' }]}>Borrar cuenta (sus movimientos se conservan)</Text>
         </Pressable>
       )}

@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Amount } from '../components/HomeCards';
-import { Icon } from '../components/Icon';
 import { SwipeRow } from '../components/SwipeRow';
 import { BUCKETS } from '../constants/budget';
 import { endOfDay, startOfMonth } from '../lib/dates';
@@ -12,7 +11,6 @@ import { KEPT, keptOf, monthlyNeedsAverage } from '../lib/summary';
 import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
-const PURPLE = '#A78BFA';
 const EMERGENCY_KEY = 'emergency_months';
 const EMERGENCY_OPTS = [3, 6, 12];
 const SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -58,99 +56,86 @@ export function SavingScreen({ moves, goals, onNewGoal, onEditGoal, onDeleteGoal
   const covered = data.needs > 0 ? data.total / data.needs : 0;
   const emPct = Math.min(Math.round((covered / emMonths) * 100), 100);
 
+  const fmt = (v) => money(Math.round(v));
   return (
     <>
-      <View style={[s.card, { padding: 18 }]}>
-        <Text style={s.balanceLabel}>Tus ahorros</Text>
-        <View style={{ marginTop: 4 }}><Amount value={data.total} size={40} /></View>
-        <Text style={[s.balanceSub, { fontSize: 15 }]}>
-          {data.count6} {data.count6 === 1 ? 'movimiento' : 'movimientos'} de ahorro en los últimos 6 meses
-        </Text>
-        <View style={s.barsRow}>
+      <View style={[s.panel, { padding: 20, gap: 16 }]}>
+        <View style={{ gap: 4 }}>
+          <Text style={s.eyebrow}>Tus ahorros</Text>
+          <Amount value={data.total} size={36} color={C.primary} fit />
+          <Text style={s.smallMuted}>{data.count6} {data.count6 === 1 ? 'movimiento' : 'movimientos'} de ahorro en los últimos 6 meses</Text>
+        </View>
+        {data.count6 > 0 ? <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: 112 }}>
           {data.months.map((x, i) => (
-            <View key={i} style={{ flex: 1, alignItems: 'center' }}>
-              <View style={{ height: 90, justifyContent: 'flex-end' }}>
-                <View style={[s.savingBar, { height: x.value > 0 ? Math.max(8, (x.value / max) * 90) : 3, backgroundColor: x.value > 0 ? PURPLE : C.raised }]} />
-              </View>
-              <Text style={[s.balanceSub, { marginTop: 8, fontSize: 15 }, i === 5 && { color: C.text, fontWeight: '700' }]}>{x.label}</Text>
+            <View key={i} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+              {x.value > 0 && <Text style={[s.rowAmount, { fontSize: 11, color: i === 5 ? C.text : C.muted }]} numberOfLines={1}>{fmt(x.value)}</Text>}
+              <View style={{ width: '100%', height: x.value > 0 ? Math.max(8, (x.value / max) * 64) : 3, borderRadius: 8, backgroundColor: i === 5 ? C.primary : '#1E3A30' }} />
+              <Text style={[s.tileLabel, i === 5 && { color: C.text, fontWeight: '600' }]}>{x.label}</Text>
             </View>
           ))}
-        </View>
+        </View> : <Text style={s.smallMuted}>Cuando registres un gasto en Ahorro o Inversión, aquí verás cuánto apartas cada mes.</Text>}
         {data.income > 0 && (
-          <Text style={[s.balanceSub, { fontSize: 15, marginTop: 16, lineHeight: 21 }]}>
-            Una referencia: con lo que entró este mes ({money(data.income, true)}), apartar el {BUCKETS.savings.pct}% serían{' '}
-            <Text style={{ color: C.text, fontWeight: '700' }}>{money(target, true)}</Text>. Llevas {money(data.keptMonth, true)}.
+          <Text style={s.smallMuted}>
+            Con lo que entró este mes ({fmt(data.income)}), apartar el {BUCKETS.savings.pct}% serían <Text style={[s.rowAmount, { fontSize: 13 }]}>{fmt(target)}</Text>. Llevas <Text style={[s.rowAmount, { fontSize: 13, color: C.primary }]}>{fmt(data.keptMonth)}</Text>.
           </Text>
         )}
       </View>
 
-      <View style={[s.balanceHead, { marginTop: 20, marginBottom: 0, paddingHorizontal: 4 }]}>
+      <View style={[s.panelHead, { alignItems: 'center', marginTop: 20 }]}>
         <Text style={[s.sectionBig, { marginTop: 0 }]}>Metas</Text>
-        <Pressable onPress={onNewGoal} hitSlop={8}><Text style={[s.link, s.purple, { fontWeight: '600' }]}>+ Nueva meta</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={onNewGoal} style={s.smallBtn}><Text style={[s.linkSm, { fontWeight: '600' }]}>+ Nueva meta</Text></Pressable>
       </View>
-      {goals.length === 0 ? (
-        <Pressable style={[s.card, s.dashed]} onPress={onNewGoal}>
-          <Text style={{ fontSize: 34, marginRight: 14 }}>🎯</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={s.miniTitle}>¿Para qué estás ahorrando?</Text>
-            <Text style={s.miniText}>Crea una meta y ve tu progreso cada que ahorras</Text>
-          </View>
-          <Text style={[s.plusText, s.purple, { fontSize: 30, marginLeft: 10 }]}>+</Text>
-        </Pressable>
-      ) : (
-        <View style={s.card}>
-          {goals.map((g, i) => <GoalRow key={g.id} goal={g} moves={moves} now={now} first={i === 0} onEdit={onEditGoal} onDelete={onDeleteGoal} onContribute={onContribute} />)}
-        </View>
-      )}
 
-      <View style={[s.card, { padding: 18 }]}>
-        <View style={s.balanceHead}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><Text style={{ fontSize: 22 }}>🛡️</Text><Text style={s.miniTitle}>Fondo de emergencia</Text></View>
-          <Pressable onPress={() => setEmOpen(!emOpen)} hitSlop={10} accessibilityLabel="Cambiar meta del fondo"><Text style={{ fontSize: 20 }}>⚙️</Text></Pressable>
+      <View style={[s.panel, { borderRadius: 20, gap: 10 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={[s.catBadge, { width: 42, height: 42, backgroundColor: C.greenSoft }]}><Text style={{ fontSize: 20 }}>🛡️</Text></View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[s.rowTitle, { fontWeight: '600' }]}>Fondo de emergencia</Text>
+            <Pressable accessibilityRole="button" onPress={() => setEmOpen(!emOpen)} hitSlop={8} accessibilityLabel="Cambiar meta del fondo"><Text style={s.rowSub}>{emMonths} meses de gastos ▾</Text></Pressable>
+          </View>
+          <Text style={[s.rowAmount, { fontWeight: '600', color: C.primary }]}>{emPct}%</Text>
         </View>
         {emOpen && (
-          <View style={[s.chipsRow, { marginBottom: 6 }]}>
+          <View style={s.wrapRow}>
             {EMERGENCY_OPTS.map((n) => (
-              <Pressable key={n} onPress={() => { setEmMonths(n); setEmOpen(false); }} style={[s.fChip, emMonths === n && { backgroundColor: PURPLE, borderColor: PURPLE }]}>
-                <Text style={[s.fChipText, emMonths === n && { color: '#fff', fontWeight: '600' }]}>{n} meses</Text>
+              <Pressable accessibilityRole="button" key={n} onPress={() => { setEmMonths(n); setEmOpen(false); }} style={[s.catChip, emMonths === n && s.catChipOn]}>
+                <Text style={[s.catChipText, emMonths === n && { fontWeight: '600' }]}>{n} meses</Text>
               </Pressable>
             ))}
           </View>
         )}
-        <View style={{ flexDirection: 'row', marginTop: 10 }}>
-          <View style={{ flex: 1 }}><Text style={s.balanceLabel}>Ahorrado</Text><Amount value={data.total} size={26} /></View>
-          <View style={s.balanceDivider} />
-          <View style={{ flex: 1, paddingLeft: 16 }}><Text style={s.balanceLabel}>Meta</Text><Text style={[s.amount, { fontSize: 26, color: C.text }]}>{emMonths} meses</Text></View>
-        </View>
-        <View style={[s.barBg, { height: 8, marginTop: 16 }]}><View style={{ width: emPct + '%', height: 8, borderRadius: 4, backgroundColor: PURPLE }} /></View>
-        <View style={[s.balanceHead, { marginTop: 10, marginBottom: 0 }]}>
-          <Text style={s.balanceLabel}>{data.needs > 0 ? covered.toFixed(1) + ' meses cubiertos' : 'Registra tus gastos para calcularlo'}</Text>
-          <Text style={[s.body, s.purple, { fontWeight: '600' }]}>{emPct}%</Text>
-        </View>
-        {data.needs > 0 && <Text style={[s.balanceSub, { fontSize: 13 }]}>Un mes = lo que gastas en Necesidades, unos {money(Math.round(data.needs))}. Meta: {money(Math.round(data.needs * emMonths))}.</Text>}
+        <View style={s.barBg}><View style={{ width: emPct + '%', height: 6, borderRadius: 3, backgroundColor: C.primary }} /></View>
+        <Text style={s.smallMuted}>
+          {data.needs > 0
+            ? <><Text style={[s.rowAmount, { fontSize: 13 }]}>{fmt(data.total)}<Text style={{ color: C.muted }}> / {fmt(data.needs * emMonths).slice(1)}</Text></Text> · {covered.toFixed(1)} meses cubiertos</>
+            : 'Registra tus gastos para calcularlo'}
+        </Text>
       </View>
 
+      {goals.length === 0 ? (
+        <Pressable accessibilityRole="button" style={[s.dashedCard, { marginTop: 12 }]} onPress={onNewGoal}>
+          <Text style={s.panelTitle}>🎯 ¿Para qué estás ahorrando?</Text>
+          <Text style={s.smallMuted}>Crea una meta y ve tu progreso cada que ahorras.</Text>
+        </Pressable>
+      ) : goals.map((g) => <GoalRow key={g.id} goal={g} moves={moves} now={now} onEdit={onEditGoal} onDelete={onDeleteGoal} onContribute={onContribute} />)}
+
       <Text style={s.sectionBig}>Movimientos</Text>
-      {data.list.length === 0 && <View style={[s.card, { padding: 16 }]}><Text style={[s.hint, { marginTop: 0 }]}>Aún no apartas nada. Registra un gasto en la categoría Ahorro o Inversión.</Text></View>}
-      {data.list.length > 0 && (
-        <View style={s.card}>
-          {data.list.map((m, i) => (
-            <Pressable key={m.id} style={[s.row, { paddingVertical: 14 }, i > 0 && s.sep]} onPress={() => onEditMove(m)}>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.body, { fontWeight: '600' }]} numberOfLines={1}>{m.note || m.cat}</Text>
-                <Text style={[s.balanceSub, { marginTop: 2 }]}>{shortDate(new Date(m.occurred_at))} {new Date(m.occurred_at).getFullYear()}{m.freq && m.freq !== 'once' ? ' · Recurrente' : ''}</Text>
-              </View>
-              <Amount value={m.amount} size={18} color={PURPLE} plus />
-              <View style={{ marginLeft: 6 }}><Icon name="chevron" size={18} color={C.muted} /></View>
-            </Pressable>
-          ))}
-        </View>
-      )}
+      {data.list.length === 0 && <Text style={[s.smallMuted, { marginTop: 6 }]}>Aún no apartas nada. Registra un gasto en la categoría Ahorro o Inversión.</Text>}
+      {data.list.map((m) => (
+        <Pressable accessibilityRole="button" key={m.id} style={s.listRow} onPress={() => onEditMove(m)}>
+          <View style={[s.catBadge, { backgroundColor: C.greenSoft }]}><Text style={{ fontSize: 16 }}>🐷</Text></View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={s.rowTitle} numberOfLines={1}>{m.note || m.cat}</Text>
+            <Text style={s.rowSub}>{shortDate(new Date(m.occurred_at))} {new Date(m.occurred_at).getFullYear()}{m.freq && m.freq !== 'once' ? ' · ↻ Recurrente' : ''}</Text>
+          </View>
+          <Text style={[s.rowAmount, { color: C.primary }]}>+{money(m.amount)}</Text>
+        </Pressable>
+      ))}
     </>
   );
 }
 
-function GoalRow({ goal: g, moves, now, first, onEdit, onDelete, onContribute }) {
+function GoalRow({ goal: g, moves, now, onEdit, onDelete, onContribute }) {
   const mine = moves.filter((m) => m.goal_id === g.id);
   const saved = mine.reduce((a, m) => a + m.amount, 0);
   const rem = Math.max(g.target - saved, 0), done = saved >= g.target;
@@ -164,17 +149,25 @@ function GoalRow({ goal: g, moves, now, first, onEdit, onDelete, onContribute })
   } else if (pace > 0) hint = 'A tu ritmo la alcanzas en ' + monthName(new Date(now.getTime() + (rem / pace) * 30.4 * 864e5));
   const pct = Math.min(Math.round((saved / g.target) * 100), 100);
   return (
-    <SwipeRow first={first} onDelete={() => onDelete(g.id)}>
-      <Pressable style={{ padding: 16 }} onPress={() => onEdit(g)}>
-        <View style={s.balanceHead}>
-          <Text style={[s.body, { fontWeight: '600', flex: 1 }]} numberOfLines={1}>🎯 {g.name}</Text>
-          <Text style={[s.body, s.purple, { fontWeight: '600' }]}>{pct}%</Text>
+    <SwipeRow card onDelete={() => onDelete(g.id)}>
+    <Pressable accessibilityRole="button" style={[s.panel, { borderRadius: 20, gap: 10, marginTop: 0 }]} onPress={() => onEdit(g)}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={[s.catBadge, { width: 42, height: 42, backgroundColor: '#1B2A44' }]}><Text style={{ fontSize: 20 }}>🎯</Text></View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[s.rowTitle, { fontWeight: '600' }]} numberOfLines={1}>{g.name}</Text>
+          <Text style={s.rowSub} numberOfLines={1}>{g.deadline ? 'Para el ' + new Date(g.deadline + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' }) : 'Sin fecha'}</Text>
         </View>
-        <View style={[s.barBg, { height: 8 }]}><View style={{ width: pct + '%', height: 8, borderRadius: 4, backgroundColor: PURPLE }} /></View>
-        <Text style={[s.balanceSub, { marginTop: 8 }]}>{money(saved)} de {money(g.target)}{!done ? ' · faltan ' + money(rem) : ''}</Text>
-        {!!hint && <Text style={[s.balanceSub, { marginTop: 2 }]}>{hint}</Text>}
-        {!done && <Pressable onPress={() => onContribute(g)} style={{ alignSelf: 'flex-start', marginTop: 10 }} hitSlop={8}><Text style={[s.link, s.purple, { fontWeight: '600' }]}>+ Aportar</Text></Pressable>}
-      </Pressable>
+        <Text style={[s.rowAmount, { fontWeight: '600', color: C.primary }]}>{pct}%</Text>
+      </View>
+      <View style={s.barBg}><View style={{ width: pct + '%', height: 6, borderRadius: 3, backgroundColor: done ? C.primary : C.blue }} /></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[s.rowAmount, { fontSize: 14 }]}>{money(saved)}<Text style={{ color: C.muted }}> / {money(g.target).slice(1)}</Text></Text>
+          {!!hint && <Text style={s.rowSub} numberOfLines={2}>{hint}</Text>}
+        </View>
+        {!done && <Pressable accessibilityRole="button" onPress={() => onContribute(g)} style={s.smallBtn} hitSlop={6}><Text style={[s.linkSm, { fontWeight: '600' }]}>+ Aportar</Text></Pressable>}
+      </View>
+    </Pressable>
     </SwipeRow>
   );
 }

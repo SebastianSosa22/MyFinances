@@ -1,10 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Delta } from '../components/Delta';
 import { Amount } from '../components/HomeCards';
-import { Icon } from '../components/Icon';
-import { MONTH, MonthNav } from '../components/MonthNav';
-import { Segmented } from '../components/ui';
+import { MONTH } from '../components/MonthNav';
+import { DeltaChip, MonthSwitch, Panel, ScreenHeader, Segmented, Tile } from '../components/ui';
 import { BUCKETS, CATS } from '../constants/budget';
 import { daysIn, endOfDay, startOfMonth } from '../lib/dates';
 import { bucketOf, calendarDays, isActive, isRecurring, moveTitle, report } from '../lib/finance';
@@ -61,85 +59,101 @@ export function AnalysisScreen({ moves, onAdd, onSeeDay, onSeeMoves }) {
   const isCurrent = month.getFullYear() === now.getFullYear() && month.getMonth() === now.getMonth();
   const pickMonth = (d) => { setMonth(d); setOpen(null); };
 
-  // Barra del mes: en gastos, cuánto de tus ingresos ya se fue
-  const ratio = isExp ? (cur.income > 0 ? Math.min(cur.spent / cur.income, 1) : 0) : 1;
-  const barColor = isExp ? (ratio >= 0.9 ? C.red : ratio >= 0.7 ? C.orange : C.primary) : C.primary;
-
   return (
     <>
-      <View style={s.screenHead}><Text style={s.screenTitle}>¿En qué gasto más?</Text></View>
-      <Segmented options={VIEWS} value={view} onChange={(v) => { setView(v); setOpen(null); }} style={s.segCard} />
+      <ScreenHeader title="Análisis" right={<MonthSwitch month={month} onMonth={pickMonth} min={oldest} max={startOfMonth(now)} />} />
+      <Segmented options={VIEWS} value={view} onChange={(v) => { setView(v); setOpen(null); }} style={{ marginTop: 10 }} />
 
-      <MonthNav month={month} onMonth={pickMonth} min={oldest} max={startOfMonth(now)} sub={isExp ? 'has gastado' : 'entraron'}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 14 }}>
-          <View style={{ flex: 1 }}><Amount value={total} size={40} fit /></View>
-          <Text style={[s.monthSub, { marginBottom: 6 }]}>{count} {count === 1 ? 'movimiento' : 'movimientos'}</Text>
+      {cats.length > 0 && <Panel>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10 }}>
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <Text style={s.smallMuted}>{isExp ? 'Tus gastos día por día' : 'Lo que entró en ' + MONTH(month).toLowerCase()}</Text>
+            <Amount value={total} size={28} fit />
+          </View>
+          <DeltaChip now={total} prev={isExp ? prev.spent : prev.income} upIsGood={!isExp} label={'vs. ' + MONTH(new Date(month.getFullYear(), month.getMonth() - 1, 1)).slice(0, 3).toLowerCase()} />
         </View>
-        {(isExp ? prev.spent : prev.income) > 0 && <Delta now={total} prev={isExp ? prev.spent : prev.income} upIsGood={!isExp} />}
-        {(total > 0 || isExp) && (
-          <>
-            <View style={s.progressBg}><View style={{ width: (ratio * 100) + '%', height: '100%', borderRadius: 5, backgroundColor: barColor }} /></View>
-            {isExp && cur.income > 0 && <Text style={[s.balanceSub, { marginTop: 8 }]}>{Math.round((cur.spent / cur.income) * 100)}% de lo que entró este mes</Text>}
-          </>
+        {isExp ? <DayBars data={cur} month={month} isCurrent={isCurrent} now={now} onSeeDay={onSeeDay} /> : (
+          <Text style={s.smallMuted}>{count} {count === 1 ? 'ingreso' : 'ingresos'} este mes</Text>
         )}
-      </MonthNav>
+      </Panel>}
 
       {cats.length > 0 ? (
-        <>
-          <Text style={s.sectionBig}>{isExp ? 'Tus gastos por categoría' : 'Tus ingresos por categoría'}</Text>
-          <View style={s.card}>
-            {cats.map((g, i) => {
-              const c = CATS.find((z) => z.name === g.name);
-              const color = isExp ? (BUCKETS[bucketOf(g.name)] || BUCKETS.wants).color : C.green;
-              const on = open === g.name;
-              return (
-                <View key={g.name} style={i > 0 && s.sep}>
-                  <Pressable style={[s.row, { paddingVertical: 14 }]} onPress={() => setOpen(on ? null : g.name)}>
-                    <View style={[s.iconBox, { borderLeftWidth: 3, borderLeftColor: color }]}><Text style={{ fontSize: 22 }}>{isExp ? (c ? c.icon : '🧾') : '💼'}</Text></View>
-                    <Text style={[s.body, { flex: 1 }]} numberOfLines={1}>{g.name}</Text>
-                    <Text style={[s.balanceLabel, { width: 44, textAlign: 'right', marginRight: 10 }]}>{Math.round((g.total / total) * 100)}%</Text>
-                    <Text style={[s.body, { fontWeight: '700', color: isExp ? C.text : C.green }]}>{isExp ? '' : '+'}{money(g.total, true)}</Text>
-                    <View style={{ marginLeft: 8 }}><Icon name={on ? 'chevronUp' : 'chevronDown'} size={18} color={C.muted} /></View>
-                  </Pressable>
-                  {on && g.rows.map((x, j) => (
-                    <View key={x.m.id + '-' + j} style={[s.row, s.sep, { paddingLeft: 70 }]}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[s.body, { fontSize: 15 }]} numberOfLines={1}>{moveTitle(x.m)}</Text>
-                        <Text style={[s.balanceSub, { marginTop: 2 }]}>{x.label}</Text>
-                      </View>
-                      <Text style={[s.body, { fontSize: 15 }]}>{money(Math.abs(x.amount), true)}</Text>
+        <Panel title={isExp ? '¿En qué gasto más?' : '¿De dónde entra tu dinero?'}>
+          {cats.map((g) => {
+            const color = isExp ? (BUCKETS[bucketOf(g.name)] || BUCKETS.wants).color : C.green;
+            const on = open === g.name;
+            const w = cats[0].total > 0 ? (g.total / cats[0].total) * 100 : 0;
+            return (
+              <View key={g.name} style={{ gap: 6 }}>
+                <Pressable accessibilityRole="button" onPress={() => setOpen(on ? null : g.name)} style={{ gap: 6 }} accessibilityLabel={'Ver movimientos de ' + g.name}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
+                    <Text style={[s.rowTitle, { fontSize: 14, flex: 1 }]} numberOfLines={1}>{g.name} <Text style={s.tileLabel}>{Math.round((g.total / total) * 100)}%</Text></Text>
+                    <Text style={[s.rowAmount, { fontSize: 14, color: isExp ? C.text : C.green }]}>{isExp ? '' : '+'}{money(Math.round(g.total))}</Text>
+                  </View>
+                  <View style={s.barBg}><View style={{ width: w + '%', height: 6, borderRadius: 3, backgroundColor: color }} /></View>
+                </Pressable>
+                {on && g.rows.map((x, j) => (
+                  <View key={x.m.id + '-' + j} style={[s.hintRow, { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }]}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={[s.rowTitle, { fontSize: 14 }]} numberOfLines={1}>{moveTitle(x.m)}</Text>
+                      <Text style={s.rowSub}>{x.label}</Text>
                     </View>
-                  ))}
-                </View>
-              );
-            })}
-          </View>
-          {isExp && cur.kept > 0 && <Text style={[s.balanceSub, { paddingHorizontal: 4 }]}>🐷 Además apartaste {money(cur.kept, true)} para ahorro o inversión (no cuenta como gasto).</Text>}
-        </>
+                    <Text style={[s.rowAmount, { fontSize: 13 }]}>{money(Math.abs(x.amount), true)}</Text>
+                  </View>
+                ))}
+              </View>
+            );
+          })}
+          {isExp && cur.kept > 0 && <Text style={s.smallMuted}>Además apartaste {money(cur.kept, true)} para ahorro o inversión (no cuenta como gasto).</Text>}
+        </Panel>
       ) : (
-        <Empty month={month} isExp={isExp} prevCats={isExp ? prev.expCats : prev.incCats} prevTotal={isExp ? prev.spent : prev.income} />
+        <Empty month={month} isExp={isExp} prevCats={isExp ? prev.expCats : prev.incCats} prevTotal={isExp ? prev.spent : prev.income} onAdd={onAdd} />
       )}
 
-      <View style={s.btnRow}>
-        <Pressable style={s.btnPrimary} onPress={onAdd}><Text style={s.btnText}>Agregar movimiento</Text></Pressable>
-        <Pressable style={[s.btnGhost, month <= oldest && { opacity: 0.35 }]} disabled={month <= oldest} onPress={() => pickMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
-          <Icon name="chevronLeft" size={18} color={C.text} /><Text style={s.btnText}>Mes anterior</Text>
-        </Pressable>
-      </View>
+      {isExp && cats.length > 0 && <Details moves={moves} data={cur} isCurrent={isCurrent} now={now} onSeeMoves={onSeeMoves} />}
+    </>
+  );
+}
 
-      {isExp && <Details moves={moves} month={month} data={cur} isCurrent={isCurrent} now={now} onSeeDay={onSeeDay} onSeeMoves={onSeeMoves} />}
+// Barras de gasto por día del mes, promedio diario y el día más alto
+function DayBars({ data, month, isCurrent, now, onSeeDay }) {
+  const y = month.getFullYear(), m = month.getMonth();
+  const total = daysIn(y, m);
+  const shownDays = isCurrent ? now.getDate() : total;
+  const vals = Object.values(data.byDay);
+  const max = Math.max(0, ...vals);
+  const topDay = Object.entries(data.byDay).sort((a, b) => b[1] - a[1])[0];
+  const ticks = [1, 8, 15, 22, shownDays].filter((d, i, a) => d <= shownDays && a.indexOf(d) === i);
+  return (
+    <>
+      <View style={s.dayBars}>
+        {Array.from({ length: shownDays }, (_, i) => {
+          const d = i + 1, v = data.byDay[d] || 0;
+          const h = max > 0 ? Math.max((v / max) * 100, v > 0 ? 6 : 2) : 2;
+          const color = d === shownDays && isCurrent ? C.primary : v === max && v > 0 ? C.orange : '#33405A';
+          return <Pressable accessibilityRole="button" key={d} style={{ flex: 1, height: '100%', justifyContent: 'flex-end' }} onPress={() => onSeeDay(isoLocal(new Date(y, m, d)))} accessibilityLabel={'Día ' + d}><View style={{ height: h + '%', borderTopLeftRadius: 3, borderTopRightRadius: 3, backgroundColor: color }} /></Pressable>;
+        })}
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        {ticks.map((d) => <Text key={d} style={[s.rowAmount, { fontSize: 11, color: C.muted }]}>{d}</Text>)}
+      </View>
+      <View style={s.tileRow}>
+        <Tile label="Promedio diario" value={money(Math.round(data.spent / Math.max(shownDays, 1)))} />
+        <Tile label={'Día más alto' + (topDay ? ' · ' + shortDate(new Date(y, m, Number(topDay[0]))) : '')} value={topDay ? money(Math.round(topDay[1])) : '—'} />
+      </View>
     </>
   );
 }
 
 // Mes sin movimientos: cómo se vio el mes anterior
-function Empty({ month, isExp, prevCats, prevTotal }) {
+function Empty({ month, isExp, prevCats, prevTotal, onAdd }) {
   return (
     <>
       <View style={{ alignItems: 'center', marginTop: 28 }}>
         <Text style={{ fontSize: 44 }}>📊</Text>
         <Text style={[s.sectionBig, { textAlign: 'center' }]}>Aún no hay {isExp ? 'gastos' : 'ingresos'} en {MONTH(month)}</Text>
-        {prevCats.length > 0 && <Text style={[s.balanceSub, { fontSize: 16, marginTop: 6 }]}>Así se vio el mes pasado:</Text>}
+        <Pressable accessibilityRole="button" style={[s.button, { alignSelf: 'stretch' }]} onPress={onAdd}><Text style={s.buttonText}>Agregar movimiento</Text></Pressable>
+        {prevCats.length > 0 && <Text style={[s.balanceSub, { fontSize: 16, marginTop: 14 }]}>Así se vio el mes pasado:</Text>}
       </View>
       {prevCats.slice(0, 5).map((g, i) => {
         const c = CATS.find((z) => z.name === g.name);
@@ -159,80 +173,38 @@ function Empty({ month, isExp, prevCats, prevTotal }) {
   );
 }
 
-// "Más a detalle": gasto día por día y tarjetas de suscripciones, lo que viene, gastos hormiga y ahorro
-function Details({ moves, month, data, isCurrent, now, onSeeDay, onSeeMoves }) {
-  const y = month.getFullYear(), m = month.getMonth();
-  const lead = (new Date(y, m, 1).getDay() + 6) % 7;
-  const total = daysIn(y, m);
-  const cells = [...Array(lead).fill(null), ...Array.from({ length: total }, (_, i) => i + 1)];
-  while (cells.length % 7) cells.push(null);
-  const vals = Object.values(data.byDay);
-  const max = Math.max(0, ...vals);
-  const topDay = Object.entries(data.byDay).sort((a, b) => b[1] - a[1])[0];
-  const daysCounted = isCurrent ? now.getDate() : total;
-
+// Tarjetas chicas: suscripciones, gastos hormiga, lo que viene y lo apartado
+function Details({ moves, data, isCurrent, now, onSeeMoves }) {
   const subs = moves.filter((x) => x.kind === 'expense' && x.cat === 'Suscripciones' && isRecurring(x) && isActive(x, now));
   const subsMonthly = subs.reduce((a, x) => a + x.amount * ({ weekly: 52 / 12, biweekly: 26 / 12, monthly: 1, yearly: 1 / 12 }[x.freq] || 1), 0);
   const coming = isCurrent ? pendingBills(moves, now, data.last) : 0;
   const ants = data.r.rows.filter((x) => x.amount < 0 && !isRecurring(x.m) && !KEPT.includes(x.m.cat) && -x.amount <= ANT);
   const antTotal = ants.reduce((a, x) => a - x.amount, 0);
-
   return (
     <>
-      <Text style={s.sectionBig}>Más a detalle</Text>
-      <Pressable style={[s.card, { padding: 16 }]} onPress={onSeeMoves}>
-        <View style={s.balanceHead}><Text style={s.miniTitle}>Tus gastos día por día</Text><Icon name="chevron" size={20} color={C.muted} /></View>
-        <View style={{ flexDirection: 'row', marginTop: 8, gap: 14 }}>
-          <View style={{ flex: 1.4 }}>
-            {Array.from({ length: cells.length / 7 }, (_, r) => (
-              <View key={r} style={{ flexDirection: 'row' }}>
-                {cells.slice(r * 7, r * 7 + 7).map((d, i) => {
-                  if (!d) return <View key={i} style={[s.heatCell, { backgroundColor: 'transparent' }]} />;
-                  const v = data.byDay[d] || 0, future = isCurrent && d > now.getDate();
-                  const alpha = v > 0 ? 0.25 + 0.75 * (v / max) : 0;
-                  return (
-                    <Pressable key={i} style={[s.heatCell, { backgroundColor: v > 0 ? 'rgba(74,222,128,' + alpha.toFixed(2) + ')' : future ? 'transparent' : C.raised, borderWidth: future ? 1 : 0, borderColor: C.border }]}
-                      onPress={() => onSeeDay(isoLocal(new Date(y, m, d)))} />
-                  );
-                })}
-              </View>
-            ))}
-            <View style={{ flexDirection: 'row' }}>{['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <Text key={i} style={[s.calWeekday, { marginTop: 4 }]}>{d}</Text>)}</View>
-          </View>
-          <View style={{ flex: 1 }}>
-            {vals.length === 0 ? <Text style={s.miniText}>Sin gastos este mes</Text> : (
-              <>
-                <Text style={s.miniText}>Promedio diario</Text>
-                <Text style={s.miniAmount}>{money(data.spent / daysCounted, true)}</Text>
-                <Text style={[s.miniText, { marginTop: 12 }]}>Día más alto</Text>
-                <Text style={s.miniAmount}>{money(topDay[1], true)}</Text>
-                <Text style={s.miniText}>{shortDate(new Date(y, m, Number(topDay[0])))}</Text>
-              </>
-            )}
-          </View>
-        </View>
-      </Pressable>
-
-      <View style={[s.btnRow, { marginTop: 12 }]}>
-        <MiniCard title="Suscripciones" value={subs.length ? money(subsMonthly, true) : null}
-          text={subs.length ? 'Al mes · ' + subs.length + (subs.length === 1 ? ' activa' : ' activas') : 'No hemos visto suscripciones'} />
-        <MiniCard title="Vienen este mes" value={coming > 0 ? money(coming, true) : null}
-          text={!isCurrent ? 'Este mes ya cerró' : coming > 0 ? 'Pagos fijos que faltan' : 'Nada más por pagar este mes'} />
-      </View>
-      <View style={[s.btnRow, { marginTop: 12 }]}>
-        <MiniCard title="Gastos hormiga" value={ants.length ? money(antTotal, true) : null}
+      <View style={[s.tileRow, { gap: 12, marginTop: 14 }]}>
+        <MiniCard title="Suscripciones" value={subs.length ? money(Math.round(subsMonthly)) : null} unit="/mes"
+          text={subs.length ? subs.length + (subs.length === 1 ? ' activa' : ' activas') : 'No hemos visto suscripciones'} />
+        <MiniCard title="Gastos hormiga" value={ants.length ? money(Math.round(antTotal)) : null} onPress={onSeeMoves}
           text={ants.length ? ants.length + (ants.length === 1 ? ' compra' : ' compras') + ' de ' + money(ANT) + ' o menos' : 'Ninguna compra de ' + money(ANT) + ' o menos'} />
-        <MiniCard title="Apartaste" value={data.kept > 0 ? money(data.kept, true) : null}
+      </View>
+      <View style={[s.tileRow, { gap: 12, marginTop: 12 }]}>
+        <MiniCard title="Vienen este mes" value={coming > 0 ? money(Math.round(coming)) : null}
+          text={!isCurrent ? 'Este mes ya cerró' : coming > 0 ? 'Pagos fijos que faltan' : 'Nada más por pagar'} />
+        <MiniCard title="Apartaste" value={data.kept > 0 ? money(Math.round(data.kept)) : null}
           text={data.kept > 0 ? 'Para ahorro o inversión' : 'Nada para ahorro este mes'} />
       </View>
     </>
   );
 }
 
-const MiniCard = ({ title, value, text }) => (
-  <View style={s.miniCard}>
-    <Text style={s.miniTitle}>{title}</Text>
-    {!!value && <Text style={s.miniAmount}>{value}</Text>}
-    <Text style={s.miniText}>{text}</Text>
-  </View>
-);
+const MiniCard = ({ title, value, unit, text, onPress }) => {
+  const body = (
+    <>
+      <Text style={s.tileLabel}>{title}</Text>
+      {!!value && <Text style={[s.statCardValue, { fontSize: 18 }]} numberOfLines={1}>{value}{!!unit && <Text style={[s.tileLabel, { fontSize: 12 }]}>{unit}</Text>}</Text>}
+      <Text style={s.tileLabel} numberOfLines={2}>{text}</Text>
+    </>
+  );
+  return onPress ? <Pressable accessibilityRole="button" style={s.statCard} onPress={onPress}>{body}</Pressable> : <View style={s.statCard}>{body}</View>;
+};

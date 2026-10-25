@@ -19,6 +19,17 @@ async function loadConfig() {
   return cfg;
 }
 
+// Solo se envía a servicios de notificaciones reales (la tabla también lo exige); evita que el servidor llame a URLs arbitrarias
+const PUSH_HOST = /^https:\/\/(fcm\.googleapis\.com|android\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]+\.push\.apple\.com|[a-z0-9.-]+\.notify\.windows\.com)\//;
+
+// Compara el secreto sin revelar por el tiempo de respuesta cuántos caracteres coinciden
+function sameSecret(a: string | null, b: string) {
+  const x = new TextEncoder().encode(a ?? ''), y = new TextEncoder().encode(b);
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < y.length; i++) diff |= (x[i] ?? 0) ^ y[i];
+  return diff === 0;
+}
+
 const DAY = 864e5;
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const money = (n: number) => '$' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -138,14 +149,14 @@ function buildMessages(sub: any, moves: any[], cycle: string, payDay: number, ac
 
 Deno.serve(async (req) => {
   let config;
-  try { config = await loadConfig(); } catch (e) { return new Response('config error: ' + (e instanceof Error ? e.message : String(e)), { status: 500 }); }
-  if (!config.cron || req.headers.get('x-cron-secret') !== config.cron) return new Response('unauthorized', { status: 401 });
+  try { config = await loadConfig(); } catch (e) { console.error('config error', e); return new Response('config error', { status: 500 }); }
+  if (!config.cron || !sameSecret(req.headers.get('x-cron-secret'), config.cron)) return new Response('unauthorized', { status: 401 });
   const body = await req.json().catch(() => ({}));
   const { data: subs, error } = await sb.from('push_subscriptions').select('*');
-  if (error) return new Response(error.message, { status: 500 });
+  if (error) { console.error(error); return new Response('db error', { status: 500 }); }
 
   const byUser = new Map<string, any[]>();
-  (subs ?? []).forEach((s) => byUser.set(s.user_id, [...(byUser.get(s.user_id) ?? []), s]));
+  (subs ?? []).filter((s) => PUSH_HOST.test(s.endpoint)).forEach((s) => byUser.set(s.user_id, [...(byUser.get(s.user_id) ?? []), s]));
 
   let sent = 0;
   for (const [userId, list] of byUser) {

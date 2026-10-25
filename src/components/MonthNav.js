@@ -18,8 +18,8 @@ export function MonthNav({ month, onMonth, min, max, sub, children }) {
       <View style={s.monthHead}>
         <Text style={s.monthTitle} numberOfLines={1}>{MONTH(month)}{year}{!!sub && <Text style={s.monthSub}> · {sub}</Text>}</Text>
         <View style={s.headerRight}>
-          <Pressable style={[s.navBtn, !canPrev && { opacity: 0.35 }]} disabled={!canPrev} onPress={() => onMonth(prev)} accessibilityLabel="Mes anterior"><Icon name="chevronLeft" size={20} color={C.text} /></Pressable>
-          <Pressable style={[s.navBtn, !canNext && { opacity: 0.35 }]} disabled={!canNext} onPress={() => onMonth(next)} accessibilityLabel="Mes siguiente"><Icon name="chevron" size={20} color={C.text} /></Pressable>
+          <Pressable accessibilityRole="button" style={[s.navBtn, !canPrev && { opacity: 0.35 }]} disabled={!canPrev} onPress={() => onMonth(prev)} accessibilityLabel="Mes anterior"><Icon name="chevronLeft" size={20} color={C.text} /></Pressable>
+          <Pressable accessibilityRole="button" style={[s.navBtn, !canNext && { opacity: 0.35 }]} disabled={!canNext} onPress={() => onMonth(next)} accessibilityLabel="Mes siguiente"><Icon name="chevron" size={20} color={C.text} /></Pressable>
         </View>
       </View>
       {children}

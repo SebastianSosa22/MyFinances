@@ -20,9 +20,9 @@ export function MonthCalendar({ month, onMonth, days, selected, onSelect }) {
   return (
     <View style={s.calWrap}>
       <View style={s.calHeader}>
-        <Pressable onPress={() => onMonth(new Date(y, m - 1, 1))} hitSlop={10}><Text style={s.calArrow}>‹</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => onMonth(new Date(y, m - 1, 1))} hitSlop={10}><Text style={s.calArrow}>‹</Text></Pressable>
         <Text style={s.calMonth}>{monthName(month)}</Text>
-        <Pressable onPress={() => onMonth(new Date(y, m + 1, 1))} hitSlop={10}><Text style={s.calArrow}>›</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => onMonth(new Date(y, m + 1, 1))} hitSlop={10}><Text style={s.calArrow}>›</Text></Pressable>
       </View>
       <View style={s.calRow}>
         {WEEK.map((d, i) => <Text key={i} style={s.calWeekday}>{d}</Text>)}
@@ -34,12 +34,12 @@ export function MonthCalendar({ month, onMonth, days, selected, onSelect }) {
             const key = isoLocal(new Date(y, m, d));
             const info = days[key], on = selected === key;
             return (
-              <Pressable key={i} style={s.calCell} onPress={() => onSelect(on ? null : key)}>
+              <Pressable accessibilityRole="button" key={i} style={s.calCell} onPress={() => onSelect(on ? null : key)}>
                 <View style={[s.calDay, info && s.calDayHas, key === today && s.calToday, on && s.calDayOn]}>
-                  <Text style={[s.calNum, !info && { color: C.muted }, on && { color: '#fff', fontWeight: '700' }]}>{d}</Text>
+                  <Text style={[s.calNum, !info && { color: C.muted }, on && { color: C.onPrimary, fontWeight: '700' }]}>{d}</Text>
                   <View style={s.calDots}>
-                    {info && info.inc > 0 && <View style={[s.calDot, { backgroundColor: on ? '#fff' : C.green }]} />}
-                    {info && info.exp > 0 && <View style={[s.calDot, { backgroundColor: on ? '#fff' : C.red }]} />}
+                    {info && info.inc > 0 && <View style={[s.calDot, { backgroundColor: on ? C.onPrimary : C.green }]} />}
+                    {info && info.exp > 0 && <View style={[s.calDot, { backgroundColor: on ? C.onPrimary : C.red }]} />}
                   </View>
                 </View>
               </Pressable>

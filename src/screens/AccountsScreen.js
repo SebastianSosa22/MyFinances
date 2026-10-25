@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Amount, HIDDEN } from '../components/HomeCards';
-import { Icon } from '../components/Icon';
-import { Bar, Title } from '../components/ui';
+import { Bar } from '../components/ui';
 import { ACCOUNT_TYPES, accountBalance, accountLabel, accountsSummary, isCredit, nextMonthDay, transferSign } from '../lib/accounts';
 import { asExp, freqLabel, isRecurring, moveTitle } from '../lib/finance';
 import { money, shortDate } from '../lib/format';
@@ -14,17 +13,17 @@ export function AccountRow({ row, hide, first, onPress }) {
   const { a } = row;
   const fmt = (v) => (hide ? HIDDEN : money(v, true));
   return (
-    <Pressable style={[s.row, { paddingVertical: 14 }, !first && s.sep]} onPress={onPress}>
-      <View style={[s.catIcon, { width: 44, height: 44, marginRight: 12 }]}><Text style={{ fontSize: 22 }}>{ACCOUNT_TYPES[a.type].icon}</Text></View>
+    <Pressable accessibilityRole="button" style={[s.row, { paddingVertical: 12, paddingHorizontal: 14, gap: 12 }, !first && s.formSep]} onPress={onPress}>
+      <View style={[s.catBadge, { width: 40, height: 40, backgroundColor: isCredit(a) ? '#3A1F26' : a.type === 'cash' ? '#13362A' : '#1B2A44' }]}><Text style={{ fontSize: 18 }}>{ACCOUNT_TYPES[a.type].icon}</Text></View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={s.body} numberOfLines={1}>{a.name}</Text>
-        <Text style={[s.balanceSub, { marginTop: 2 }]} numberOfLines={1}>{ACCOUNT_TYPES[a.type].label}{a.last4 ? ' · •••• ' + a.last4 : ''}</Text>
+        <Text style={s.rowTitle} numberOfLines={1}>{a.name}{a.last4 ? ' •••• ' + a.last4 : ''}</Text>
+        <Text style={s.rowSub} numberOfLines={1}>{isCredit(a) ? 'Deuda actual' + (a.cut_day ? ' · corte día ' + a.cut_day : '') : 'Saldo'}</Text>
       </View>
       <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
         {isCredit(a)
-          ? <><Text style={[s.body, { fontWeight: '600', color: row.debt > 0 ? C.red : C.text }]}>{row.debt > 0 ? '−' : ''}{fmt(Math.abs(row.debt))}</Text>
-            {row.available != null && <Text style={[s.balanceSub, { marginTop: 2 }]}>disp. {fmt(row.available)}</Text>}</>
-          : <Text style={[s.body, { fontWeight: '600', color: row.balance < 0 ? C.red : C.text }]}>{fmt(row.balance)}</Text>}
+          ? <><Text style={[s.rowAmount, { color: row.debt > 0 ? C.red : C.text }]}>{row.debt > 0 ? '−' : ''}{fmt(Math.abs(row.debt))}</Text>
+            {row.available != null && <Text style={s.rowSub}>disp. {fmt(row.available)}</Text>}</>
+          : <Text style={[s.rowAmount, { color: row.balance < 0 ? C.red : C.text }]}>{fmt(row.balance)}</Text>}
       </View>
     </Pressable>
   );
@@ -54,15 +53,13 @@ function AccountDetail({ a, accounts, moves, transfers, hide, onBack, onEdit, on
   const used = isCredit(a) && a.credit_limit ? b.debt + b.msiLeft : 0;
   return (
     <>
-      <View style={s.screenHead}>
-        <Pressable onPress={onBack} hitSlop={10} style={{ flexDirection: 'row', alignItems: 'center' }} accessibilityLabel="Regresar a cuentas">
-          <Icon name="chevronLeft" size={22} color={C.link} /><Text style={s.link}>Cuentas</Text>
-        </Pressable>
-        <Pressable onPress={onEdit} hitSlop={10}><Text style={s.link}>Editar</Text></Pressable>
+      <View style={[s.panelHead, { alignItems: 'center' }]}>
+        <Pressable accessibilityRole="button" onPress={onBack} hitSlop={10} style={{ paddingVertical: 6 }} accessibilityLabel="Regresar a cuentas"><Text style={[s.linkSm, { fontSize: 15 }]}>‹ Cuentas</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={onEdit} hitSlop={10}><Text style={[s.linkSm, { fontSize: 15 }]}>Editar</Text></Pressable>
       </View>
       <Text style={s.screenTitle} numberOfLines={2}>{accountLabel(a)}</Text>
-      <View style={[s.card, { padding: 16 }]}>
-        <Text style={s.balanceLabel}>{isCredit(a) ? 'Deuda actual' : 'Saldo'}</Text>
+      <View style={[s.panel, { gap: 6 }]}>
+        <Text style={s.eyebrow}>{isCredit(a) ? 'Deuda actual' : 'Saldo'}</Text>
         <Amount value={isCredit(a) ? b.debt : b.balance} size={36} hide={hide} color={isCredit(a) ? (b.debt > 0 ? C.red : C.text) : b.balance < 0 ? C.red : C.text} fit />
         {isCredit(a) && a.credit_limit > 0 && (
           <>
@@ -81,28 +78,28 @@ function AccountDetail({ a, accounts, moves, transfers, hide, onBack, onEdit, on
           </View>
         )}
       </View>
-      <View style={[s.chipsRow, { marginTop: 4 }]}>
+      <View style={[s.tileRow, { marginTop: 12 }]}>
         {isCredit(a)
-          ? <Pressable onPress={() => onTransfer({ from: payFrom ? payFrom.id : null, to: a.id })} style={[s.fChip, s.fChipOn]}><Text style={[s.fChipText, { color: '#fff', fontWeight: '600' }]}>Pagar tarjeta</Text></Pressable>
-          : others.length > 0 && <Pressable onPress={() => onTransfer({ from: a.id })} style={[s.fChip, s.fChipOn]}><Text style={[s.fChipText, { color: '#fff', fontWeight: '600' }]}>Transferir</Text></Pressable>}
-        <Pressable onPress={() => onAdjust(a)} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>Ajustar saldo</Text></Pressable>
+          ? <Pressable accessibilityRole="button" onPress={() => onTransfer({ from: payFrom ? payFrom.id : null, to: a.id })} style={[s.ghostBtn, s.actionBtn, { backgroundColor: C.primary, borderColor: C.primary }]}><Text style={[s.panelTitle, { fontSize: 14, color: C.onPrimary }]}>Pagar tarjeta</Text></Pressable>
+          : others.length > 0 && <Pressable accessibilityRole="button" onPress={() => onTransfer({ from: a.id })} style={[s.ghostBtn, s.actionBtn, { backgroundColor: C.primary, borderColor: C.primary }]}><Text style={[s.panelTitle, { fontSize: 14, color: C.onPrimary }]}>⇄ Transferir</Text></Pressable>}
+        <Pressable accessibilityRole="button" onPress={() => onAdjust(a)} style={[s.ghostBtn, s.actionBtn]}><Text style={[s.panelTitle, { fontSize: 14, color: C.link }]}>Ajustar saldo</Text></Pressable>
       </View>
-      <Title>Historial de la cuenta</Title>
-      <View style={s.card}>
-        {list.length === 0 && <Text style={[s.hint, { marginBottom: 16 }]}>Al registrar un gasto o ingreso, elige esta cuenta para verlo aquí.</Text>}
+      <Text style={[s.sectionTitle, { marginLeft: 2 }]}>Historial de la cuenta · {ACCOUNT_TYPES[a.type].label}</Text>
+      <View style={[s.formList, { paddingHorizontal: 0, borderRadius: 18 }]}>
+        {list.length === 0 && <Text style={[s.smallMuted, { padding: 16 }]}>Al registrar un gasto o ingreso, elige esta cuenta para verlo aquí.</Text>}
         {list.map(({ key, m, t }, i) => {
           // Para la cuenta, + es dinero que entra (en crédito: la deuda baja)
           const sign = m ? (m.kind === 'income' ? 1 : -1) : transferSign(t, a.id);
           const amt = m ? m.amount : t.amount;
           return (
-            <Pressable key={key} style={[s.row, i > 0 && s.sep]} onPress={() => (m ? onEditMove(m) : onEditTransfer(t))}>
+            <Pressable accessibilityRole="button" key={key} style={[s.row, { paddingHorizontal: 14, gap: 10 }, i > 0 && s.formSep]} onPress={() => (m ? onEditMove(m) : onEditTransfer(t))}>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={s.body} numberOfLines={1}>{m ? moveTitle(m) : transferTitle(t, a.id, accounts)}</Text>
-                <Text style={[s.balanceSub, { marginTop: 2 }]} numberOfLines={1}>
+                <Text style={[s.rowTitle, { fontSize: 14 }]} numberOfLines={1}>{m ? moveTitle(m) : transferTitle(t, a.id, accounts)}</Text>
+                <Text style={s.rowSub} numberOfLines={1}>
                   {m ? (isRecurring(m) ? freqLabel(asExp(m)) : shortDate(new Date(m.occurred_at))) : shortDate(new Date(t.occurred_at)) + (t.note && t.kind !== 'adjust' ? ' · ' + t.note : ' · no es gasto ni ingreso')}
                 </Text>
               </View>
-              <Text style={[s.body, { fontWeight: '600', color: sign > 0 ? C.green : C.text }]}>{hide ? HIDDEN : (sign > 0 ? '+' : '−') + money(amt, true)}</Text>
+              <Text style={[s.rowAmount, { fontSize: 14, color: sign > 0 ? C.green : C.text }]}>{hide ? HIDDEN : (sign > 0 ? '+' : '−') + money(amt, true)}</Text>
             </Pressable>
           );
         })}
@@ -122,39 +119,46 @@ export function AccountsScreen({ accounts, moves, transfers, hide, onBack, onNew
       onEditMove={onEditMove} onTransfer={onTransfer} onEditTransfer={onEditTransfer} onAdjust={onAdjust} />;
   }
 
+  const fmt = (v) => (hide ? HIDDEN : money(Math.round(v)));
+  const card = sum.rows.find((r) => isCredit(r.a) && r.debt > 0);
+  const debit = sum.rows.find((r) => !isCredit(r.a));
   return (
     <>
-      <View style={s.screenHead}>
-        <Pressable onPress={onBack} hitSlop={10} style={{ flexDirection: 'row', alignItems: 'center' }} accessibilityLabel="Regresar al inicio">
-          <Icon name="chevronLeft" size={22} color={C.link} /><Text style={s.link}>Inicio</Text>
-        </Pressable>
-      </View>
+      <Pressable accessibilityRole="button" onPress={onBack} hitSlop={10} style={{ alignSelf: 'flex-start', paddingVertical: 6 }} accessibilityLabel="Regresar al inicio">
+        <Text style={[s.linkSm, { fontSize: 15 }]}>‹ Inicio</Text>
+      </Pressable>
       <Text style={s.screenTitle}>Tus cuentas</Text>
       {sum.rows.length > 0 && (
-        <View style={[s.card, s.balanceCard]}>
-          <View style={s.balanceHalf}>
-            <Text style={s.balanceLabel}>Dinero disponible</Text>
-            <Amount value={sum.cash} size={28} hide={hide} color={sum.cash < 0 ? C.red : C.text} fit />
+        <>
+          <View style={[s.tileRow, { gap: 12, marginTop: 14 }]}>
+            <View style={s.statCard}>
+              <Text style={s.tileLabel}>Dinero disponible</Text>
+              <Text style={[s.statCardValue, { fontSize: 22 }, sum.cash < 0 && { color: C.red }]} numberOfLines={1}>{fmt(sum.cash)}</Text>
+            </View>
+            <View style={s.statCard}>
+              <Text style={s.tileLabel}>Deuda en tarjetas</Text>
+              <Text style={[s.statCardValue, { fontSize: 22, color: sum.debt > 0 ? C.red : C.text }]} numberOfLines={1}>{fmt(sum.debt)}</Text>
+            </View>
           </View>
-          <View style={s.balanceDivider} />
-          <View style={s.balanceHalf}>
-            <Text style={s.balanceLabel}>Deuda en tarjetas</Text>
-            <Amount value={sum.debt} size={28} hide={hide} color={sum.debt > 0 ? C.red : C.text} fit />
-          </View>
-        </View>
+          {(sum.rows.length > 1 || !!card) && (
+            <View style={[s.tileRow, { marginTop: 12 }]}>
+              {sum.rows.length > 1 && <Pressable accessibilityRole="button" style={[s.ghostBtn, s.actionBtn]} onPress={() => onTransfer({})}><Text style={[s.panelTitle, { fontSize: 14 }]}>⇄ Transferir</Text></Pressable>}
+              {!!card && <Pressable accessibilityRole="button" style={[s.ghostBtn, s.actionBtn]} onPress={() => onTransfer({ from: debit ? debit.a.id : null, to: card.a.id })}><Text style={[s.panelTitle, { fontSize: 14 }]}>💳 Pagar tarjeta</Text></Pressable>}
+            </View>
+          )}
+        </>
       )}
-      <View style={s.card}>
+      <View style={[s.formList, { paddingHorizontal: 0, marginTop: 14, borderRadius: 20 }]}>
         {sum.rows.length === 0 && (
-          <View style={{ padding: 16 }}>
-            <Text style={[s.body, { fontWeight: '600' }]}>Registra tus tarjetas y tu efectivo</Text>
-            <Text style={s.balanceSub}>Así sabes cuánto tienes en cada cuenta y cuánto debes en tus tarjetas de crédito.</Text>
+          <View style={{ padding: 16, gap: 4 }}>
+            <Text style={s.panelTitle}>Registra tus tarjetas y tu efectivo</Text>
+            <Text style={s.smallMuted}>Así sabes cuánto tienes en cada cuenta y cuánto debes en tus tarjetas de crédito.</Text>
           </View>
         )}
         {sum.rows.map((r, i) => <AccountRow key={r.a.id} row={r} hide={hide} first={i === 0} onPress={() => setOpenId(r.a.id)} />)}
       </View>
-      <Pressable style={[s.addBtn, { marginTop: 16 }]} onPress={onNew}><Text style={s.addBtnText}>+ Agregar cuenta</Text></Pressable>
-      {sum.rows.length > 1 && <Pressable onPress={() => onTransfer({})} style={{ marginBottom: 16 }}><Text style={[s.link, { textAlign: 'center' }]}>Transferir entre cuentas</Text></Pressable>}
-      <Text style={[s.balanceSub, { textAlign: 'center' }]}>🔒 Solo guardamos el nombre y, si quieres, los últimos 4 dígitos. Nunca el número completo ni el CVV.</Text>
+      <Pressable accessibilityRole="button" style={s.outlineBtn} onPress={onNew}><Text style={[s.panelTitle, { fontSize: 15 }]}>+ Agregar cuenta</Text></Pressable>
+      <Text style={[s.smallMuted, { textAlign: 'center', marginTop: 14 }]}>🔒 Solo guardamos el nombre y, si quieres, los últimos 4 dígitos. Nunca el número completo ni el CVV.</Text>
     </>
   );
 }

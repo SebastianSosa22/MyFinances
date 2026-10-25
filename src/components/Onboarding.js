@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, Modal, TextInput } from 'react-nativ
 import { Segmented } from './ui';
 import { CYCLES, DAYS, DAY_ORDER, DEFAULT_SPLIT, SPLITS } from '../constants/budget';
 import { cleanAmount, showAmount } from '../lib/format';
+import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
 // Asistente de bienvenida: cada persona cuenta cómo cobra y la app se adapta (ciclo, día de cobro, ingreso y reparto)
@@ -30,8 +31,8 @@ export function Onboarding({ visible, onDone, onSkip }) {
                 <Text style={[s.body, { fontWeight: '600', marginTop: 16 }]}>¿Qué día cobras?</Text>
                 <View style={{ flexDirection: 'row', marginTop: 8 }}>
                   {DAY_ORDER.map((d) => (
-                    <Pressable key={d} onPress={() => setPayDay(d)} style={[s.dayChip, payDay === d && { backgroundColor: '#2D8A4E' }]}>
-                      <Text style={[s.chipText, { fontSize: 13 }, payDay === d && { color: '#fff' }]}>{DAYS[d]}</Text>
+                    <Pressable accessibilityRole="button" key={d} onPress={() => setPayDay(d)} style={[s.dayChip, payDay === d && { backgroundColor: C.primary }]}>
+                      <Text style={[s.chipText, { fontSize: 13 }, payDay === d && { color: C.onPrimary }]}>{DAYS[d]}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -41,9 +42,9 @@ export function Onboarding({ visible, onDone, onSkip }) {
               <View style={s.stepper}>
                 <Text style={s.body}>Cobras el día</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Pressable style={s.stepBtn} onPress={() => setMday(mday <= 1 ? 31 : mday - 1)}><Text style={s.stepText}>−</Text></Pressable>
+                  <Pressable accessibilityRole="button" style={s.stepBtn} onPress={() => setMday(mday <= 1 ? 31 : mday - 1)}><Text style={s.stepText}>−</Text></Pressable>
                   <Text style={[s.body, { width: 36, textAlign: 'center', fontWeight: '600' }]}>{mday}</Text>
-                  <Pressable style={s.stepBtn} onPress={() => setMday(mday >= 31 ? 1 : mday + 1)}><Text style={s.stepText}>+</Text></Pressable>
+                  <Pressable accessibilityRole="button" style={s.stepBtn} onPress={() => setMday(mday >= 31 ? 1 : mday + 1)}><Text style={s.stepText}>+</Text></Pressable>
                 </View>
               </View>
             )}
@@ -57,8 +58,8 @@ export function Onboarding({ visible, onDone, onSkip }) {
             <Segmented options={SPLITS} value={split} onChange={setSplit} />
             <Text style={[s.caption, { paddingHorizontal: 0, marginTop: 6 }]}>{SPLITS[split].hint} Necesidades / Deseos / Ahorro.</Text>
           </ScrollView>
-          <Pressable style={s.button} onPress={() => onDone({ cycle, payDay, mday, split, amount: n > 0 ? n : 0 })}><Text style={s.buttonText}>Empezar</Text></Pressable>
-          <Pressable onPress={onSkip}><Text style={[s.link, { textAlign: 'center', marginTop: 14, fontSize: 15 }]}>Omitir por ahora</Text></Pressable>
+          <Pressable accessibilityRole="button" style={s.button} onPress={() => onDone({ cycle, payDay, mday, split, amount: n > 0 ? n : 0 })}><Text style={s.buttonText}>Empezar</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={onSkip}><Text style={[s.link, { textAlign: 'center', marginTop: 14, fontSize: 15 }]}>Omitir por ahora</Text></Pressable>
         </View>
       </View>
     </Modal>

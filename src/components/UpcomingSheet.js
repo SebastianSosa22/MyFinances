@@ -10,8 +10,8 @@ export function UpcomingSheet({ visible, items, hide, onClose }) {
   const total = items.reduce((a, u) => a + u.m.amount, 0);
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <Pressable style={s.noticeOverlay} onPress={onClose}>
-        <Pressable style={s.noticeCard} onPress={() => {}}>
+      <Pressable accessibilityRole="button" style={s.noticeOverlay} onPress={onClose}>
+        <Pressable accessibilityRole="button" style={s.noticeCard} onPress={() => {}}>
           <Text style={s.noticeTitle}>Próximos 7 días</Text>
           {items.length === 0 && <Text style={[s.body, { fontSize: 15, marginTop: 10, color: C.muted }]}>No tienes pagos fijos ni de tarjeta en los próximos 7 días.</Text>}
           <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={false}>
@@ -35,7 +35,7 @@ export function UpcomingSheet({ visible, items, hide, onClose }) {
               <Text style={[s.body, { fontWeight: '600' }]}>{hide ? '$•••' : money(total, true)}</Text>
             </View>
           )}
-          <Pressable style={s.button} onPress={onClose}><Text style={s.buttonText}>Listo</Text></Pressable>
+          <Pressable accessibilityRole="button" style={s.button} onPress={onClose}><Text style={s.buttonText}>Listo</Text></Pressable>
         </Pressable>
       </Pressable>
     </Modal>

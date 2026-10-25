@@ -2,13 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, Modal, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet, OptionRow } from '../components/BottomSheet';
-import { Icon } from '../components/Icon';
 import { WheelBand, WheelColumn } from '../components/WheelPicker';
 import { Segmented } from '../components/ui';
-import { CATS, DAYS, DAY_ORDER } from '../constants/budget';
+import { BUCKETS, CATS, DAYS, DAY_ORDER } from '../constants/budget';
 import { daysIn, midnight } from '../lib/dates';
 import { ACCOUNT_TYPES, accountBalance, isCredit } from '../lib/accounts';
-import { isActive, moveTitle, msiAdvance, msiPending, parseDay } from '../lib/finance';
+import { bucketOf, isActive, moveTitle, msiAdvance, msiPending, parseDay } from '../lib/finance';
 import { commas, isoLocal, money, shortDate } from '../lib/format';
 import { suggestFromNote } from '../lib/insights';
 import { KEPT, periodView } from '../lib/summary';
@@ -28,6 +27,8 @@ const DEFAULT_ORDER = ['Comida', 'Compras', 'Transporte', 'Servicios', 'Restaura
 const TABS = { expense: { label: 'Gasto' }, income: { label: 'Ingreso' }, saving: { label: 'Ahorro' } };
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del'];
 const MSI_OPTS = [3, 6, 9, 12, 18, 24];
+// Opciones rápidas de ¿Se repite? (Cada 2 semanas sigue en la hoja con todas las opciones)
+const QUICK_REPEATS = { once: 'Una vez', weekly: 'Semanal', monthly: 'Mensual', yearly: 'Anual' };
 const REPEATS = { once: 'No se repite', weekly: 'Cada semana', biweekly: 'Cada 2 semanas', monthly: 'Cada mes', yearly: 'Cada año' };
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -51,27 +52,27 @@ function RepeatSheet({ visible, onClose, freq, setFreq, wday, setWday, mday, set
       {freq === 'weekly' && (
         <View style={{ flexDirection: 'row', marginTop: 8 }}>
           {DAY_ORDER.map((d) => (
-            <Pressable key={d} onPress={() => setWday(d)} style={[s.dayChip, wday === d && { backgroundColor: C.primary }]}>
-              <Text style={[s.chipText, { fontSize: 13 }, wday === d && { color: '#fff' }]}>{DAYS[d]}</Text>
+            <Pressable accessibilityRole="button" key={d} onPress={() => setWday(d)} style={[s.dayChip, wday === d && { backgroundColor: C.primary }]}>
+              <Text style={[s.chipText, { fontSize: 13 }, wday === d && { color: C.onPrimary }]}>{DAYS[d]}</Text>
             </Pressable>
           ))}
         </View>
       )}
       {freq === 'monthly' && (
         <View style={s.stepperBig}>
-          <Pressable style={s.stepBig} onPress={() => setMday(mday <= 1 ? 31 : mday - 1)}><Text style={s.stepBigText}>−</Text></Pressable>
+          <Pressable accessibilityRole="button" style={s.stepBig} onPress={() => setMday(mday <= 1 ? 31 : mday - 1)}><Text style={s.stepBigText}>−</Text></Pressable>
           <Text style={[s.body, { fontWeight: '600', fontSize: 18 }]}>El día {mday} de cada mes</Text>
-          <Pressable style={s.stepBig} onPress={() => setMday(mday >= 31 ? 1 : mday + 1)}><Text style={s.stepBigText}>+</Text></Pressable>
+          <Pressable accessibilityRole="button" style={s.stepBig} onPress={() => setMday(mday >= 31 ? 1 : mday + 1)}><Text style={s.stepBigText}>+</Text></Pressable>
         </View>
       )}
-      <Pressable style={[s.saveBtn, { backgroundColor: C.primary, marginTop: 16 }]} onPress={onClose}><Text style={s.saveBtnText}>Listo</Text></Pressable>
+      <Pressable accessibilityRole="button" style={[s.saveBtn, { backgroundColor: C.primary, marginTop: 16 }]} onPress={onClose}><Text style={s.saveBtnText}>Listo</Text></Pressable>
     </BottomSheet>
   );
 }
 
 const QuickDay = ({ label, value, date, setDate }) => (
-  <Pressable onPress={() => setDate(value)} style={[s.fChip, sameDay(date, value) && s.fChipOn]}>
-    <Text style={[s.fChipText, sameDay(date, value) && { color: '#fff', fontWeight: '600' }]}>{label}</Text>
+  <Pressable accessibilityRole="button" onPress={() => setDate(value)} style={[s.fChip, sameDay(date, value) && s.fChipOn]}>
+    <Text style={[s.fChipText, sameDay(date, value) && { color: C.onPrimary, fontWeight: '600' }]}>{label}</Text>
   </Pressable>
 );
 
@@ -94,7 +95,7 @@ function DateSheet({ visible, onClose, date, setDate }) {
         <WheelColumn items={MONTHS} index={m} onChange={(i) => set(y, i, d)} flex={1.6} />
         <WheelColumn items={years.map(String)} index={Math.max(years.indexOf(y), 0)} onChange={(i) => set(years[i], m, d)} flex={1} />
       </View>
-      <Pressable style={[s.saveBtn, { backgroundColor: C.primary, marginTop: 16 }]} onPress={onClose}><Text style={s.saveBtnText}>Listo</Text></Pressable>
+      <Pressable accessibilityRole="button" style={[s.saveBtn, { backgroundColor: C.primary, marginTop: 16 }]} onPress={onClose}><Text style={s.saveBtnText}>Listo</Text></Pressable>
     </BottomSheet>
   );
 }
@@ -106,17 +107,17 @@ function MsiSheet({ visible, onClose, value, onApply, amount }) {
     <BottomSheet visible={visible} onClose={onClose} title="Meses sin intereses" subtitle="¿A cuántos meses?">
       <View style={s.chipsRow}>
         {MSI_OPTS.map((k) => (
-          <Pressable key={k} onPress={() => setN(k)} style={[s.msiChip, n === k && s.fChipOn]}><Text style={[s.fChipText, { fontWeight: '600' }, n === k && { color: '#fff' }]}>{k}</Text></Pressable>
+          <Pressable accessibilityRole="button" key={k} onPress={() => setN(k)} style={[s.msiChip, n === k && s.fChipOn]}><Text style={[s.fChipText, { fontWeight: '600' }, n === k && { color: C.onPrimary }]}>{k}</Text></Pressable>
         ))}
       </View>
       <View style={s.stepperBig}>
-        <Pressable style={s.stepBig} onPress={() => setN(Math.max(2, n - 1))}><Text style={s.stepBigText}>−</Text></Pressable>
+        <Pressable accessibilityRole="button" style={s.stepBig} onPress={() => setN(Math.max(2, n - 1))}><Text style={s.stepBigText}>−</Text></Pressable>
         <Text style={[s.body, { fontWeight: '600', fontSize: 18 }]}>{n} meses</Text>
-        <Pressable style={s.stepBig} onPress={() => setN(Math.min(48, n + 1))}><Text style={s.stepBigText}>+</Text></Pressable>
+        <Pressable accessibilityRole="button" style={s.stepBig} onPress={() => setN(Math.min(48, n + 1))}><Text style={s.stepBigText}>+</Text></Pressable>
       </View>
       {amount > 0 && <Text style={[s.balanceSub, { textAlign: 'center', fontSize: 15 }]}>{money(round2(amount / n), true)} al mes durante {n} meses</Text>}
-      <Pressable style={[s.saveBtn, { backgroundColor: C.primary, marginTop: 14 }]} onPress={() => onApply(n)}><Text style={s.saveBtnText}>Poner a {n} meses</Text></Pressable>
-      {!!value && <Pressable onPress={() => onApply(null)} style={{ marginTop: 14 }}><Text style={[s.link, { textAlign: 'center', color: C.red }]}>Quitar meses sin intereses</Text></Pressable>}
+      <Pressable accessibilityRole="button" style={[s.saveBtn, { backgroundColor: C.primary, marginTop: 14 }]} onPress={() => onApply(n)}><Text style={s.saveBtnText}>Poner a {n} meses</Text></Pressable>
+      {!!value && <Pressable accessibilityRole="button" onPress={() => onApply(null)} style={{ marginTop: 14 }}><Text style={[s.link, { textAlign: 'center', color: C.red }]}>Quitar meses sin intereses</Text></Pressable>}
     </BottomSheet>
   );
 }
@@ -130,15 +131,15 @@ function AdvanceSheet({ visible, onClose, move, onApply }) {
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Adelantar pagos" subtitle={pending.length + (pending.length === 1 ? ' mensualidad pendiente' : ' mensualidades pendientes') + ' de ' + money(move.amount, true)}>
       <View style={s.stepperBig}>
-        <Pressable style={s.stepBig} onPress={() => setK(Math.max(1, k - 1))} accessibilityLabel="Menos"><Text style={s.stepBigText}>−</Text></Pressable>
+        <Pressable accessibilityRole="button" style={s.stepBig} onPress={() => setK(Math.max(1, k - 1))} accessibilityLabel="Menos"><Text style={s.stepBigText}>−</Text></Pressable>
         <Text style={[s.body, { fontWeight: '600', fontSize: 18 }]}>{k} {k === 1 ? 'mensualidad' : 'mensualidades'}</Text>
-        <Pressable style={s.stepBig} onPress={() => setK(Math.min(pending.length, k + 1))} accessibilityLabel="Más"><Text style={s.stepBigText}>+</Text></Pressable>
+        <Pressable accessibilityRole="button" style={s.stepBig} onPress={() => setK(Math.min(pending.length, k + 1))} accessibilityLabel="Más"><Text style={s.stepBigText}>+</Text></Pressable>
       </View>
       <Text style={[s.balanceSub, { textAlign: 'center', fontSize: 15 }]}>
         {all ? 'Liquidas la compra hoy' : (plan.left === 1 ? 'Te queda 1 mensualidad' : 'Te quedan ' + plan.left + ' mensualidades') + ', la última el ' + shortDate(plan.ends)}
       </Text>
-      <Pressable style={[s.saveBtn, { backgroundColor: C.primary, marginTop: 14 }]} onPress={() => onApply(k)}><Text style={s.saveBtnText}>Pagar hoy {money(plan.amount, true)}</Text></Pressable>
-      {!all && <Pressable onPress={() => setK(pending.length)} style={{ marginTop: 14 }}><Text style={[s.link, { textAlign: 'center' }]}>Liquidar todo ({money(msiAdvance(move, pending.length).amount, true)})</Text></Pressable>}
+      <Pressable accessibilityRole="button" style={[s.saveBtn, { backgroundColor: C.primary, marginTop: 14 }]} onPress={() => onApply(k)}><Text style={s.saveBtnText}>Pagar hoy {money(plan.amount, true)}</Text></Pressable>
+      {!all && <Pressable accessibilityRole="button" onPress={() => setK(pending.length)} style={{ marginTop: 14 }}><Text style={[s.link, { textAlign: 'center' }]}>Liquidar todo ({money(msiAdvance(move, pending.length).amount, true)})</Text></Pressable>}
     </BottomSheet>
   );
 }
@@ -154,7 +155,7 @@ function AccountPickSheet({ visible, title, accounts, selected, onPick, onClose,
     <BottomSheet visible={visible} onClose={onClose} title={title}>
       <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
         {accounts.map((a, i) => (
-          <Pressable key={a.id} style={[s.row, { paddingHorizontal: 0, paddingVertical: 14 }, i > 0 && s.sep]} onPress={() => onPick(a.id)}>
+          <Pressable accessibilityRole="button" key={a.id} style={[s.row, { paddingHorizontal: 0, paddingVertical: 14 }, i > 0 && s.sep]} onPress={() => onPick(a.id)}>
             <Text style={{ fontSize: 24, marginRight: 12 }}>{ACCOUNT_TYPES[a.type].icon}</Text>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={[s.body, { fontSize: 18 }]} numberOfLines={1}>{a.name}{a.last4 ? ' •••• ' + a.last4 : ''}</Text>
@@ -163,7 +164,7 @@ function AccountPickSheet({ visible, title, accounts, selected, onPick, onClose,
             {selected === a.id && <Text style={{ color: C.link, fontSize: 20 }}>✓</Text>}
           </Pressable>
         ))}
-        <Pressable style={[s.row, s.sep, { paddingHorizontal: 0, paddingVertical: 14 }]} onPress={() => onPick(null)}>
+        <Pressable accessibilityRole="button" style={[s.row, s.sep, { paddingHorizontal: 0, paddingVertical: 14 }]} onPress={() => onPick(null)}>
           <Text style={[s.body, { flex: 1, fontSize: 18, color: C.muted }]}>Sin cuenta</Text>
           {!selected && <Text style={{ color: C.link, fontSize: 20 }}>✓</Text>}
         </Pressable>
@@ -180,7 +181,7 @@ function AllCats({ visible, cats, selected, onPick, onClose }) {
       <ScrollView style={{ maxHeight: 520 }} showsVerticalScrollIndicator={false}>
         <View style={s.catGrid}>
           {sorted.map((c) => (
-            <Pressable key={c.name} style={s.catCell} onPress={() => onPick(c.name)}>
+            <Pressable accessibilityRole="button" key={c.name} style={s.catCell} onPress={() => onPick(c.name)}>
               <View style={[s.catIcon, selected === c.name && s.catIconOn]}><Text style={{ fontSize: 28 }}>{c.icon}</Text></View>
               <Text style={[s.catLabel, selected === c.name && { color: C.text, fontWeight: '600' }]} numberOfLines={1}>{c.name}</Text>
             </Pressable>
@@ -249,7 +250,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
   const payAccounts = accounts.filter((a) => (!a.archived && (!msi || isCredit(a))) || a.id === (edit && edit.account_id));
   const account = accounts.find((a) => a.id === accountId) || null;
   const applyMsi = (v) => { setMsi(v); if (v && account && !isCredit(account)) setAccountId(null); setSheet(null); };
-  const pickCat = (name) => { setCat(name); setError(''); setSheet(null); };
+  const pickCat = (name) => { setCat(name); setError(''); setSheet(null); setPad(false); };
   const setDate = (d) => { setTouchedDate(true); setDateRaw(midnight(d)); };
 
   // Hoy guarda la hora actual; otro día se guarda a mediodía
@@ -300,119 +301,134 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
 
   const [int, dec] = amount.split('.');
   const recurring = freq !== 'once';
-  const saveLabel = !(n > 0) ? 'Escribe un monto' : (edit ? 'Guardar cambios' : 'Guardar ' + TABS[kind].label.toLowerCase()) + ' · ' + money(n, true);
+  const saveLabel = !(n > 0) ? 'Escribe un monto' : edit ? 'Guardar cambios' : 'Guardar ' + TABS[kind].label.toLowerCase();
+
+  // Chip de categoría con el punto de color de su parte del presupuesto
+  const catChip = (c, on, onPress, dot) => (
+    <Pressable accessibilityRole="button" accessibilityState={{ selected: !!on }} key={c.name} onPress={onPress} style={[s.catChip, on && s.catChipOn]}>
+      {!!dot && <View style={[s.catDot, { backgroundColor: dot }]} />}
+      <Text style={[s.catChipText, on && { fontWeight: '600' }]} numberOfLines={1}>{c.icon} {c.name}</Text>
+    </Pressable>
+  );
+  const pickRepeat = (k) => {
+    setFreq(k);
+    if (k === 'weekly' || k === 'monthly') setSheet('repeat'); // elige el día
+  };
+  const repeatOpts = Object.entries(QUICK_REPEATS).filter(([k]) => !(isIncome && k === 'yearly'));
+  const repeatDetail = recurring ? REPEATS[freq] + (freq === 'monthly' ? ', día ' + mday : freq === 'weekly' ? ', ' + DAYS[wday] : '') : '';
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={[s.addScreen, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }]}>
+      <View style={[s.addScreen, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 12 }]}>
+        <View style={s.grabber} />
         <View style={s.addHead}>
-          <Pressable style={s.avatar} onPress={onClose} accessibilityLabel="Cerrar"><Icon name="x" size={22} /></Pressable>
-          <Text style={s.addTitle}>{edit ? 'Editar movimiento' : 'Nuevo movimiento'}</Text>
+          <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10} accessibilityLabel="Cerrar" style={{ width: 80, paddingVertical: 8 }}><Text style={[s.smallMuted, { fontSize: 15 }]}>Cancelar</Text></Pressable>
+          <Text style={[s.panelTitle, { flex: 1, textAlign: 'center' }]} numberOfLines={1}>{edit ? 'Editar movimiento' : 'Nuevo movimiento'}</Text>
+          <View style={{ width: 80 }} />
         </View>
-        {!edit && <Segmented options={TABS} value={kind} onChange={switchKind} style={s.segCard} />}
+        {!edit && <Segmented options={TABS} value={kind} onChange={switchKind} style={{ marginTop: 12 }} />}
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <Pressable onPress={() => (pad ? setPad(false) : openPad())} accessibilityLabel="Escribir el monto">
-            <Text style={[s.addAmount, !amount && !pad && { color: C.muted }]} numberOfLines={1} adjustsFontSizeToFit>
-              <Text style={s.addDollar}>$</Text>{commas(int || '0')}{amount.includes('.') ? '.' + (dec || '') : ''}{pad && <Text style={{ color: C.link, fontWeight: '300' }}>|</Text>}
-            </Text>
-            {!pad && <Text style={[s.balanceSub, { textAlign: 'center', marginTop: 0, marginBottom: 8 }]}>{amount ? 'Toca para cambiar el monto' : 'Toca para escribir el monto'}</Text>}
-          </Pressable>
-          {!!error && <Text style={[s.hint, { color: C.red, marginTop: 0 }]}>{error}</Text>}
-          {/* Cuenta del movimiento: arriba y siempre a la vista */}
-          {payAccounts.length > 0 && (
-            <Pressable onPress={() => setSheet('account')} style={[s.fChip, s.optChip, { alignSelf: 'center', marginTop: 0, marginBottom: 8 }, account && { borderColor: C.link }]} accessibilityLabel="Elegir cuenta">
-              <Text style={[s.fChipText, account && { fontWeight: '600' }]} numberOfLines={1}>
-                {(isIncome ? 'Entra a ' : 'Desde ') + (account ? ACCOUNT_TYPES[account.type].icon + ' ' + account.name + (account.last4 ? ' ' + account.last4 : '') : 'ninguna cuenta')}
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 8, gap: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={{ alignItems: 'center', gap: 4, paddingTop: 10 }}>
+            <Pressable accessibilityRole="button" onPress={() => (pad ? setPad(false) : openPad())} accessibilityLabel="Escribir el monto" style={{ alignSelf: 'stretch' }}>
+              <Text style={[s.addAmount, { marginTop: 0 }, !amount && !pad && { color: C.muted }]} numberOfLines={1} adjustsFontSizeToFit>
+                ${commas(int || '0')}{amount.includes('.') ? '.' + (dec || '') : ''}<Text style={{ color: C.link, fontWeight: '300', opacity: pad ? 1 : 0 }}>|</Text>
               </Text>
-              <Icon name="chevronDown" size={16} color={C.muted} />
             </Pressable>
-          )}
-          {!error && (
-            <View style={s.leftPill}>
-              <Text style={s.leftPillText}>{left >= 0 ? 'Este mes te quedan ' + money(left, true) : 'Este mes vas ' + money(-left, true) + ' arriba'}</Text>
-            </View>
-          )}
-
-          {isSaving ? (
-            <>
-              <View style={s.chipsRow}>
-                {SAVE_CATS.map((c) => <Pressable key={c.name} onPress={() => pickCat(c.name)} style={[s.fChip, cat === c.name && s.fChipOn]}><Text style={[s.fChipText, cat === c.name && { color: '#fff', fontWeight: '600' }]}>{c.icon} {c.name}</Text></Pressable>)}
-              </View>
-              <View style={s.chipsRow}>
-                <Pressable onPress={() => setGoalId(null)} style={[s.fChip, !goalId && s.fChipOn]}><Text style={[s.fChipText, !goalId && { color: '#fff', fontWeight: '600' }]}>Sin meta</Text></Pressable>
-                {activeGoals.map((g) => <Pressable key={g.id} onPress={() => setGoalId(g.id)} style={[s.fChip, goalId === g.id && s.fChipOn]}><Text style={[s.fChipText, goalId === g.id && { color: '#fff', fontWeight: '600' }]}>🎯 {g.name}</Text></Pressable>)}
-              </View>
-            </>
-          ) : (
-            <View style={s.quickRow}>
-              {quick.map((c) => (
-                <Pressable key={c.name} style={s.quickCell} onPress={() => pickCat(c.name)}>
-                  <View style={[s.catIcon, cat === c.name && s.catIconOn]}><Text style={{ fontSize: 28 }}>{c.icon}</Text></View>
-                  <Text style={[s.catLabel, cat === c.name && { color: C.text, fontWeight: '600' }]} numberOfLines={1}>{c.name}</Text>
-                </Pressable>
-              ))}
-              <Pressable style={s.quickCell} onPress={() => setSheet('cats')}>
-                <View style={[s.catIcon, s.catMore]}><Text style={{ fontSize: 22, color: C.text }}>•••</Text></View>
-                <Text style={s.catLabel}>Más</Text>
-              </Pressable>
-            </View>
-          )}
-
-          <View style={[s.chipsRow, { alignItems: 'center' }]}>
-            <Pressable onPress={() => setSheet('date')} style={[s.fChip, s.optChip]}>
-              <Text style={s.fChipText}>{recurring || msi ? 'Desde ' + dateLabel.toLowerCase() : dateLabel}</Text><Icon name="chevronDown" size={16} color={C.muted} />
-            </Pressable>
-            {kind === 'expense' && !edit && !recurring && (
-              <Pressable onPress={() => setSheet('msi')} style={[s.fChip, msi && s.fChipOn]}>
-                <Text style={[s.fChipText, msi && { color: '#fff', fontWeight: '600' }]}>{msi ? msi + ' MSI' + (n > 0 ? ' · ' + money(round2(n / msi), true) + '/mes' : '') : '+ Meses sin intereses'}</Text>
+            <TextInput style={s.noteInput} placeholder={isIncome ? '¿De dónde vino? (opcional)' : '¿En qué fue? (opcional)'} placeholderTextColor="#5D6A80" value={note} onChangeText={setNote} maxLength={80} returnKeyType="done" onFocus={() => setPad(false)} accessibilityLabel="Descripción" />
+            {!!suggestion && (suggestion.cat !== cat || (suggestion.amount && !amount)) && (
+              <Pressable accessibilityRole="button" onPress={() => { setCat(suggestion.cat); setError(''); if (!amount && suggestion.amount) setAmount(String(suggestion.amount)); }} style={[s.catChip, { borderColor: C.link }]}>
+                <Text style={[s.catChipText, { color: C.link }]}>💡 {sugCat ? sugCat.icon : ''} {suggestion.cat}{suggestion.amount ? ' · ' + money(suggestion.amount) : ''}{suggestion.source === 'historial' ? ' (como la última vez)' : ''}</Text>
               </Pressable>
             )}
-            {!msi && (
-              <Pressable onPress={() => setSheet('repeat')} style={[s.fChip, recurring && s.fChipOn]}>
-                <Text style={[s.fChipText, recurring && { color: '#fff', fontWeight: '600' }]}>{recurring ? REPEATS[freq] + (freq === 'monthly' ? ' · día ' + mday : freq === 'weekly' ? ' · ' + DAYS[wday] : '') : '+ Se repite'}</Text>
+            {!!error && <Text style={[s.hint, { color: C.red, marginTop: 4 }]}>{error}</Text>}
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <Text style={s.eyebrow}>{isSaving ? '¿Dónde lo guardas?' : isIncome ? 'Tipo de ingreso' : 'Categoría'}</Text>
+            <View style={s.wrapRow}>
+              {isSaving
+                ? SAVE_CATS.map((c) => catChip(c, cat === c.name, () => pickCat(c.name), BUCKETS.savings.color))
+                : quick.map((c) => catChip(c, cat === c.name, () => pickCat(c.name), isIncome ? null : (BUCKETS[bucketOf(c.name)] || {}).color))}
+              {!isSaving && <Pressable accessibilityRole="button" onPress={() => setSheet('cats')} style={[s.catChip, s.catChipMore]}><Text style={[s.catChipText, { color: C.muted }]}>Ver todas</Text></Pressable>}
+            </View>
+            {isSaving && (
+              <View style={s.wrapRow}>
+                {catChip({ name: 'Sin meta', icon: '' }, !goalId, () => setGoalId(null))}
+                {activeGoals.map((g) => catChip({ name: g.name, icon: '🎯' }, goalId === g.id, () => setGoalId(g.id)))}
+              </View>
+            )}
+            <View style={s.hintRow}>
+              <Text style={s.smallMuted}>{left >= 0 ? 'Este mes te quedan ' : 'Este mes vas '}<Text style={[s.rowAmount, { fontSize: 13 }]}>{money(Math.abs(left), true)}</Text>{left >= 0 ? '' : ' arriba'}</Text>
+            </View>
+          </View>
+
+          {!msi && (
+            <View style={{ gap: 8 }}>
+              <Text style={s.eyebrow}>¿Se repite?</Text>
+              <View style={[s.tileRow, { gap: 6 }]}>
+                {repeatOpts.map(([k, label]) => {
+                  const on = k === 'once' ? !recurring : freq === k;
+                  return (
+                    <Pressable accessibilityRole="button" accessibilityState={{ selected: on }} key={k} onPress={() => pickRepeat(k)} style={[s.repeatOpt, on && s.repeatOptOn]}>
+                      <Text style={[s.catChipText, on && { color: C.onPrimary, fontWeight: '700' }]} numberOfLines={1}>{label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          <View style={s.formList}>
+            {payAccounts.length > 0 && (
+              <Pressable accessibilityRole="button" style={s.formRow} onPress={() => setSheet('account')} accessibilityLabel="Elegir cuenta">
+                <Text style={s.formLabel}>Cuenta</Text>
+                <Text style={s.formValue} numberOfLines={1}>{account ? ACCOUNT_TYPES[account.type].icon + ' ' + account.name + (account.last4 ? ' ' + account.last4 : '') : 'Sin cuenta'} ›</Text>
+              </Pressable>
+            )}
+            <Pressable accessibilityRole="button" style={[s.formRow, payAccounts.length > 0 && s.formSep]} onPress={() => setSheet('date')}>
+              <Text style={s.formLabel}>Fecha</Text>
+              <Text style={s.formValue} numberOfLines={1}>{recurring || msi ? 'Desde ' + dateLabel.toLowerCase() : dateLabel}{recurring ? ' · ' + repeatDetail : ''} ›</Text>
+            </Pressable>
+            {kind === 'expense' && !edit && !recurring && (
+              <Pressable accessibilityRole="button" style={[s.formRow, s.formSep]} onPress={() => setSheet('msi')}>
+                <Text style={s.formLabel}>Meses sin intereses</Text>
+                <Text style={[s.formValue, msi && { color: C.link }]} numberOfLines={1}>{msi ? msi + ' MSI' + (n > 0 ? ' · ' + money(round2(n / msi), true) + '/mes' : '') : 'No'} ›</Text>
               </Pressable>
             )}
           </View>
 
           {!!account && isCredit(account) && account.credit_limit > 0 && kind === 'expense' && !edit && n > 0 && (
-            <Text style={[s.balanceSub, { marginTop: 8 }]}>Te quedarían {money(accountBalance(account, moves || [], transfers).available - n, true)} de crédito disponible en {account.name}</Text>
-          )}
-
-          <TextInput style={[s.input, { backgroundColor: C.card, marginTop: 12 }]} placeholder={isIncome ? '¿De dónde vino? (opcional)' : '¿En qué fue? (opcional)'} placeholderTextColor={C.muted} value={note} onChangeText={setNote} maxLength={80} returnKeyType="done" onFocus={() => setPad(false)} />
-          {!!suggestion && (suggestion.cat !== cat || (suggestion.amount && !amount)) && (
-            <Pressable onPress={() => { setCat(suggestion.cat); setError(''); if (!amount && suggestion.amount) setAmount(String(suggestion.amount)); }} style={[s.fChip, { alignSelf: 'flex-start', backgroundColor: C.hero, borderColor: C.hero }]}>
-              <Text style={[s.fChipText, { color: C.link }]}>💡 {sugCat ? sugCat.icon : ''} {suggestion.cat}{suggestion.amount ? ' · ' + money(suggestion.amount) : ''}{suggestion.source === 'historial' ? ' (como la última vez)' : ''}</Text>
-            </Pressable>
+            <Text style={s.smallMuted}>Te quedarían {money(accountBalance(account, moves || [], transfers).available - n, true)} de crédito disponible en {account.name}</Text>
           )}
 
           {!!edit && (
-            <View style={[s.chipsRow, { marginTop: 4 }]}>
-              {pendingMsi > 0 && <Pressable onPress={() => setSheet('advance')} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>Adelantar pagos ({pendingMsi} {pendingMsi === 1 ? 'pendiente' : 'pendientes'})</Text></Pressable>}
+            <View style={s.wrapRow}>
+              {pendingMsi > 0 && <Pressable accessibilityRole="button" onPress={() => setSheet('advance')} style={s.catChip}><Text style={[s.catChipText, { color: C.link }]}>Adelantar pagos ({pendingMsi} {pendingMsi === 1 ? 'pendiente' : 'pendientes'})</Text></Pressable>}
               {/* Reactivar solo si ya terminó; una compra a MSI con pagos pendientes se cierra con "Adelantar pagos", no con "Terminar" */}
               {edit.freq && edit.freq !== 'once' && (!isActive(edit)
-                ? <Pressable onPress={reactivate} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>Reactivar (terminó el {parseDay(edit.ends_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })})</Text></Pressable>
-                : !(pendingMsi > 0) && <Pressable onPress={endIt} style={s.fChip}><Text style={[s.fChipText, { color: C.link }]}>{isIncome ? 'Terminar este ingreso' : 'Terminar este pago'}</Text></Pressable>)}
-              <Pressable onPress={remove} style={s.fChip}><Text style={[s.fChipText, { color: C.red }]}>Borrar movimiento</Text></Pressable>
+                ? <Pressable accessibilityRole="button" onPress={reactivate} style={s.catChip}><Text style={[s.catChipText, { color: C.link }]}>Reactivar (terminó el {parseDay(edit.ends_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })})</Text></Pressable>
+                : !(pendingMsi > 0) && <Pressable accessibilityRole="button" onPress={endIt} style={s.catChip}><Text style={[s.catChipText, { color: C.link }]}>{isIncome ? 'Terminar este ingreso' : 'Terminar este pago'}</Text></Pressable>)}
+              <Pressable accessibilityRole="button" onPress={remove} style={s.catChip}><Text style={[s.catChipText, { color: C.red }]}>Borrar movimiento</Text></Pressable>
             </View>
           )}
         </ScrollView>
 
         {pad && (
           <>
-            <Pressable onPress={() => setPad(false)} hitSlop={10} style={{ alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 4 }} accessibilityLabel="Ocultar teclado">
+            <Pressable accessibilityRole="button" onPress={() => setPad(false)} hitSlop={10} style={{ alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 4 }} accessibilityLabel="Ocultar teclado">
               <Text style={[s.link, { fontWeight: '600' }]}>Listo</Text>
             </Pressable>
             <View style={s.keypad}>
               {KEYS.map((k) => (
-                <Pressable key={k} style={[s.key, (k === '.' || k === 'del') && s.keyFlat]} onPress={() => { setAmount((a) => press(a, k)); setError(''); }} accessibilityLabel={k === 'del' ? 'Borrar' : k}>
+                <Pressable accessibilityRole="button" key={k} style={[s.key, (k === '.' || k === 'del') && s.keyFlat]} onPress={() => { setAmount((a) => press(a, k)); setError(''); }} accessibilityLabel={k === 'del' ? 'Borrar' : k}>
                   {k === 'del' ? <Text style={s.keyText}>⌫</Text> : <Text style={s.keyText}>{k}</Text>}
                 </Pressable>
               ))}
             </View>
           </>
         )}
-        <Pressable style={[s.saveBtn, n > 0 && { backgroundColor: C.primary }]} onPress={save}>
+        <Pressable accessibilityRole="button" style={[s.saveBtn, n > 0 && { backgroundColor: C.primary }]} onPress={save}>
           <Text style={[s.saveBtnText, !(n > 0) && { color: C.muted }]}>{saveLabel}</Text>
         </Pressable>
       </View>
