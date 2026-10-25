@@ -38,6 +38,8 @@ export const ACTION_LABELS = {
   export_csv: 'Exportar CSV',
   onboarding_done: 'Completar bienvenida',
   onboarding_skip: 'Saltar bienvenida',
+  tour_start: 'Abrir guía de la app',
+  tour_close: 'Cerrar guía de la app',
 };
 
 // good: hasta aquí se siente rápido; ok: aceptable; más que ok se marca como lento

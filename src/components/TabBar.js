@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Icon } from './Icon';
+import { useTourRef } from './Tour';
 import { TABS } from '../constants/navigation';
 import { C } from '../theme/colors';
 import { s } from '../theme/styles';
@@ -12,10 +13,13 @@ const HEADER_KEYS = ['settings'];
 export function TabBar({ tab, setTab, onAdd }) {
   const items = TABS.filter((t) => !HEADER_KEYS.includes(t.key));
   const mid = Math.ceil(items.length / 2);
+  // Elementos que señala la guía interactiva
+  const refs = { moves: useTourRef('tab-moves'), history: useTourRef('tab-history'), savings: useTourRef('tab-savings') };
+  const addRef = useTourRef('add');
   const render = (item) => {
     const on = tab === item.key;
     return (
-      <Pressable key={item.key} style={s.tab} onPress={() => setTab(item.key)}>
+      <Pressable key={item.key} ref={refs[item.key]} style={s.tab} onPress={() => setTab(item.key)}>
         <Icon name={item.glyph} size={24} color={on ? C.link : C.muted} />
         <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[s.tabLabel, on && { color: C.link, fontWeight: '600' }]}>{item.label}</Text>
       </Pressable>
@@ -24,7 +28,7 @@ export function TabBar({ tab, setTab, onAdd }) {
   return (
     <View style={s.tabbar}>
       <View style={s.tabGroup}>{items.slice(0, mid).map(render)}</View>
-      <Pressable style={s.tabFab} onPress={onAdd}><Text style={s.tabFabText}>+</Text></Pressable>
+      <Pressable ref={addRef} style={s.tabFab} onPress={onAdd}><Text style={s.tabFabText}>+</Text></Pressable>
       <View style={s.tabGroup}>{items.slice(mid).map(render)}</View>
     </View>
   );

@@ -240,4 +240,17 @@ export const s = StyleSheet.create({
   userStats: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, marginBottom: 6, gap: 8 },
   miniStat: { flexGrow: 1, flexBasis: '18%', minWidth: 58, backgroundColor: C.raised, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 10 },
   miniValue: { fontFamily: FONT, fontSize: 18, fontWeight: '700', color: C.text },
+
+  // Guía interactiva
+  tourCard: { position: 'absolute', backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.border, padding: 16 },
+  tourStep: { fontFamily: FONT, fontSize: 12, color: C.muted },
+  tourTitle: { fontFamily: FONT, fontSize: 18, fontWeight: '700', color: C.text, marginTop: 4 },
+  tourBody: { fontFamily: FONT, fontSize: 15, color: '#C9D0DB', lineHeight: 21, marginTop: 6 },
+  tourDots: { flexDirection: 'row', gap: 4, marginTop: 12 },
+  tourDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.raisedHi },
+  tourDotOn: { width: 16, backgroundColor: C.link },
+  tourRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 },
+  tourGhost: { fontFamily: FONT, fontSize: 15, color: C.muted },
+  tourBtn: { backgroundColor: C.primary, borderRadius: 12, paddingVertical: 9, paddingHorizontal: 18 },
+  tourBtnText: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: '#fff' },
 });

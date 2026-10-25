@@ -3,6 +3,7 @@ import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { BalanceCard, BudgetCard, Greeting, HIDDEN, SpentHero } from '../components/HomeCards';
 import { Delta } from '../components/Delta';
 import { MonthCalendar } from '../components/MonthCalendar';
+import { TourTarget } from '../components/Tour';
 import { Card, Segmented, Title } from '../components/ui';
 import { CATS, PERIODS } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
@@ -41,21 +42,21 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
   return (
     <>
       {greeting}
-      <Segmented options={PERIODS} value={period} onChange={setPick} style={s.segCard} />
+      <TourTarget id="period"><Segmented options={PERIODS} value={period} onChange={setPick} style={s.segCard} /></TourTarget>
       <View style={s.dateRow}>
         <Text style={s.dateText}>{shortDate(start)} – {shortDate(end)}</Text>
         <Text style={s.dateText}>Hoy, {shortDate(now)}</Text>
       </View>
       <View style={wide ? [s.cols, { alignItems: 'stretch' }] : null}>
         <View style={wide ? s.col : null}>
-          <SpentHero period={period} now={now} income={income} spent={view.outflow} saved={view.saved} left={view.left} hide={hide} onPress={onSeeHistory} onSaved={onSeeSavings} />
+          <TourTarget id="hero"><SpentHero period={period} now={now} income={income} spent={view.outflow} saved={view.saved} left={view.left} hide={hide} onPress={onSeeHistory} onSaved={onSeeSavings} /></TourTarget>
         </View>
         <View style={wide ? [s.col, { justifyContent: 'flex-end' }] : null}>
-          <BalanceCard balance={balance} pending={view.pending} pendingSpread={view.pendingSpread} cards={cards} end={end} hide={hide} onBalance={onSeeSavings} onPending={onSeeAll} onCards={onSeeAccounts} />
+          <TourTarget id="balance"><BalanceCard balance={balance} pending={view.pending} pendingSpread={view.pendingSpread} cards={cards} end={end} hide={hide} onBalance={onSeeSavings} onPending={onSeeAll} onCards={onSeeAccounts} /></TourTarget>
         </View>
       </View>
       <Title>Tus cuentas</Title>
-      <View style={s.card}>
+      <TourTarget id="accounts" style={s.card}>
         {acc.rows.length === 0
           ? (
             <Pressable style={{ padding: 16 }} onPress={onSeeAccounts}>
@@ -72,7 +73,7 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
             </>
           )}
         <Pressable style={[s.row, s.sep, { justifyContent: 'center' }]} onPress={onSeeAccounts}><Text style={s.link}>{acc.rows.length ? 'Ver cuentas' : '+ Agregar cuenta'}</Text></Pressable>
-      </View>
+      </TourTarget>
       {!hasIncome && (
         <View style={[s.card, { padding: 16 }]}>
           <Text style={[s.body, { fontWeight: '600' }]}>Empieza registrando tu ingreso</Text>
