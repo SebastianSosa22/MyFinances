@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Material de marketing (videos, voz en off)
+marketing/
