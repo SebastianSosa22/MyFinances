@@ -7,10 +7,11 @@ import { CATS, PERIODS } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
 import { accountsSummary, cardsDue } from '../lib/accounts';
 import { balanceSummary, homeSummary, outflowOf, periodView } from '../lib/summary';
+import { track } from '../lib/analytics';
 import { s } from '../theme/styles';
 
 // Inicio (diseño "Bóveda nocturna"): encabezado, Disponible, Tu reparto, cuentas y ahorro, y los próximos pagos
-export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAccounts, limits, settings, loading, hide, onToggleHide, onSeeAll, onSeeHistory, onSeeSavings, onAdd, headerActions }) {
+export function HomeScreen({ name, moves, goals = [], onNewGoal, accounts = [], transfers = [], onSeeAccounts, limits, settings, loading, hide, onToggleHide, onSeeAll, onSeeHistory, onSeeSavings, onAdd, headerActions }) {
   const wide = useWide();
   const [pick, setPick] = useState(null);
   const period = pick || settings.cycle; // el Inicio abre en TU ciclo de cobro
@@ -77,6 +78,12 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
           {upcoming.length > 0 && <UpcomingPanel items={upcoming} icons={icon} hide={hide} />}
         </View>
       </View>
+      {hasIncome && goals.length === 0 && !!onNewGoal && (
+        <Panel title="¿Para qué estás ahorrando?">
+          <Text style={s.smallMuted}>Ponle nombre y monto a tu ahorro (un viaje, un fondo de emergencia, un celular) y te decimos cuánto apartar cada mes para llegar.</Text>
+          <Pressable accessibilityRole="button" style={[s.button, { marginTop: 4 }]} onPress={() => { track('goal_prompt_open'); onNewGoal(); }}><Text style={s.buttonText}>🎯 Crear mi primera meta</Text></Pressable>
+        </Panel>
+      )}
       {!hasIncome && (
         <Panel title="Empieza registrando tu ingreso">
           <Text style={s.smallMuted}>Toca + y registra lo que cobras (o tu nómina) para ver cuánto te toca gastar y ahorrar.</Text>

@@ -17,11 +17,11 @@ export default function App() {
   const [session, setSession] = useState(undefined);
   const [recovery, setRecovery] = useState(false); // entró desde el enlace de "olvidé mi contraseña"
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); if (data.session) startAnalytics(data.session.user); });
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); if (data.session) startAnalytics(data.session.user, true); });
     const { data } = supabase.auth.onAuthStateChange((event, sess) => {
       if (event === 'PASSWORD_RECOVERY') setRecovery(true);
       if (event === 'SIGNED_OUT') { clearCachedData(); stopAnalytics(); }
-      if (sess) startAnalytics(sess.user);
+      if (sess) startAnalytics(sess.user, event === 'INITIAL_SESSION');
       setSession(sess);
     });
     return () => data.subscription.unsubscribe();

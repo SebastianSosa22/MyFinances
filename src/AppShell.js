@@ -184,7 +184,7 @@ export function AppShell({ session }) {
         {!!data.err && <Text style={[s.hint, { color: C.red, marginBottom: 8 }]}>{data.err}</Text>}
         {!!data.notice && <Pressable accessibilityRole="button" onPress={() => data.setNotice('')}><Text style={[s.hint, { color: C.orange, marginBottom: 8 }]}>{data.notice}</Text></Pressable>}
 
-        {tab === 'home' && <HomeScreen name={firstName(session.user)} moves={moves} accounts={accounts} transfers={transfers} onSeeAccounts={() => setTab('accounts')} limits={limits} settings={settings} loading={!data.loaded} hide={hide} onToggleHide={toggleHide} onSeeAll={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} onSeeHistory={() => setTab('history')} onSeeSavings={() => { setSavingsView('saving'); setTab('savings'); }} headerActions={headerActions} onAdd={openAdd} />}
+        {tab === 'home' && <HomeScreen name={firstName(session.user)} moves={moves} goals={goals} onNewGoal={() => setGoalSheet({ open: true, goal: null })} accounts={accounts} transfers={transfers} onSeeAccounts={() => setTab('accounts')} limits={limits} settings={settings} loading={!data.loaded} hide={hide} onToggleHide={toggleHide} onSeeAll={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} onSeeHistory={() => setTab('history')} onSeeSavings={() => { setSavingsView('saving'); setTab('savings'); }} headerActions={headerActions} onAdd={openAdd} />}
         {tab === 'savings' && (
           <>
             <View style={s.screenHead}><Text style={s.screenTitle}>{savingsView === 'budgets' ? 'Presupuestos' : 'Ahorro y metas'}</Text></View>

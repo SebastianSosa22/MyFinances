@@ -221,15 +221,15 @@ function Usage({ d, wide }) {
 
 function Perf({ d, wide }) {
   const k = d.kpis;
-  const perf = d.perf || [];
-  const start = perf.find((p) => p.metric === 'app_start');
+  const perf = (d.perf || []).filter((p) => PERF_METRICS[p.metric]);
+  const start = perf.find((p) => p.metric === 'app_ready');
   return (
     <>
       <TileGrid>
         <StatTile label="Sesiones" value={num(k.sessions_period)} sub={'en ' + d.days + ' días'} />
         <StatTile label="Eventos registrados" value={num(k.events_period)} />
         <StatTile label="Errores" value={num(k.errors_period)} tone={k.errors_period ? 'bad' : 'good'} />
-        <StatTile label="Arranque típico" value={start ? secs(start.p50) : '—'} tone={start ? perfTone('app_start', start.p50) : undefined} sub="mediana" />
+        <StatTile label="Apertura típica" value={start ? secs(start.p50) : '—'} tone={start ? perfTone('app_ready', start.p50) : undefined} sub="mediana" />
       </TileGrid>
       <View style={wide ? s.cols : null}>
         <View style={wide ? s.col : null}>
@@ -241,7 +241,7 @@ function Perf({ d, wide }) {
               return (
                 <View key={p.metric} style={[s.row, i > 0 && s.sep]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.body}>{PERF_METRICS[p.metric] ? PERF_METRICS[p.metric].label : p.metric}</Text>
+                    <Text style={s.body}>{PERF_METRICS[p.metric].label}</Text>
                     <Text style={s.statSub}>{num(p.n)} mediciones · promedio {secs(Number(p.avg_ms))}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+    <title>Finanzas Personales</title>
+    <!-- Lo que antes agregaba pwa.js al arrancar va aquí: el navegador lo ve antes de descargar el código de la app -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0B1220" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Finanzas" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://yphvecfopkaifhkndaru.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" data-fonts="1" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+    <style id="expo-reset">
+      html, body { height: 100%; background-color: #0B1220; }
+      body { overflow: hidden; margin: 0; }
+      #root { display: flex; height: 100%; flex: 1; }
+      /* Pantalla de carga mientras baja el código de la app (React la reemplaza al arrancar) */
+      .boot { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+      .boot img { width: 72px; height: 72px; border-radius: 18px; }
+      .boot i { width: 26px; height: 26px; border-radius: 50%; border: 3px solid #243047; border-top-color: #5EE6A8; animation: spin .8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+
+  <body>
+    <noscript>Activa JavaScript para usar la app.</noscript>
+    <div id="root"><div class="boot"><img src="/icon-192.png" alt="" /><i></i></div></div>
+  </body>
+</html>

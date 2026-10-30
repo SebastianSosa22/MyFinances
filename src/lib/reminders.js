@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import * as Notifications from './notifier';
 import { cardAlerts, cardAlertText } from './accounts';
 import { asExp, occurrences } from './finance';
 import { money } from './format';
