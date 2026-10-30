@@ -68,29 +68,6 @@ export function suggestFromNote(moves, text) {
   return null;
 }
 
-// Categorías que casi siempre son pagos fijos de cada mes
-const FIXED_CATS = { Renta: 'La renta', Suscripciones: 'Las suscripciones', Servicios: 'Los servicios (luz, internet, teléfono)', Seguros: 'Los seguros', Deudas: 'Los pagos de deudas', Educación: 'Las colegiaturas' };
-
-// Al registrar un gasto de una sola vez: ¿parece un pago que se repite cada mes?
-// Lo sugiere si la categoría suele ser fija o si el mes pasado registraste uno igual (misma descripción, o misma categoría y monto exacto).
-// No sugiere nada si ya tienes un pago recurrente vigente de lo mismo. Devuelve { text } o null.
-export function recurringHint(moves, { cat, note, amount }, now = new Date()) {
-  if (!cat) return null;
-  const q = norm(note);
-  const same = (m) => m.kind === 'expense' && m.cat === cat && (q ? norm(m.note) === q : true);
-  if (moves.some((m) => isRecurring(m) && isActive(m, now) && same(m))) return null;
-  const from = new Date(now.getFullYear(), now.getMonth() - 1, 1), to = startOfMonth(now);
-  const lastMonth = moves.find((m) => {
-    if (m.kind !== 'expense' || isRecurring(m) || m.cat !== cat) return false;
-    const at = new Date(m.occurred_at);
-    if (at < from || at >= to) return false;
-    return q.length >= 3 ? norm(m.note) === q : amount >= 100 && Math.abs(m.amount - amount) < 0.01; // sin descripción: mismo monto exacto (y no montos chicos que coinciden por casualidad)
-  });
-  if (lastMonth) return { text: 'El mes pasado registraste uno igual. ¿Lo hacemos mensual para que no tengas que capturarlo otra vez?' };
-  if (FIXED_CATS[cat]) return { text: FIXED_CATS[cat] + ' suelen repetirse cada mes. Márcalo como mensual y aparecerá solo en tus próximos pagos.' };
-  return null;
-}
-
 // Límites mensuales sugeridos: promedio de los últimos 3 meses con datos + 10%, redondeado a $50
 // Sugerencias por categoría: tu promedio mensual de los últimos 3 meses con datos, + 10% redondeado a $50.
 // Si aún no tienes un mes anterior con gastos (cuenta nueva), usa lo que llevas en el mes en curso.

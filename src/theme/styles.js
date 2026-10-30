@@ -269,7 +269,6 @@ export const s = StyleSheet.create({
   catChipText: { fontFamily: FONT, fontSize: 13, color: C.text },
   catDot: { width: 8, height: 8, borderRadius: 4 },
   hintRow: { backgroundColor: C.inset, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12 },
-  hintCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.inset, borderRadius: 12, borderWidth: 1, borderColor: C.greenSoft, paddingVertical: 10, paddingHorizontal: 12 },
   repeatOpt: { flex: 1, height: 36, borderRadius: 12, borderWidth: 1, borderColor: C.border, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   repeatOptOn: { backgroundColor: C.text, borderColor: C.text },
   formList: { backgroundColor: C.card, ...EDGE, borderRadius: 16, paddingHorizontal: 14 },

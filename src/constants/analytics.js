@@ -41,8 +41,6 @@ export const ACTION_LABELS = {
   tour_start: 'Abrir guía de la app',
   tour_close: 'Cerrar guía de la app',
   bell_open: 'Abrir avisos',
-  recurring_hint_accept: 'Aceptar sugerencia de pago mensual',
-  goal_prompt_open: 'Crear meta desde el Inicio',
 };
 
 // good: hasta aquí se siente rápido; ok: aceptable; más que ok se marca como lento.

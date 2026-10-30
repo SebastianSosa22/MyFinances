@@ -9,8 +9,7 @@ import { daysIn, midnight } from '../lib/dates';
 import { ACCOUNT_TYPES, accountBalance, isCredit } from '../lib/accounts';
 import { bucketOf, isActive, moveTitle, msiAdvance, msiPending, parseDay } from '../lib/finance';
 import { commas, isoLocal, money, shortDate } from '../lib/format';
-import { recurringHint, suggestFromNote } from '../lib/insights';
-import { track } from '../lib/analytics';
+import { suggestFromNote } from '../lib/insights';
 import { KEPT, periodView } from '../lib/summary';
 import { C } from '../theme/colors';
 import { s } from '../theme/styles';
@@ -241,11 +240,6 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
   const left = useMemo(() => periodView(moves || [], 'monthly', new Date()).left, [moves]);
   const suggestion = useMemo(() => (!edit && kind === 'expense' ? suggestFromNote(moves || [], note) : null), [note, edit, kind, moves]);
   const sugCat = suggestion ? CATS.find((c) => c.name === suggestion.cat) : null;
-  // Gasto nuevo de una sola vez que parece fijo (renta, suscripción, uno igual al del mes pasado): sugiere hacerlo mensual
-  const noteKey = note.trim().length >= 3 ? note : '';
-  const amountKey = parseFloat(amount) || 0;
-  const repeatHint = useMemo(() => (!edit && kind === 'expense' && !msi && freq === 'once' ? recurringHint(moves || [], { cat, note: noteKey, amount: amountKey }) : null),
-    [edit, kind, msi, freq, moves, cat, noteKey, amountKey]);
   const activeGoals = goals.filter((g) => (moves || []).filter((m) => m.goal_id === g.id).reduce((a, m) => a + m.amount, 0) < g.target || g.id === goalId);
 
   const switchKind = (k) => {
@@ -382,12 +376,6 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
                   );
                 })}
               </View>
-              {!!repeatHint && (
-                <Pressable accessibilityRole="button" accessibilityLabel="Hacerlo mensual" onPress={() => { setFreq('monthly'); setMday(date.getDate()); track('recurring_hint_accept', { cat }); }} style={s.hintCard}>
-                  <Text style={[s.smallMuted, { flex: 1 }]}>💡 {repeatHint.text}</Text>
-                  <Text style={[s.catChipText, { color: C.link, fontWeight: '700' }]}>Hacer mensual</Text>
-                </Pressable>
-              )}
             </View>
           )}
 
