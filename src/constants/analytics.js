@@ -40,11 +40,13 @@ export const ACTION_LABELS = {
   onboarding_skip: 'Saltar bienvenida',
   tour_start: 'Abrir guía de la app',
   tour_close: 'Cerrar guía de la app',
+  bell_open: 'Abrir avisos',
 };
 
-// good: hasta aquí se siente rápido; ok: aceptable; más que ok se marca como lento
+// good: hasta aquí se siente rápido; ok: aceptable; más que ok se marca como lento.
+// app_ready reemplaza a app_start (medía hasta iniciar sesión y daba minutos falsos); solo se muestran las de esta lista.
 export const PERF_METRICS = {
-  app_start: { label: 'Arranque de la app', good: 2500, ok: 5000 },
+  app_ready: { label: 'Apertura de la app (hasta ver tus datos)', good: 2500, ok: 5000 },
   data_load: { label: 'Carga de datos', good: 800, ok: 2000 },
   save_movement: { label: 'Guardar movimiento', good: 600, ok: 1500 },
   admin_load: { label: 'Carga del panel', good: 1500, ok: 4000 },

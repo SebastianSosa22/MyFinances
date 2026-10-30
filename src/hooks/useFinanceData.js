@@ -8,12 +8,13 @@ import { money } from '../lib/format';
 import { limitMessage } from '../lib/summary';
 import { supabase } from '../lib/supabase';
 import { CACHE_PREFIX } from '../lib/session';
-import { track, trackError, trackPerf } from '../lib/analytics';
+import { markReady, track, trackError, trackPerf } from '../lib/analytics';
 
 const byDateDesc = (list) => [...list].sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at));
 const clean = (x) => ({ ...x, amount: Number(x.amount) });
 const isTemp = (id) => String(id).startsWith('tmp-');
 const cleanTransfer = (x) => ({ ...x, amount: Number(x.amount) });
+const RELOAD_GAP_MS = 30000; // al volver a la app, no se vuelve a descargar todo si se cargó hace menos de 30 s
 const cleanAccount = (a) => ({ ...a, opening_balance: Number(a.opening_balance), credit_limit: a.credit_limit == null ? null : Number(a.credit_limit) });
 
 // Datos de la cuenta (movimientos, metas, límites y tarjetas/cuentas de dinero) y sus operaciones contra Supabase.
@@ -31,9 +32,11 @@ export function useFinanceData(session) {
   const [undo, setUndo] = useState(null); // último movimiento borrado, para poder deshacer
   const fresh = useRef(false);
   const undoTimer = useRef(null);
+  const lastLoad = useRef(0);
 
   const load = async () => {
     const t0 = Date.now();
+    lastLoad.current = t0;
     const [m, g, l, a, tr] = await Promise.all([
       supabase.from('movements').select('*').order('occurred_at', { ascending: false }),
       supabase.from('goals').select('*').order('created_at', { ascending: true }),
@@ -42,7 +45,7 @@ export function useFinanceData(session) {
       supabase.from('account_transfers').select('*').order('occurred_at', { ascending: false }),
     ]);
     const error = m.error || g.error || l.error || a.error || tr.error;
-    if (error) { setErr('No se pudieron cargar los datos: ' + error.message); setLoaded(true); trackError(error, 'data_load'); return; }
+    if (error) { lastLoad.current = 0; setErr('No se pudieron cargar los datos: ' + error.message); setLoaded(true); markReady(); trackError(error, 'data_load'); return; }
     trackPerf('data_load', Date.now() - t0, { rows: m.data.length });
     const mv = m.data.map(clean);
     const gl = g.data.map((x) => ({ ...x, target: Number(x.target) }));
@@ -51,6 +54,7 @@ export function useFinanceData(session) {
     const ac = a.data.map(cleanAccount), tf = tr.data.map(cleanTransfer);
     fresh.current = true;
     setMoves(mv); setGoals(gl); setLimits(lim); setAccounts(ac); setTransfers(tf); setErr(''); setLoaded(true);
+    markReady();
     AsyncStorage.setItem(cacheKey, JSON.stringify({ moves: mv, goals: gl, limits: lim, accounts: ac, transfers: tf })).catch(() => {});
   };
 
@@ -59,13 +63,13 @@ export function useFinanceData(session) {
     let alive = true;
     AsyncStorage.getItem(cacheKey).then((raw) => {
       if (!alive || !raw || fresh.current) return;
-      try { const c = JSON.parse(raw); setMoves(c.moves || []); setGoals(c.goals || []); setLimits(c.limits || {}); setAccounts(c.accounts || []); setTransfers(c.transfers || []); setLoaded(true); } catch (e) { /* copia dañada: se ignora */ }
+      try { const c = JSON.parse(raw); setMoves(c.moves || []); setGoals(c.goals || []); setLimits(c.limits || {}); setAccounts(c.accounts || []); setTransfers(c.transfers || []); setLoaded(true); markReady(); } catch (e) { /* copia dañada: se ignora */ }
     });
     load();
     return () => { alive = false; clearTimeout(undoTimer.current); };
   }, []);
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (st) => st === 'active' && load());
+    const sub = AppState.addEventListener('change', (st) => { if (st === 'active' && Date.now() - lastLoad.current > RELOAD_GAP_MS) load(); });
     return () => sub.remove();
   }, []);
 
