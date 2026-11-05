@@ -212,3 +212,28 @@ revoke all on function public.handle_user_updated() from public, anon, authentic
 -- Aplicado después: is_admin() no es ejecutable sin sesión
 revoke all on function public.is_admin() from public, anon;
 grant execute on function public.is_admin() to authenticated;
+
+-- 5) Cuentas registradas (solo admins). Migración admin_accounts. -----------------------------
+-- Lee de auth.users para que aparezcan todas las cuentas, aunque nunca hayan abierto la app.
+create or replace function public.admin_accounts()
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'Acceso solo para administradores' using errcode = '42501'; end if;
+  return coalesce((
+    select jsonb_agg(x order by x.created_at desc) from (
+      select u.id, u.email,
+        coalesce(p.full_name, u.raw_user_meta_data ->> 'full_name') as full_name,
+        coalesce(p.role, 'user') as role,
+        u.created_at,
+        u.email_confirmed_at is not null as confirmed,
+        u.last_sign_in_at,
+        greatest(u.last_sign_in_at, p.last_seen_at) as last_seen_at,
+        coalesce(u.raw_app_meta_data ->> 'provider', 'email') as provider,
+        (p.id is not null) as has_profile
+      from auth.users u
+      left join public.profiles p on p.id = u.id
+      where u.deleted_at is null
+    ) x), '[]'::jsonb);
+end $$;
+revoke all on function public.admin_accounts() from public, anon;
+grant execute on function public.admin_accounts() to authenticated;

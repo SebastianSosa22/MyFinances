@@ -69,6 +69,7 @@ export const RANGES = { 7: { label: '7 días' }, 30: { label: '30 días' }, 90: 
 
 export const ADMIN_VIEWS = {
   overview: { label: 'Resumen' },
+  accounts: { label: 'Cuentas' },
   users: { label: 'Usuarios' },
   usage: { label: 'Uso' },
   perf: { label: 'Rendimiento' },

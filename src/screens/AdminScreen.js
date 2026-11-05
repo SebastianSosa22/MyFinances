@@ -4,6 +4,7 @@ import { Card, Segmented, Title } from '../components/ui';
 import { CardHead, Columns, HBars, Pill, StatTile, TileGrid, TONE } from '../components/AdminCharts';
 import { ACTION_LABELS, ADMIN_VIEWS, PERF_METRICS, PLATFORM_LABELS, RANGES, SCREEN_LABELS, SOURCE_LABELS } from '../constants/analytics';
 import { CYCLES, EFREQ, SPLITS } from '../constants/budget';
+import { useAdminAccounts } from '../hooks/useAdminAccounts';
 import { useAdminDashboard } from '../hooks/useAdminDashboard';
 import { useWide } from '../hooks/useWide';
 import { ago, buildAdminInsights, pct, perfTone, secs, sortUsers } from '../lib/adminInsights';
@@ -21,6 +22,8 @@ export function AdminScreen({ me, onBack }) {
   const [view, setView] = useState('overview');
   const [days, setDays] = useState('30');
   const { data, loading, error, reload, setRole } = useAdminDashboard(Number(days));
+  const accounts = useAdminAccounts(view === 'accounts');
+  const refresh = () => { reload(); if (view === 'accounts') accounts.reload(); };
 
   return (
     <>
@@ -28,13 +31,16 @@ export function AdminScreen({ me, onBack }) {
       <Text style={s.screenTitle}>Panel de administrador</Text>
       <Segmented options={ADMIN_VIEWS} value={view} onChange={setView} style={{ marginTop: 12 }} />
       <View style={[s.tileRow, { alignItems: 'center', marginTop: 10, gap: 8 }]}>
-        <Segmented options={RANGES} value={days} onChange={setDays} style={{ marginTop: 0, flex: 1, maxWidth: 300 }} />
-        <Pressable accessibilityRole="button" onPress={reload} style={s.squareBtn} accessibilityLabel="Actualizar">{loading ? <ActivityIndicator color={C.muted} /> : <Text style={[s.panelTitle, { fontSize: 18 }]}>↻</Text>}</Pressable>
+        {view === 'accounts'
+          ? <Text style={[s.caption, { flex: 1, paddingHorizontal: 4 }]}>Todas las cuentas registradas, sin importar el periodo</Text>
+          : <Segmented options={RANGES} value={days} onChange={setDays} style={{ marginTop: 0, flex: 1, maxWidth: 300 }} />}
+        <Pressable accessibilityRole="button" onPress={refresh} style={s.squareBtn} accessibilityLabel="Actualizar">{loading || accounts.loading ? <ActivityIndicator color={C.muted} /> : <Text style={[s.panelTitle, { fontSize: 18 }]}>↻</Text>}</Pressable>
       </View>
       {!!data && <Text style={[s.caption, { paddingHorizontal: 4, marginTop: 8 }]}>Actualizado {ago(data.generated_at)} · Solo conteos de uso: no se muestran montos ni descripciones de nadie.</Text>}
       {!!error && <Text style={[s.hint, { color: C.red }]}>{error}</Text>}
       {!data && loading && <ActivityIndicator style={{ marginTop: 40 }} color={C.muted} />}
       {!!data && view === 'overview' && <Overview d={data} wide={wide} />}
+      {view === 'accounts' && <Accounts {...accounts} me={me} />}
       {!!data && view === 'users' && <Users d={data} me={me} onSetRole={setRole} />}
       {!!data && view === 'usage' && <Usage d={data} wide={wide} />}
       {!!data && view === 'perf' && <Perf d={data} wide={wide} />}
@@ -100,6 +106,55 @@ function Overview({ d, wide }) {
           <View key={i} style={[s.row, i > 0 && s.sep, { alignItems: 'flex-start' }]}>
             <View style={[s.toneDot, { backgroundColor: TONE[x.tone] }]} />
             <Text style={[s.body, { flex: 1, fontSize: 15 }]}>{x.text}</Text>
+          </View>
+        ))}
+      </Card>
+    </>
+  );
+}
+
+const fullDate = (iso) => iso ? new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+const ACCOUNT_FILTERS = { all: { label: 'Todas' }, new: { label: 'Nuevas 30 d' }, idle: { label: 'Sin usar 14 d' } };
+const DAY = 86400000;
+
+// Cuentas registradas: quién tiene cuenta, desde cuándo y cuándo entró por última vez
+function Accounts({ accounts, loading, error, me }) {
+  const [filter, setFilter] = useState('all');
+  const [q, setQ] = useState('');
+  const [now] = useState(() => Date.now());
+  if (error) return <Text style={[s.hint, { color: C.red }]}>{error}</Text>;
+  if (!accounts) return loading ? <ActivityIndicator style={{ marginTop: 40 }} color={C.muted} /> : null;
+
+  const isNew = (a) => now - new Date(a.created_at) < 30 * DAY;
+  const isIdle = (a) => !a.last_seen_at || now - new Date(a.last_seen_at) > 14 * DAY;
+  const list = accounts
+    .filter((a) => filter === 'all' || (filter === 'new' ? isNew(a) : isIdle(a)))
+    .filter((a) => !q || ((a.email || '') + ' ' + (a.full_name || '')).toLowerCase().includes(q.toLowerCase()));
+
+  return (
+    <>
+      <TileGrid>
+        <StatTile label="Cuentas creadas" value={num(accounts.length)} sub={accounts.filter((a) => a.role === 'admin').length + ' admin'} />
+        <StatTile label="Nuevas 30 días" value={num(accounts.filter(isNew).length)} tone="good" />
+        <StatTile label="Sin confirmar correo" value={num(accounts.filter((a) => !a.confirmed).length)} tone={accounts.some((a) => !a.confirmed) ? 'warn' : 'good'} />
+        <StatTile label="Sin entrar 14 días" value={num(accounts.filter(isIdle).length)} tone={accounts.some(isIdle) ? 'warn' : 'good'} />
+      </TileGrid>
+      <Segmented options={ACCOUNT_FILTERS} value={filter} onChange={setFilter} />
+      <TextInput style={s.input} placeholder="Buscar por nombre o correo" placeholderTextColor={C.muted} value={q} onChangeText={setQ} autoCapitalize="none" />
+      <Text style={[s.caption, { paddingHorizontal: 4, marginTop: 8 }]}>{list.length} de {accounts.length} cuentas · de la más nueva a la más antigua</Text>
+      <Card style={{ paddingBottom: 6 }}>
+        {list.length === 0 && <Text style={[s.hint, { marginBottom: 16 }]}>Ninguna cuenta coincide</Text>}
+        {list.map((a, i) => (
+          <View key={a.id} style={[s.row, i > 0 && s.sep, { alignItems: 'flex-start' }]}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[s.body, { fontWeight: '600' }]} numberOfLines={1}>{a.full_name || a.email || 'Sin correo'}{a.id === me ? ' (tú)' : ''}</Text>
+              {!!a.full_name && <Text style={s.statSub} numberOfLines={1}>{a.email}</Text>}
+              <Text style={s.statSub}>Creada el {fullDate(a.created_at)} · Último acceso {ago(a.last_seen_at)}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <Pill text={a.role === 'admin' ? 'Admin' : 'Usuario'} tone={a.role === 'admin' ? 'warn' : 'info'} />
+              {!a.confirmed && <Pill text="Sin confirmar" tone="bad" />}
+            </View>
           </View>
         ))}
       </Card>
