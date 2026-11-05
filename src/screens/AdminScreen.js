@@ -4,9 +4,10 @@ import { Card, Segmented, Title } from '../components/ui';
 import { CardHead, Columns, HBars, Pill, StatTile, TileGrid, TONE } from '../components/AdminCharts';
 import { ACTION_LABELS, ADMIN_VIEWS, PERF_METRICS, PLATFORM_LABELS, RANGES, SCREEN_LABELS, SOURCE_LABELS } from '../constants/analytics';
 import { CYCLES, EFREQ, SPLITS } from '../constants/budget';
+import { useAdminAccounts } from '../hooks/useAdminAccounts';
 import { useAdminDashboard } from '../hooks/useAdminDashboard';
 import { useWide } from '../hooks/useWide';
-import { ago, buildAdminInsights, pct, perfTone, secs, sortUsers } from '../lib/adminInsights';
+import { accountStage, ago, buildAdminInsights, hoursLabel, pct, perfTone, secs, sortUsers, summarizeAccounts } from '../lib/adminInsights';
 import { commas } from '../lib/format';
 import { C } from '../theme/colors';
 import { s } from '../theme/styles';
@@ -21,6 +22,8 @@ export function AdminScreen({ me, onBack }) {
   const [view, setView] = useState('overview');
   const [days, setDays] = useState('30');
   const { data, loading, error, reload, setRole } = useAdminDashboard(Number(days));
+  const accounts = useAdminAccounts(view === 'accounts');
+  const refresh = () => { reload(); if (view === 'accounts') accounts.reload(); };
 
   return (
     <>
@@ -28,13 +31,16 @@ export function AdminScreen({ me, onBack }) {
       <Text style={s.screenTitle}>Panel de administrador</Text>
       <Segmented options={ADMIN_VIEWS} value={view} onChange={setView} style={{ marginTop: 12 }} />
       <View style={[s.tileRow, { alignItems: 'center', marginTop: 10, gap: 8 }]}>
-        <Segmented options={RANGES} value={days} onChange={setDays} style={{ marginTop: 0, flex: 1, maxWidth: 300 }} />
-        <Pressable accessibilityRole="button" onPress={reload} style={s.squareBtn} accessibilityLabel="Actualizar">{loading ? <ActivityIndicator color={C.muted} /> : <Text style={[s.panelTitle, { fontSize: 18 }]}>↻</Text>}</Pressable>
+        {view === 'accounts'
+          ? <Text style={[s.caption, { flex: 1, paddingHorizontal: 4 }]}>Todas las cuentas registradas, sin importar el periodo</Text>
+          : <Segmented options={RANGES} value={days} onChange={setDays} style={{ marginTop: 0, flex: 1, maxWidth: 300 }} />}
+        <Pressable accessibilityRole="button" onPress={refresh} style={s.squareBtn} accessibilityLabel="Actualizar">{loading || accounts.loading ? <ActivityIndicator color={C.muted} /> : <Text style={[s.panelTitle, { fontSize: 18 }]}>↻</Text>}</Pressable>
       </View>
       {!!data && <Text style={[s.caption, { paddingHorizontal: 4, marginTop: 8 }]}>Actualizado {ago(data.generated_at)} · Solo conteos de uso: no se muestran montos ni descripciones de nadie.</Text>}
       {!!error && <Text style={[s.hint, { color: C.red }]}>{error}</Text>}
       {!data && loading && <ActivityIndicator style={{ marginTop: 40 }} color={C.muted} />}
       {!!data && view === 'overview' && <Overview d={data} wide={wide} />}
+      {view === 'accounts' && <Accounts {...accounts} me={me} wide={wide} />}
       {!!data && view === 'users' && <Users d={data} me={me} onSetRole={setRole} />}
       {!!data && view === 'usage' && <Usage d={data} wide={wide} />}
       {!!data && view === 'perf' && <Perf d={data} wide={wide} />}
@@ -103,6 +109,110 @@ function Overview({ d, wide }) {
           </View>
         ))}
       </Card>
+    </>
+  );
+}
+
+const fullDate = (iso) => iso ? new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+const ACCOUNT_FILTERS = { all: { label: 'Todas' }, attention: { label: 'Atender' }, active: { label: 'Activas' } };
+const NEEDS_ATTENTION = ['unconfirmed', 'inactive_new', 'risk', 'lost'];
+
+// Cuentas registradas: quién tiene cuenta, en qué etapa está y qué funciones usa, para decidir mejoras
+function Accounts({ accounts, loading, error, me, wide }) {
+  const [filter, setFilter] = useState('all');
+  const [q, setQ] = useState('');
+  const [now] = useState(() => Date.now());
+  const sum = useMemo(() => (accounts ? summarizeAccounts(accounts, now) : null), [accounts, now]);
+  if (error) return <Text style={[s.hint, { color: C.red }]}>{error}</Text>;
+  if (!accounts) return loading ? <ActivityIndicator style={{ marginTop: 40 }} color={C.muted} /> : null;
+
+  const list = accounts
+    .map((a) => ({ ...a, stage: accountStage(a, now) }))
+    .filter((a) => filter === 'all' || (filter === 'active' ? a.stage.key === 'active' : NEEDS_ATTENTION.includes(a.stage.key)))
+    .filter((a) => !q || ((a.email || '') + ' ' + (a.full_name || '')).toLowerCase().includes(q.toLowerCase()));
+  const st = sum.stages;
+
+  return (
+    <>
+      <TileGrid>
+        <StatTile label="Cuentas creadas" value={num(accounts.length)} sub={(st.active || 0) + ' activas esta semana'} />
+        <StatTile label="Activadas" value={sum.activatedPct + '%'} tone={sum.activatedPct >= 70 ? 'good' : 'warn'} sub="ya registraron algo" />
+        <StatTile label="Siguen a los 7 días" value={sum.retained7Pct + '%'} tone={sum.retained7Pct >= 50 ? 'good' : 'warn'} sub="retención" />
+        <StatTile label="1er movimiento" value={hoursLabel(sum.ttf)} sub="mediana desde el alta" />
+        <StatTile label="Días de uso" value={sum.avgDays.toFixed(1)} sub="promedio en 30 días" />
+        <StatTile label="Necesitan atención" value={num((st.unconfirmed || 0) + (st.inactive_new || 0) + (st.risk || 0) + (st.lost || 0))} tone="warn" sub={(st.inactive_new || 0) + ' sin activar · ' + ((st.risk || 0) + (st.lost || 0)) + ' sin volver'} />
+      </TileGrid>
+
+      <View style={wide ? s.cols : null}>
+        <View style={wide ? s.col : null}>
+          <Card>
+            <CardHead title="Embudo de nuevas cuentas" sub="% de cuentas que llegan a cada paso" />
+            <HBars rows={sum.funnel} max={100} suffix="%" color={C.link} />
+          </Card>
+        </View>
+        <View style={wide ? s.col : null}>
+          <Card>
+            <CardHead title="Funciones que usan" sub="% de cuentas que las han usado alguna vez" />
+            <HBars rows={sum.features} max={100} suffix="%" color={C.blue} />
+          </Card>
+        </View>
+      </View>
+
+      <Title>Qué mejorar</Title>
+      <Card style={{ paddingBottom: 6 }}>
+        {sum.ideas.map((x, i) => (
+          <View key={i} style={[s.row, i > 0 && s.sep, { alignItems: 'flex-start' }]}>
+            <View style={[s.toneDot, { backgroundColor: TONE[x.tone] }]} />
+            <Text style={[s.body, { flex: 1, fontSize: 15 }]}>{x.text}</Text>
+          </View>
+        ))}
+      </Card>
+
+      <Title>Cuentas</Title>
+      <Segmented options={ACCOUNT_FILTERS} value={filter} onChange={setFilter} />
+      <TextInput style={s.input} placeholder="Buscar por nombre o correo" placeholderTextColor={C.muted} value={q} onChangeText={setQ} autoCapitalize="none" />
+      <Text style={[s.caption, { paddingHorizontal: 4, marginTop: 8 }]}>{list.length} de {accounts.length} cuentas · de la más nueva a la más antigua · sin montos</Text>
+      {list.length === 0 && <Text style={[s.hint, { marginTop: 12 }]}>Ninguna cuenta coincide</Text>}
+      {list.map((a) => (
+        <Card key={a.id} style={{ padding: 16 }}>
+          <View style={s.userHead}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[s.body, { fontWeight: '600' }]} numberOfLines={1}>{a.full_name || a.email || 'Sin correo'}{a.id === me ? ' (tú)' : ''}</Text>
+              {!!a.full_name && <Text style={s.statSub} numberOfLines={1}>{a.email}</Text>}
+            </View>
+            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <Pill text={a.stage.label} tone={a.stage.tone} />
+              {a.role === 'admin' && <Pill text="Admin" tone="info" />}
+            </View>
+          </View>
+          <Text style={[s.statSub, { marginTop: 6 }]}>
+            Creada el {fullDate(a.created_at)} · Último acceso {ago(a.last_seen_at)} · Último movimiento {ago(a.last_movement_at)}{a.movements ? ' · ' + a.movements_30 + ' en 30 d' : ''}
+          </Text>
+          <View style={s.userStats}>
+            <MiniStat label="Registros" value={a.movements} />
+            <MiniStat label="Días" value={a.active_days} />
+            <MiniStat label="Sesiones" value={a.sessions} />
+            <View style={s.miniStat}>
+              <Text style={s.miniValue} numberOfLines={1}>{a.movements ? hoursLabel(Number(a.hours_to_first_movement)) : '—'}</Text>
+              <Text style={s.statSub} numberOfLines={1}>Al 1er reg.</Text>
+            </View>
+          </View>
+          <View style={s.chipsRow}>
+            <Tag text={(a.returned_d7 ? '✓' : '✗') + ' Volvió a los 7 días'} />
+            <Tag text={(a.onboarded ? '✓' : '✗') + ' Bienvenida'} />
+            {a.incomes > 0 && <Tag text={'Ingresos: ' + a.incomes} />}
+            {a.with_note > 0 && <Tag text={pct(a.with_note, a.movements) + '% con descripción'} />}
+            {a.recurring > 0 && <Tag text={'Recurrentes: ' + a.recurring} />}
+            {a.goals > 0 && <Tag text={'Metas: ' + a.goals} />}
+            {a.limits > 0 && <Tag text={'Límites: ' + a.limits} />}
+            {a.accounts > 0 && <Tag text={'Cuentas: ' + a.accounts} />}
+            <Tag text={a.push ? '🔔 Notificaciones' : '🔕 Sin notificaciones'} />
+            <Tag text={PLATFORM_LABELS[a.platform] || a.platform || 'Plataforma: —'} />
+            {!!a.top_screen && <Tag text={'Más usa: ' + (SCREEN_LABELS[a.top_screen] || a.top_screen)} />}
+            {a.errors > 0 && <Tag text={'⚠️ ' + a.errors + ' errores'} />}
+          </View>
+        </Card>
+      ))}
     </>
   );
 }

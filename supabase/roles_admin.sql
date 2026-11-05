@@ -212,3 +212,92 @@ revoke all on function public.handle_user_updated() from public, anon, authentic
 -- Aplicado después: is_admin() no es ejecutable sin sesión
 revoke all on function public.is_admin() from public, anon;
 grant execute on function public.is_admin() to authenticated;
+
+-- 5) Cuentas registradas (solo admins). Migraciones admin_accounts y admin_accounts_mas_datos. ---
+-- Lee de auth.users para que aparezcan todas las cuentas, aunque nunca hayan abierto la app.
+-- Por cuenta: etapa (activación/retención), uso de funciones y señales de errores. Solo conteos y fechas, nunca montos.
+create or replace function public.admin_accounts()
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  tz constant text := 'America/Mexico_City';
+begin
+  if not public.is_admin() then raise exception 'Acceso solo para administradores' using errcode = '42501'; end if;
+  return coalesce((
+    with
+    -- Actividad = abrir/usar la app (bitácora), registrar un movimiento o iniciar sesión
+    act as (
+      select user_id, created_at as at from public.app_events
+      union all select user_id, created_at from public.movements
+      union all select id, last_sign_in_at from auth.users where last_sign_in_at is not null
+      union all select id, last_seen_at from public.profiles where last_seen_at is not null
+    ),
+    act_u as (
+      select a.user_id, max(a.at) as last_at,
+        count(distinct (a.at at time zone tz)::date) as active_days,
+        bool_or((a.at at time zone tz)::date > (u.created_at at time zone tz)::date) as returned_d1,
+        bool_or(a.at >= u.created_at + interval '7 days') as returned_d7,
+        count(distinct (a.at at time zone tz)::date) filter (where a.at >= now() - interval '30 days') as active_days_30
+      from act a join auth.users u on u.id = a.user_id group by a.user_id
+    ),
+    mv_u as (
+      select user_id, count(*) as movements, min(created_at) as first_movement_at, max(created_at) as last_movement_at,
+        count(*) filter (where created_at >= now() - interval '30 days') as movements_30,
+        count(*) filter (where kind = 'income') as incomes,
+        count(*) filter (where freq <> 'once') as recurring,
+        count(*) filter (where coalesce(note, '') <> '') as with_note,
+        count(*) filter (where goal_id is not null) as goal_contribs,
+        count(*) filter (where source is not null and source <> 'app') as auto_source
+      from public.movements group by user_id
+    ),
+    ev_u as (
+      select user_id, count(distinct session_id) filter (where name = 'app_open') as sessions,
+        count(*) filter (where name = 'error') as errors,
+        (array_agg(platform order by created_at desc) filter (where platform is not null))[1] as platform,
+        (select e2.screen from public.app_events e2 where e2.user_id = e.user_id and e2.name = 'screen_view' and e2.screen is not null
+           group by e2.screen order by count(*) desc limit 1) as top_screen
+      from public.app_events e group by user_id
+    ),
+    x as (
+      select u.id, u.email,
+        coalesce(p.full_name, u.raw_user_meta_data ->> 'full_name') as full_name,
+        coalesce(p.role, 'user') as role,
+        u.created_at,
+        u.email_confirmed_at is not null as confirmed,
+        u.last_sign_in_at,
+        greatest(au.last_at, u.last_sign_in_at, p.last_seen_at) as last_seen_at,
+        coalesce(u.raw_app_meta_data ->> 'provider', 'email') as provider,
+        coalesce(au.active_days, 0) as active_days,
+        coalesce(au.active_days_30, 0) as active_days_30,
+        coalesce(au.returned_d1, false) as returned_d1,
+        coalesce(au.returned_d7, false) as returned_d7,
+        coalesce(m.movements, 0) as movements,
+        coalesce(m.movements_30, 0) as movements_30,
+        m.first_movement_at, m.last_movement_at,
+        round((extract(epoch from (m.first_movement_at - u.created_at)) / 3600.0)::numeric, 1) as hours_to_first_movement,
+        coalesce(m.incomes, 0) as incomes,
+        coalesce(m.recurring, 0) as recurring,
+        coalesce(m.with_note, 0) as with_note,
+        coalesce(m.goal_contribs, 0) as goal_contribs,
+        coalesce(m.auto_source, 0) as auto_source,
+        coalesce(e.sessions, 0) as sessions,
+        coalesce(e.errors, 0) as errors,
+        e.platform, e.top_screen,
+        (select count(*) from public.goals g where g.user_id = u.id) as goals,
+        (select count(*) from public.category_limits l where l.user_id = u.id) as limits,
+        (select count(*) from public.accounts c where c.user_id = u.id) as accounts,
+        exists (select 1 from public.push_subscriptions s where s.user_id = u.id) as push,
+        coalesce(st.onboarded, false) as onboarded,
+        st.split, st.cycle
+      from auth.users u
+      left join public.profiles p on p.id = u.id
+      left join act_u au on au.user_id = u.id
+      left join mv_u m on m.user_id = u.id
+      left join ev_u e on e.user_id = u.id
+      left join public.user_settings st on st.user_id = u.id
+      where u.deleted_at is null
+    )
+    select jsonb_agg(to_jsonb(x) order by x.created_at desc) from x
+  ), '[]'::jsonb);
+end $$;
+revoke all on function public.admin_accounts() from public, anon;
+grant execute on function public.admin_accounts() to authenticated;

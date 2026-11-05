@@ -90,3 +90,73 @@ export function buildAdminInsights(d) {
   }
   return out;
 }
+
+// ---- Pestaña Cuentas -------------------------------------------------------------------
+const DAY_MS = 86400000;
+const daysSince = (iso, now) => (iso ? (now - new Date(iso)) / DAY_MS : Infinity);
+
+// Etapa de cada cuenta para saber a quién atender: sin confirmar → sin activar → activa / en riesgo / inactiva
+export function accountStage(a, now = Date.now()) {
+  if (!a.confirmed) return { key: 'unconfirmed', label: 'Sin confirmar', tone: 'bad' };
+  if (!a.movements) return { key: 'inactive_new', label: 'Sin activar', tone: 'warn' };
+  const idle = daysSince(a.last_seen_at, now);
+  if (idle > 14) return { key: 'lost', label: 'Inactiva', tone: 'bad' };
+  if (idle > 7) return { key: 'risk', label: 'En riesgo', tone: 'warn' };
+  return { key: 'active', label: 'Activa', tone: 'good' };
+}
+
+const median = (xs) => {
+  if (!xs.length) return null;
+  const v = [...xs].sort((a, b) => a - b), m = Math.floor(v.length / 2);
+  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+};
+
+export const hoursLabel = (h) => (h == null ? '—' : h < 1 ? Math.max(1, Math.round(h * 60)) + ' min' : h < 48 ? Math.round(h) + ' h' : Math.round(h / 24) + ' d');
+
+// Resumen de todas las cuentas: embudo de activación, retención, uso de funciones e ideas de mejora
+export function summarizeAccounts(list, now = Date.now()) {
+  const n = list.length;
+  const count = (f) => list.filter(f).length;
+  const old7 = list.filter((a) => daysSince(a.created_at, now) >= 7); // solo cuentas con 7 días o más cuentan para retención
+  const activated = list.filter((a) => a.movements > 0);
+  const funnel = [
+    { label: 'Crearon su cuenta', value: 100 },
+    { label: 'Confirmaron su correo', value: pct(count((a) => a.confirmed), n) },
+    { label: 'Completaron la bienvenida', value: pct(count((a) => a.onboarded), n) },
+    { label: 'Registraron su primer movimiento', value: pct(activated.length, n) },
+    { label: 'Volvieron otro día', value: pct(count((a) => a.returned_d1), n) },
+    { label: 'Siguen a los 7 días', value: pct(old7.filter((a) => a.returned_d7).length, old7.length) },
+    { label: 'Activas esta semana', value: pct(count((a) => daysSince(a.last_seen_at, now) <= 7), n) },
+  ];
+  const features = [
+    { label: 'Registran ingresos', value: pct(count((a) => a.incomes > 0), n) },
+    { label: 'Escriben descripciones', value: pct(count((a) => a.with_note > 0), n) },
+    { label: 'Notificaciones activas', value: pct(count((a) => a.push), n) },
+    { label: 'Movimientos recurrentes', value: pct(count((a) => a.recurring > 0), n) },
+    { label: 'Metas de ahorro', value: pct(count((a) => a.goals > 0), n) },
+    { label: 'Límites por categoría', value: pct(count((a) => a.limits > 0), n) },
+    { label: 'Cuentas (bancos/efectivo)', value: pct(count((a) => a.accounts > 0), n) },
+  ].sort((a, b) => b.value - a.value);
+  const stages = {};
+  list.forEach((a) => { const st = accountStage(a, now); stages[st.key] = (stages[st.key] || 0) + 1; });
+  const ttf = median(activated.map((a) => Number(a.hours_to_first_movement)).filter((h) => h >= 0));
+  const recent = list.filter((a) => daysSince(a.last_seen_at, now) <= 30);
+  const avgDays = recent.length ? recent.reduce((t, a) => t + a.active_days_30, 0) / recent.length : 0;
+
+  const ideas = [];
+  const notActivated = count((a) => a.confirmed && !a.movements);
+  if (notActivated) ideas.push({ tone: 'warn', text: notActivated + ' cuenta(s) entraron pero nunca registraron un movimiento. Conviene que la bienvenida termine pidiendo el primer gasto o la nómina.' });
+  const unconfirmed = count((a) => !a.confirmed);
+  if (unconfirmed) ideas.push({ tone: 'bad', text: unconfirmed + ' cuenta(s) no confirmaron su correo: revisa que el correo de confirmación no llegue a spam.' });
+  const noOnb = count((a) => !a.onboarded && a.movements > 0);
+  if (noOnb) ideas.push({ tone: 'info', text: noOnb + ' cuenta(s) usan la app sin haber completado la bienvenida: su reparto y ciclo de cobro pueden estar en valores por defecto.' });
+  const atRisk = (stages.risk || 0) + (stages.lost || 0);
+  if (atRisk) ideas.push({ tone: 'warn', text: atRisk + ' cuenta(s) activadas llevan más de 7 días sin entrar. Un recordatorio semanal podría traerlas de vuelta.' });
+  const lowFeature = features.filter((f) => f.value < 34).map((f) => f.label.toLowerCase());
+  if (n && lowFeature.length) ideas.push({ tone: 'info', text: 'Funciones poco usadas: ' + lowFeature.join(', ') + '. Puede que no se descubran: muéstralas en el Resumen o en Novedades.' });
+  const withErrors = count((a) => a.errors > 0);
+  if (withErrors) ideas.push({ tone: 'bad', text: withErrors + ' cuenta(s) tuvieron errores en la app. Revisa la pestaña Rendimiento.' });
+  if (!ideas.length) ideas.push({ tone: 'good', text: 'Todas las cuentas están activas y usando la app. ¡Bien!' });
+
+  return { funnel, features, stages, ttf, avgDays, ideas, activatedPct: pct(activated.length, n), retained7Pct: pct(old7.filter((a) => a.returned_d7).length, old7.length) };
+}
