@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import { C } from '../theme/colors';
+import { FONT } from '../theme/styles';
 
 const NATIVE = Platform.OS !== 'web';
 const LOGO = Platform.OS === 'web' ? { uri: '/icon-192.png' } : require('../../assets/icon.png');
 const SIZE = 96;
-const MIN_MS = 1400; // tiempo mínimo en pantalla para que la animación se alcance a ver
+const MIN_MS = 2800; // tiempo mínimo en pantalla para que la animación se alcance a ver
 const BEAT = 800;
 
 // Pantalla de carga al abrir la app: el logo entra, "respira" con un aro que se expande
@@ -37,7 +38,7 @@ export function SplashScreen({ ready, onDone }) {
 
   useEffect(() => {
     if (!ready || !minDone) return;
-    Animated.timing(out, { toValue: 0, duration: 380, easing: Easing.in(Easing.cubic), useNativeDriver: NATIVE }).start(() => onDone && onDone());
+    Animated.timing(out, { toValue: 0, duration: 500, easing: Easing.in(Easing.cubic), useNativeDriver: NATIVE }).start(() => onDone && onDone());
   }, [ready, minDone, out, onDone]);
 
   const logoScale = Animated.multiply(
@@ -54,6 +55,9 @@ export function SplashScreen({ ready, onDone }) {
         }]} />
         <Animated.Image source={LOGO} style={[st.img, { opacity: enter, transform: [{ scale: logoScale }] }]} />
       </View>
+      <Animated.View style={{ opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
+        <Text style={st.name}>Finanzas</Text>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -63,4 +67,5 @@ const st = StyleSheet.create({
   logo: { width: SIZE, height: SIZE },
   ring: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 26, borderWidth: 2, borderColor: C.primary },
   img: { width: SIZE, height: SIZE, borderRadius: 22 },
+  name: { fontFamily: FONT, fontSize: 22, fontWeight: '700', letterSpacing: -0.4, color: C.text, marginTop: 28 },
 });
