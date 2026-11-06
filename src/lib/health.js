@@ -75,7 +75,7 @@ export function financialHealth(moves, { limits = {}, acc = null, saved = 0, now
   if (needs > 0) {
     const months = Math.max(saved, 0) / needs;
     factors.push({
-      key: 'emergency', label: 'Colchón para imprevistos', w: 15, score: clamp01(months / EMERGENCY_MONTHS),
+      key: 'emergency', label: 'Fondo de emergencia', w: 15, score: clamp01(months / EMERGENCY_MONTHS),
       detail: 'Tus ahorros alcanzan para ' + monthsText(months) + ' de gastos básicos (meta: ' + EMERGENCY_MONTHS + ' meses)',
       tip: months < EMERGENCY_MONTHS ? 'Junta ' + EMERGENCY_MONTHS + ' meses de necesidades en tu caja de ahorro.' : null,
     });
