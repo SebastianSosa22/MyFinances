@@ -29,37 +29,11 @@
         -webkit-text-fill-color: #E8EDF5 !important; caret-color: #E8EDF5; transition: background-color 600000s 0s, color 600000s 0s;
       }
       input:autofill { box-shadow: 0 0 0 1000px #141C2B inset !important; -webkit-text-fill-color: #E8EDF5 !important; }
-      /* Pantalla de carga: el anillo 50/30/20 del logo se dibuja, aparece la moneda y el nombre.
-         Vive fuera de #root para que la animación no se reinicie cuando arranca React;
-         SplashScreen.js la desvanece cuando la app está lista. */
-      #boot { position: fixed; inset: 0; z-index: 9999; background: #0B1220; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity .5s ease; }
-      #boot.hide { opacity: 0; pointer-events: none; }
-      #boot .logo { width: 104px; height: 104px; display: flex; align-items: center; justify-content: center; }
-      #boot svg { width: 104px; height: 104px; overflow: visible; }
-      #boot .arc { fill: none; stroke-width: 7; stroke-linecap: round; stroke-dashoffset: var(--len); animation: boot-draw .55s cubic-bezier(.6,0,.2,1) forwards; }
-      #boot .s2 { animation-delay: .5s; } #boot .s3 { animation-delay: .9s; }
-      #boot .coin { transform-origin: 35px 35px; transform: scale(0); animation: boot-pop .45s cubic-bezier(.3,1.6,.5,1) 1.3s forwards; }
-      #boot b { margin-top: 24px; font: 700 22px/1.2 "Inter Tight", -apple-system, sans-serif; letter-spacing: -0.4px; color: #E8EDF5; opacity: 0; animation: boot-rise .5s ease-out 1.6s forwards; }
-      @keyframes boot-draw { to { stroke-dashoffset: 0; } }
-      @keyframes boot-pop { to { transform: scale(1); } }
-      @keyframes boot-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-      @media (prefers-reduced-motion: reduce) { #boot * { animation-duration: .01s !important; animation-delay: 0s !important; } }
     </style>
   </head>
 
   <body>
     <noscript>Activa JavaScript para usar la app.</noscript>
     <div id="root"></div>
-    <div id="boot" aria-hidden="true">
-      <div class="logo">
-        <svg viewBox="0 0 70 70">
-          <circle class="arc" cx="35" cy="35" r="26" stroke="#6EA8FF" stroke-dasharray="72.68 163.36" style="--len:72.68" transform="rotate(-84 35 35)" />
-          <circle class="arc s2" cx="35" cy="35" r="26" stroke="#FFB25B" stroke-dasharray="23.67 163.36" style="--len:23.67" transform="rotate(96 35 35)" />
-          <circle class="arc s3" cx="35" cy="35" r="26" stroke="#34C77B" stroke-dasharray="40.01 163.36" style="--len:40.01" transform="rotate(168 35 35)" />
-          <g class="coin"><circle cx="35" cy="35" r="13" fill="#34C77B" /><text x="35" y="42" text-anchor="middle" fill="#fff" font-family="Inter Tight, -apple-system, sans-serif" font-weight="700" font-size="20">$</text></g>
-        </svg>
-      </div>
-      <b>Finanzas</b>
-    </div>
   </body>
 </html>
