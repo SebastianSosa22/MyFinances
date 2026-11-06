@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, ActivityIndicator, Pressable } from 'react-native';
+import { HealthCard } from '../components/HealthCard';
 import { AvailableHero, BudgetCard, HomeHeader, MoneyTiles, UpcomingPanel } from '../components/HomeCards';
 import { TourTarget } from '../components/Tour';
 import { Panel, Segmented } from '../components/ui';
 import { CATS, PERIODS } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
 import { accountsSummary, cardsDue } from '../lib/accounts';
+import { financialHealth } from '../lib/health';
 import { balanceSummary, homeSummary, outflowOf, periodView } from '../lib/summary';
 import { s } from '../theme/styles';
 
@@ -21,6 +23,7 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
   const hasIncome = moves.some((m) => m.kind === 'income');
   const acc = useMemo(() => accountsSummary(accounts, moves, transfers), [accounts, moves, transfers, dayKey]);
   const cards = useMemo(() => cardsDue(accounts, moves, transfers, new Date(), sm.end), [accounts, moves, transfers, sm.end, dayKey]);
+  const health = useMemo(() => financialHealth(moves, { limits, acc, saved: balance.saved }), [moves, limits, acc, balance.saved, settings.split, dayKey]);
   const { start, end, prev, upcoming } = sm;
   const { income } = view;
 
@@ -74,6 +77,7 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
         </View>
         <View style={wide ? s.col : null}>
           {budget}
+          <HealthCard health={health} />
           {upcoming.length > 0 && <UpcomingPanel items={upcoming} icons={icon} hide={hide} />}
         </View>
       </View>
