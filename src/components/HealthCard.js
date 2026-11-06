@@ -11,7 +11,7 @@ const barWord = (x) => (x >= 0.8 ? 'Bien' : x >= 0.5 ? 'Mejorable' : 'Atención'
 
 // Anillo con la calificación de 0 a 100
 function ScoreRing({ score, color, size = 104 }) {
-  const sw = 10, r = size / 2 - sw / 2 - 1, len = 2 * Math.PI * r, fill = (Math.max(score, 0) / 100) * len;
+  const sw = Math.round(size / 11), r = size / 2 - sw / 2 - 1, len = 2 * Math.PI * r, fill = (Math.max(score, 0) / 100) * len;
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size}>
@@ -21,14 +21,14 @@ function ScoreRing({ score, color, size = 104 }) {
         </G>
       </Svg>
       <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-        <Text style={[s.amount, { fontSize: 28, color: C.text }]}>{score}</Text>
+        <Text style={[s.amount, { fontSize: Math.round(size * 0.27), color: C.text }]}>{score}</Text>
         <Text style={{ fontFamily: FONT, fontSize: 11, color: C.muted }}>de 100</Text>
       </View>
     </View>
   );
 }
 
-// Salud financiera del Inicio: calificación, nivel, el consejo que más te ayudaría y cómo va cada factor
+// Salud financiera del Inicio: calificación, nivel y consejo arriba; abajo una línea por factor (punto de color + dato)
 export function HealthCard({ health }) {
   if (!health) return null;
   const color = TONE[health.level.tone];
@@ -36,26 +36,22 @@ export function HealthCard({ health }) {
     <Panel title="Salud financiera" right={
       <View style={[s.deltaChip, { backgroundColor: color + '26' }]}><Text style={[s.deltaText, { color }]}>{health.level.label}</Text></View>
     }>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }} accessible accessibilityLabel={'Salud financiera ' + health.score + ' de 100, ' + health.level.label}>
-        <ScoreRing score={health.score} color={color} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }} accessible accessibilityLabel={'Salud financiera ' + health.score + ' de 100, ' + health.level.label + '. ' + health.tip}>
+        <ScoreRing score={health.score} color={color} size={84} />
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-          <Text style={s.eyebrow}>Lo que más te ayudaría</Text>
           <Text style={[s.rowTitle, { fontSize: 14, lineHeight: 20 }]}>{health.tip}</Text>
+          <Text style={[s.tileLabel, { fontSize: 11 }]}>Con tus últimos 30 días, en tu teléfono</Text>
         </View>
       </View>
-      <View style={{ gap: 10 }}>
+      <View style={{ borderTopWidth: 1, borderTopColor: C.cardBorder, paddingTop: 10, gap: 8 }}>
         {health.factors.map((f) => (
-          <View key={f.key} style={{ gap: 4 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-              <Text style={{ fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.text }} numberOfLines={1}>{f.label}</Text>
-              <Text style={[s.tileLabel, { color: barTone(f.score) }]}>{barWord(f.score)}</Text>
-            </View>
-            <View style={s.barBg}><View style={{ width: `${Math.round(f.score * 100)}%`, height: 6, borderRadius: 3, backgroundColor: barTone(f.score) }} /></View>
-            <Text style={s.tileLabel} numberOfLines={2}>{f.detail}</Text>
+          <View key={f.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }} accessible accessibilityLabel={f.label + ': ' + f.detail + ', ' + barWord(f.score)}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: barTone(f.score) }} />
+            <Text style={[s.smallMuted, { flex: 1, color: C.text }]} numberOfLines={1}>{f.label}</Text>
+            <Text style={[s.smallMuted, { color: barTone(f.score), fontWeight: '600' }]} numberOfLines={1}>{f.detail}</Text>
           </View>
         ))}
       </View>
-      <Text style={[s.smallMuted, { fontSize: 12 }]}>Calculada con tus últimos 30 días, en tu teléfono.</Text>
     </Panel>
   );
 }
