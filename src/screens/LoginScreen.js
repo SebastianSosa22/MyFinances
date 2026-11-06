@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase';
 import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 import { DismissKeyboard } from '../components/DismissKeyboard';
-import { Icon } from '../components/Icon';
 
 const PLACEHOLDER = '#5D6A80';
 const NATIVE = Platform.OS !== 'web';
@@ -134,7 +133,6 @@ export function LoginScreen() {
 
   return (
     <DismissKeyboard style={[s.container, s.loginWrap]}>
-      <View style={s.loginLogo}><Icon name="vault" size={32} color={C.primary} width={1.7} /></View>
       <Text style={s.loginTitle}>¡Hola!</Text>
       <Text style={s.loginSub}>{isSignUp ? SIGNUP_PROMPTS[step] : 'Inicia sesión para tomar control de tus finanzas'}</Text>
       {isSignUp ? (

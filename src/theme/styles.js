@@ -112,7 +112,6 @@ export const s = StyleSheet.create({
 
   // Login (fondo azul noche)
   loginWrap: { flex: 1, padding: 24, justifyContent: 'center' },
-  loginLogo: { width: 64, height: 64, borderRadius: 20, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 24 },
   loginTitle: { fontFamily: FONT, fontSize: 40, fontWeight: '700', letterSpacing: -1.2, color: C.text, textAlign: 'center' },
   loginSub: { fontFamily: FONT, fontSize: 16, color: C.muted, textAlign: 'center', marginTop: 8, marginBottom: 12 },
   loginField: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: 16, marginTop: 12 },
