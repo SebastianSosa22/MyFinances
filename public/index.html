@@ -29,6 +29,9 @@
         -webkit-text-fill-color: #E8EDF5 !important; caret-color: #E8EDF5; transition: background-color 600000s 0s, color 600000s 0s;
       }
       input:autofill { box-shadow: 0 0 0 1000px #141C2B inset !important; -webkit-text-fill-color: #E8EDF5 !important; }
+      /* Las ventanas (bienvenida, hojas) reciben el foco al abrirse: sin el marco blanco del navegador */
+      /* (también las zonas con scroll, que Chrome/Safari enfocan solas; los botones conservan su marco) */
+      [tabindex="-1"]:focus, div:not([role]):not([tabindex]):focus { outline: none; }
     </style>
   </head>
 

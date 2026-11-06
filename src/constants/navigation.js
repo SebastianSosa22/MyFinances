@@ -5,7 +5,7 @@ export const TABS = [
   { key: 'home', icon: '📊', glyph: 'home', label: 'Inicio' },
   { key: 'moves', icon: '🧾', glyph: 'list', label: 'Movimientos' },
   { key: 'history', icon: '🗓️', glyph: 'pie', label: 'Análisis' },
-  { key: 'savings', icon: '🛍️', glyph: 'bag', label: 'Presupuestos' },
+  { key: 'savings', icon: '🎯', glyph: 'target', label: 'Plan', title: 'Presupuestos y metas' },
   { key: 'settings', icon: '⚙️', label: 'Ajustes' },
 ];
 

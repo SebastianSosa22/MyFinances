@@ -74,10 +74,10 @@ export const s = StyleSheet.create({
   // Barra inferior flotante (píldora) con el botón + al centro
   tabbar: { position: 'absolute', bottom: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(20,28,43,0.94)', borderRadius: 26, height: 68, paddingHorizontal: 6, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   tabSlot: { flex: 1, alignItems: 'center' },
-  tab: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 16 },
+  tab: { minWidth: 56, height: 52, paddingHorizontal: 2, alignItems: 'center', justifyContent: 'center', borderRadius: 16, gap: 2 },
+  tabLabel: { fontFamily: FONT, fontSize: 10, fontWeight: '600', color: C.muted },
   tabOn: { backgroundColor: C.raised },
   tabGroup: { flex: 1, flexDirection: 'row' },
-  tabLabel: { fontFamily: FONT, fontSize: 10, color: C.muted, marginTop: 2 },
   tabFab: { width: 56, height: 56, borderRadius: 20, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', marginHorizontal: 6 },
   tabFabText: { color: C.onPrimary, fontSize: 32, fontWeight: '500', marginTop: -2 },
 

@@ -3,20 +3,20 @@ import { View, Text, Pressable, ScrollView } from 'react-native';
 import { BudgetDonut } from './BudgetDonut';
 import { Icon } from './Icon';
 import { DeltaChip, Panel, Tile } from './ui';
-import { BUCKETS } from '../constants/budget';
+import { BUCKETS, CYCLES } from '../constants/budget';
 import { money, shortDate } from '../lib/format';
 import { C } from '../theme/colors';
 import { FONT, MONO, s } from '../theme/styles';
 
 export const HIDDEN = '$•••';
 
-// Monto con los centavos más chicos y tenues: $2,500.00.
+// Monto grande en pesos enteros ($2,500): en los resúmenes los centavos solo estorban.
 // Con `fit`, mide el espacio disponible y reduce la letra si el monto no cabe (adjustsFontSizeToFit no existe en la web).
 // Solo sirve donde el contenedor tiene un ancho propio (una columna con flex), no en una fila que se ajusta al texto.
 const CHAR_W = 0.62; // ancho aproximado de un dígito, en proporción al tamaño de letra
 export function Amount({ value, size = 28, color = C.text, hide, center, fit, plus }) {
   const [width, setWidth] = useState(0);
-  const [int, cents] = hide ? [HIDDEN, ''] : money(value, true).split('.');
+  const [int, cents] = hide ? [HIDDEN, ''] : [money(Math.round(value)), ''];
   const need = (int.length + (cents ? 0.55 * (cents.length + 1) : 0)) * CHAR_W * size;
   const fs = fit && width > 0 && need > width ? Math.max(Math.floor((size * width) / need), 12) : size;
   const text = (
@@ -47,13 +47,17 @@ export function HomeHeader({ name, period, start, end, hide, onToggleHide, actio
 }
 
 // Tarjeta principal: lo que te queda en el periodo, lo que entró y lo que salió
-export function AvailableHero({ income, spent, saved, left, pending, end, prevSpent, hide, onPress, onSaved, onPending }) {
+export function AvailableHero({ period = 'weekly', income, spent, saved, left, pending, end, prevSpent, hide, onPress, onSaved, onPending }) {
   const fmt = (v) => (hide ? HIDDEN : money(Math.round(v)));
+  const thisPeriod = (CYCLES[period] || CYCLES.monthly).this;
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={[s.panel, { padding: 20, gap: 14 }]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={[s.panel, { padding: 20, gap: 14 }]} accessibilityLabel="Ver análisis">
       <View style={{ gap: 4 }}>
-        <Text style={s.eyebrow}>Disponible</Text>
-        <Amount value={left} size={40} hide={hide} color={left < 0 ? C.red : C.primary} fit />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <Text style={s.eyebrow}>{(left < 0 ? 'Te pasaste ' : 'Te queda ') + thisPeriod}</Text>
+          <Text style={[s.linkSm, { fontSize: 13 }]}>Ver análisis ›</Text>
+        </View>
+        <Amount value={Math.abs(left)} size={40} hide={hide} color={left < 0 ? C.red : C.primary} fit />
       </View>
       <View style={s.tileRow}>
         <Tile label="Ingresos" value={hide ? HIDDEN : '+' + fmt(income)} color={C.green} small={saved > 0} />
@@ -96,6 +100,7 @@ export function BudgetCard({ spent, income, spentPct, fixedShare, smooth, hide, 
           })}
         </View>
       </View>
+      <Text style={s.tileLabel}>Cada color es una parte de tu plan: la parte brillante es lo que ya usaste y la tenue lo que aún te toca.</Text>
       {smooth && (
         <Text style={s.smallMuted}>
           La renta, los pagos mensuales y tu nómina se reparten entre los días que cubren{fixedShare > 0 ? ': de gastos fijos cuentan ' + fmt(fixedShare) : ''}.
@@ -112,7 +117,7 @@ export function MoneyTiles({ acc, saved, savedNow, hide, onAccounts, onSavings }
   return (
     <View style={[s.tileRow, { gap: 12, marginTop: 14 }]}>
       <Pressable accessibilityRole="button" style={s.statCard} onPress={onAccounts}>
-        <Text style={s.tileLabel}>Tus cuentas</Text>
+        <Text style={s.tileLabel}>Dinero en cuentas ›</Text>
         {hasAccounts ? (
           <>
             <Text style={[s.statCardValue, acc.cash < 0 && { color: C.red }]} numberOfLines={1}>{fmt(acc.cash)}</Text>
@@ -126,7 +131,7 @@ export function MoneyTiles({ acc, saved, savedNow, hide, onAccounts, onSavings }
         )}
       </Pressable>
       <Pressable accessibilityRole="button" style={s.statCard} onPress={onSavings}>
-        <Text style={s.tileLabel}>Caja de ahorro</Text>
+        <Text style={s.tileLabel}>Caja de ahorro ›</Text>
         <Text style={s.statCardValue} numberOfLines={1}>{fmt(saved)}</Text>
         <Text style={[s.tileLabel, savedNow > 0 && { color: C.green }]} numberOfLines={2}>{savedNow > 0 ? '+ ' + fmt(savedNow) + ' este periodo' : 'Ver tus metas'}</Text>
       </Pressable>
