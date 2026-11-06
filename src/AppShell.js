@@ -196,7 +196,7 @@ export function AppShell({ session }) {
           </>
         )}
         {tab === 'moves' && <MovesScreen key={movesDay || 'all'} initialDay={movesDay} moves={moves} accounts={accounts} loading={!data.loaded} onDelete={data.delMove} onEdit={openEdit} />}
-        {tab === 'history' && <AnalysisScreen moves={moves} onAdd={openAdd} onSeeMoves={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} />}
+        {tab === 'history' && <AnalysisScreen moves={moves} accounts={accounts} transfers={transfers} hide={hide} onSeeAccounts={() => setTab('accounts')} onAdd={openAdd} onSeeMoves={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} />}
         {tab === 'accounts' && <AccountsScreen accounts={accounts} moves={moves} transfers={transfers} hide={hide} onBack={() => setTab('home')} onNew={() => openAccount(null)} onEdit={openAccount} onEditMove={openEdit}
           onTransfer={(start) => openTransfer(start)} onEditTransfer={(t) => openTransfer(null, t)} onAdjust={setAdjustAccount} />}
         {tab === 'admin' && isAdmin && <AdminScreen me={session.user.id} onBack={() => toggleHeader('admin')} />}
