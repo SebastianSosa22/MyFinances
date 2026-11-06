@@ -12,6 +12,8 @@ import { KEPT } from '../lib/summary';
 import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
+// Color de lo que mandas a Ahorro o Inversión (el mismo azul de "Ahorraste" en el Inicio)
+const KEPT_COLOR = C.blue;
 const KINDS = { all: 'Todo', expense: 'Gastos', income: 'Ingresos' };
 // Fondo del ícono según la parte del presupuesto (Necesidades azul, Deseos ámbar, Ahorro/ingreso menta)
 const SOFT = { needs: '#1B2A44', wants: '#3A2A16', savings: '#13362A' };
@@ -102,7 +104,7 @@ export function MovesScreen({ moves, accounts = [], loading, onDelete, onEdit, i
     const { m } = x;
     const isInc = m.kind === 'income', kept = KEPT.includes(m.cat), c = CATS.find((z) => z.name === m.cat), b = BUCKETS[bucketOf(m.cat)];
     const ended = isRecurring(m) && !isActive(m, now);
-    const color = isInc ? C.green : kept ? '#C9A7FF' : C.text;
+    const color = isInc ? C.green : kept ? KEPT_COLOR : C.text;
     const acc = m.account_id && accounts.find((a) => a.id === m.account_id);
     const sub = [isInc ? 'Ingreso' : !titleIsCat(m) ? m.cat : b.label, acc ? acc.name : null, !byDate ? shortDate(x.at) : null].filter(Boolean).join(' · ');
     const soft = isInc ? SOFT.savings : SOFT[bucketOf(m.cat)] || C.raised;
@@ -121,7 +123,12 @@ export function MovesScreen({ moves, accounts = [], loading, onDelete, onEdit, i
   };
 
   const totIn = done.reduce((a, x) => a + (x.m.kind === 'income' ? x.m.amount : 0), 0);
-  const totOut = done.reduce((a, x) => a + (x.m.kind === 'income' ? 0 : x.m.amount), 0);
+  // Lo que mandas a Ahorro o Inversión sigue siendo tuyo: se muestra aparte, igual que en Análisis
+  const isKept = (m) => m.kind === 'expense' && KEPT.includes(m.cat);
+  const totOut = done.reduce((a, x) => a + (x.m.kind === 'income' || isKept(x.m) ? 0 : x.m.amount), 0);
+  const totKept = done.reduce((a, x) => a + (isKept(x.m) ? x.m.amount : 0), 0);
+  const schedIn = scheduled.reduce((a, x) => a + (x.m.kind === 'income' ? x.m.amount : 0), 0);
+  const schedOut = scheduled.reduce((a, x) => a + (x.m.kind === 'income' ? 0 : x.m.amount), 0);
   const net = (items) => items.reduce((a, x) => a + (x.m.kind === 'income' ? x.m.amount : -x.m.amount), 0);
 
   return (
@@ -155,12 +162,18 @@ export function MovesScreen({ moves, accounts = [], loading, onDelete, onEdit, i
       <View style={[s.tileRow, { marginTop: 14 }]}>
         <View style={[s.statCard, { borderRadius: 16, paddingVertical: 10, gap: 2 }]}>
           <Text style={s.tileLabel}>Entraron</Text>
-          <Text style={[s.rowAmount, { fontSize: 17, color: C.green }]} numberOfLines={1}>+{money(Math.round(totIn))}</Text>
+          <Text style={[s.rowAmount, { fontSize: totKept > 0 ? 15 : 17, color: C.green }]} numberOfLines={1}>+{money(Math.round(totIn))}</Text>
         </View>
         <View style={[s.statCard, { borderRadius: 16, paddingVertical: 10, gap: 2 }]}>
-          <Text style={s.tileLabel}>Salieron</Text>
-          <Text style={[s.rowAmount, { fontSize: 17 }]} numberOfLines={1}>−{money(Math.round(totOut))}</Text>
+          <Text style={s.tileLabel}>Gastos</Text>
+          <Text style={[s.rowAmount, { fontSize: totKept > 0 ? 15 : 17 }]} numberOfLines={1}>−{money(Math.round(totOut))}</Text>
         </View>
+        {totKept > 0 && (
+          <View style={[s.statCard, { borderRadius: 16, paddingVertical: 10, gap: 2 }]}>
+            <Text style={s.tileLabel}>Ahorro</Text>
+            <Text style={[s.rowAmount, { fontSize: totKept > 0 ? 15 : 17, color: KEPT_COLOR }]} numberOfLines={1}>{money(Math.round(totKept))}</Text>
+          </View>
+        )}
       </View>
 
       {panel && (
@@ -225,7 +238,11 @@ export function MovesScreen({ moves, accounts = [], loading, onDelete, onEdit, i
             <Icon name="calendar" size={24} color={C.link} />
             <View style={{ flex: 1, marginLeft: 14 }}>
               <Text style={[s.body, { fontWeight: '600' }]}>Programados este mes ({scheduled.length})</Text>
-              <Text style={[s.balanceSub, { marginTop: 2 }]}>Aún no contabilizados · {money(Math.abs(net(scheduled)), true)}</Text>
+              <Text style={[s.balanceSub, { marginTop: 2 }]}>
+                {schedIn > 0 && <Text style={{ color: C.green }}>Por entrar +{money(Math.round(schedIn))}</Text>}
+                {schedIn > 0 && schedOut > 0 && ' · '}
+                {schedOut > 0 && <Text>Por salir −{money(Math.round(schedOut))}</Text>}
+              </Text>
             </View>
             <Icon name={showSched ? 'chevronUp' : 'chevronDown'} size={20} color={C.muted} />
           </Pressable>

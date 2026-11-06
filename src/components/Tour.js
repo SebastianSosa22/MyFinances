@@ -7,13 +7,13 @@ import { s } from '../theme/styles';
 // Cada elemento se marca con useTourRef('id') (o <TourTarget id>) y la guía lo busca por su id.
 // fixed: el elemento no se mueve con el scroll (barra de abajo, menú lateral, encabezado).
 export const TOUR_STEPS = [
-  { target: 'hero', title: 'Lo que tienes disponible', body: 'Lo que te queda en el periodo, lo que entró y lo que has gastado. Tócala para ver el análisis.' },
+  { target: 'hero', title: 'Lo que te queda', body: 'Lo que te queda para gastar en tu semana, quincena o mes, lo que entró y lo que has gastado. Tócala para ver el análisis.' },
   { target: 'period', title: 'Elige el periodo', body: 'Cambia entre semana, quincena o mes. Al abrir la app se usa tu ciclo de cobro.' },
-  { target: 'accounts', title: 'Tus cuentas y tu ahorro', body: 'Toca Tus cuentas para ver el saldo de cada tarjeta y de tu efectivo, pagar tu tarjeta o transferir. Caja de ahorro te lleva a tus metas.' },
+  { target: 'accounts', title: 'Tus cuentas y tu ahorro', body: 'Toca Dinero en cuentas para ver el saldo de cada tarjeta y de tu efectivo, pagar tu tarjeta o transferir. Caja de ahorro te lleva a tus metas.' },
   { target: 'add', fixed: true, title: 'Registra un movimiento', body: 'Toca + para anotar un gasto, ingreso o ahorro. Toca el monto para escribirlo, elige la cuenta y, si quieres, ponlo a meses sin intereses.' },
   { target: 'tab-moves', fixed: true, title: 'Movimientos', body: 'Tu historial del mes. Toca uno para editarlo, deslízalo para borrarlo y filtra por cuenta o categoría.' },
   { target: 'tab-history', fixed: true, title: 'Análisis', body: 'Descubre en qué gastas más, por categoría y comparado con el mes anterior.' },
-  { target: 'tab-savings', fixed: true, title: 'Presupuestos y ahorro', body: 'Pon límites por categoría, crea metas y arma tu fondo de emergencia.' },
+  { target: 'tab-savings', fixed: true, title: 'Plan: presupuestos y metas', body: 'Pon límites por categoría y, en Ahorro, crea tus metas y arma tu fondo de emergencia.' },
   { target: 'bell', fixed: true, title: 'Próximos pagos', body: 'Los pagos fijos y de tarjeta que vencen en los próximos 7 días.' },
   { target: 'profile', fixed: true, title: 'Tu perfil y ajustes', body: 'Recordatorios, notificaciones, exportar tus movimientos y volver a ver esta guía.' },
 ];

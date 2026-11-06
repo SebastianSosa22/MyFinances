@@ -8,11 +8,12 @@ import { CATS, PERIODS } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
 import { accountsSummary, cardsDue } from '../lib/accounts';
 import { financialHealth } from '../lib/health';
+import { emergencySaved } from '../lib/emergency';
 import { balanceSummary, homeSummary, outflowOf, periodView } from '../lib/summary';
 import { s } from '../theme/styles';
 
 // Inicio (diseño "Bóveda nocturna"): encabezado, Disponible, Tu reparto, cuentas y ahorro, y los próximos pagos
-export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAccounts, limits, settings, loading, hide, onToggleHide, onSeeAll, onSeeHistory, onSeeSavings, onAdd, headerActions }) {
+export function HomeScreen({ name, upcomingItems, emergencyMonths, goals = [], moves, accounts = [], transfers = [], onSeeAccounts, limits, settings, loading, hide, onToggleHide, onSeeAll, onSeeHistory, onSeeSavings, onAdd, headerActions }) {
   const wide = useWide();
   const [pick, setPick] = useState(null);
   const period = pick || settings.cycle; // el Inicio abre en TU ciclo de cobro
@@ -23,8 +24,11 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
   const hasIncome = moves.some((m) => m.kind === 'income');
   const acc = useMemo(() => accountsSummary(accounts, moves, transfers), [accounts, moves, transfers, dayKey]);
   const cards = useMemo(() => cardsDue(accounts, moves, transfers, new Date(), sm.end), [accounts, moves, transfers, sm.end, dayKey]);
-  const health = useMemo(() => financialHealth(moves, { limits, acc, saved: balance.saved }), [moves, limits, acc, balance.saved, settings.split, dayKey]);
-  const { start, end, prev, upcoming } = sm;
+  const emergency = useMemo(() => emergencySaved(moves, goals), [moves, goals, dayKey]);
+  const health = useMemo(() => financialHealth(moves, { limits, acc, saved: emergency.saved, emergencyMonths }), [moves, limits, acc, emergency.saved, emergencyMonths, settings.split, dayKey]);
+  const { start, end, prev } = sm;
+  // Misma lista que la campana (incluye pagos de tarjeta), para que las cifras coincidan
+  const upcoming = upcomingItems || sm.upcoming;
   const { income } = view;
 
   const header = <HomeHeader name={name} period={period} start={start} end={end} hide={hide} onToggleHide={onToggleHide} actions={headerActions} />;
@@ -36,7 +40,7 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
 
   const hero = (
     <TourTarget id="hero">
-      <AvailableHero income={income} spent={view.outflow} saved={view.saved} left={view.left} pending={view.pending + cards.total} end={end}
+      <AvailableHero period={period} income={income} spent={view.outflow} saved={view.saved} left={view.left} pending={view.pending + cards.total} end={end}
         prevSpent={prev ? outflowOf(prev) : 0} hide={hide} onPress={onSeeHistory} onSaved={onSeeSavings} onPending={onSeeAll} />
     </TourTarget>
   );
@@ -48,7 +52,7 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
       <MoneyTiles acc={acc} saved={balance.saved} savedNow={view.saved} hide={hide} onAccounts={onSeeAccounts} onSavings={onSeeSavings} />
     </TourTarget>
   );
-  const icon = (u) => { const c = CATS.find((z) => z.name === u.m.cat); return c ? c.icon : '🧾'; };
+  const icon = (u) => { if (u.icon) return u.icon; const c = CATS.find((z) => z.name === u.m.cat); return c ? c.icon : '🧾'; };
 
   // Cuenta nueva sin movimientos: en vez de cifras en cero, una bienvenida con el primer paso
   if (moves.length === 0) {

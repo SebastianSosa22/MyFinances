@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Amount } from '../components/HomeCards';
 import { SwipeRow } from '../components/SwipeRow';
 import { BUCKETS } from '../constants/budget';
@@ -8,25 +7,16 @@ import { endOfDay, startOfMonth } from '../lib/dates';
 import { report } from '../lib/finance';
 import { money, monthName, shortDate } from '../lib/format';
 import { KEPT, keptOf, monthlyNeedsAverage } from '../lib/summary';
+import { EMERGENCY_OPTS, coverText, emergencySaved } from '../lib/emergency';
 import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
-const EMERGENCY_KEY = 'emergency_months';
-const EMERGENCY_OPTS = [3, 6, 12];
 const SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
-// Meses que quieres cubrir con tu fondo de emergencia (se recuerda en el dispositivo)
-function useEmergencyMonths() {
-  const [months, setMonths] = useState(6);
-  useEffect(() => { AsyncStorage.getItem(EMERGENCY_KEY).then((v) => { if (EMERGENCY_OPTS.includes(Number(v))) setMonths(Number(v)); }).catch(() => {}); }, []);
-  const save = (n) => { setMonths(n); AsyncStorage.setItem(EMERGENCY_KEY, String(n)).catch(() => {}); };
-  return [months, save];
-}
-
 // Ahorro: cuánto has guardado (Ahorro + Inversión), cómo va mes a mes, tus metas, tu fondo de emergencia y los movimientos de ahorro
-export function SavingScreen({ moves, goals, onNewGoal, onEditGoal, onDeleteGoal, onContribute, onEditMove }) {
+export function SavingScreen({ moves, goals, emMonths = 3, onEmMonths, onNewGoal, onEditGoal, onDeleteGoal, onContribute, onEditMove }) {
   const now = new Date();
-  const [emMonths, setEmMonths] = useEmergencyMonths();
+  const setEmMonths = (n) => onEmMonths && onEmMonths(n);
   const [emOpen, setEmOpen] = useState(false);
   const dayKey = now.toDateString();
 
@@ -47,13 +37,17 @@ export function SavingScreen({ moves, goals, onNewGoal, onEditGoal, onDeleteGoal
       count6: months.reduce((a, x) => a + x.count, 0),
       income: thisMonth.income, keptMonth: keptOf(thisMonth.byCat),
       needs: monthlyNeedsAverage(moves),
+      emergency: emergencySaved(moves, goals, t),
       list: savedMoves.filter((m) => new Date(m.occurred_at) <= t).sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at)).slice(0, 10),
     };
-  }, [moves, dayKey]);
+  }, [moves, goals, dayKey]);
 
   const max = Math.max(0, ...data.months.map((x) => x.value));
   const target = (data.income * BUCKETS.savings.pct) / 100;
-  const covered = data.needs > 0 ? data.total / data.needs : 0;
+  // El fondo cuenta solo lo ahorrado sin meta (lo de tus otras metas no se cuenta dos veces)
+  const emSaved = data.emergency.saved;
+  const ownGoal = data.emergency.goal; // si ya creaste tu propia meta de emergencia, el fondo se muestra en ella
+  const covered = data.needs > 0 ? emSaved / data.needs : 0;
   const emPct = Math.min(Math.round((covered / emMonths) * 100), 100);
 
   const fmt = (v) => money(Math.round(v));
@@ -86,12 +80,12 @@ export function SavingScreen({ moves, goals, onNewGoal, onEditGoal, onDeleteGoal
         <Pressable accessibilityRole="button" onPress={onNewGoal} style={s.smallBtn}><Text style={[s.linkSm, { fontWeight: '600' }]}>+ Nueva meta</Text></Pressable>
       </View>
 
-      <View style={[s.panel, { borderRadius: 20, gap: 10 }]}>
+      {!ownGoal && <View style={[s.panel, { borderRadius: 20, gap: 10 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={[s.catBadge, { width: 42, height: 42, backgroundColor: C.greenSoft }]}><Text style={{ fontSize: 20 }}>🛡️</Text></View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[s.rowTitle, { fontWeight: '600' }]}>Fondo de emergencia</Text>
-            <Pressable accessibilityRole="button" onPress={() => setEmOpen(!emOpen)} hitSlop={8} accessibilityLabel="Cambiar meta del fondo"><Text style={s.rowSub}>{emMonths} meses de gastos ▾</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => setEmOpen(!emOpen)} hitSlop={8} accessibilityLabel="Cambiar meta del fondo"><Text style={s.rowSub}>{emMonths} meses de gastos básicos ▾</Text></Pressable>
           </View>
           <Text style={[s.rowAmount, { fontWeight: '600', color: C.primary }]}>{emPct}%</Text>
         </View>
@@ -107,10 +101,11 @@ export function SavingScreen({ moves, goals, onNewGoal, onEditGoal, onDeleteGoal
         <View style={s.barBg}><View style={{ width: emPct + '%', height: 6, borderRadius: 3, backgroundColor: C.primary }} /></View>
         <Text style={s.smallMuted}>
           {data.needs > 0
-            ? <><Text style={[s.rowAmount, { fontSize: 13 }]}>{fmt(data.total)}<Text style={{ color: C.muted }}> / {fmt(data.needs * emMonths).slice(1)}</Text></Text> · {covered.toFixed(1)} meses cubiertos</>
+            ? <><Text style={[s.rowAmount, { fontSize: 13 }]}>{fmt(emSaved)}<Text style={{ color: C.muted }}> / {fmt(data.needs * emMonths).slice(1)}</Text></Text> · {covered > 0 ? 'cubre ' + coverText(covered) : 'aún sin cubrir'}</>
             : 'Registra tus gastos para calcularlo'}
         </Text>
-      </View>
+        <Text style={s.tileLabel}>Cuenta lo que ahorras sin elegir una meta. Lo de tus otras metas no se suma aquí.</Text>
+      </View>}
 
       {goals.length === 0 ? (
         <Pressable accessibilityRole="button" style={[s.dashedCard, { marginTop: 12 }]} onPress={onNewGoal}>
@@ -145,7 +140,7 @@ function GoalRow({ goal: g, moves, now, onEdit, onDelete, onContribute }) {
   if (done) hint = '¡Meta lograda! 🎉';
   else if (g.deadline) {
     const dl = new Date(g.deadline + 'T12:00:00');
-    hint = dl < now ? 'La fecha de esta meta ya pasó' : 'Para el ' + dl.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ahorra ' + money(rem / Math.max(Math.ceil((dl - now) / (30.4 * 864e5)), 1)) + ' al mes';
+    hint = dl < now ? 'La fecha de esta meta ya pasó' : 'Para el ' + dl.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ahorra ' + money(Math.ceil(rem / Math.max(Math.ceil((dl - now) / (30.4 * 864e5)), 1))) + ' al mes';
   } else if (pace > 0) hint = 'A tu ritmo la alcanzas en ' + monthName(new Date(now.getTime() + (rem / pace) * 30.4 * 864e5));
   const pct = Math.min(Math.round((saved / g.target) * 100), 100);
   return (

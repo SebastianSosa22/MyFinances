@@ -28,6 +28,7 @@ const SORTS = { attention: 'Por atención', name: 'Por nombre', amount: 'Por mon
 // Presupuestos: un límite mensual por categoría, cuánto llevas este mes y sugerencias según tu historial
 export function BudgetsScreen({ moves, limits, onSaveLimit, onApplyLimits, onEdit }) {
   const now = new Date();
+  const [allSugg, setAllSugg] = useState(false);
   const [month, setMonth] = useState(() => startOfMonth(now));
   const [sort, setSort] = useState('attention');
   const first = moves.reduce((a, m) => Math.min(a, new Date(m.occurred_at).getTime()), Infinity);
@@ -58,6 +59,12 @@ export function BudgetsScreen({ moves, limits, onSaveLimit, onApplyLimits, onEdi
         {monthName.charAt(0).toUpperCase() + monthName.slice(1)}{isCurrent ? ' · día ' + now.getDate() + ' de ' + total : ''}
         {rows.length > 0 ? ' · llevas ' : ''}{rows.length > 0 && <Text style={[s.rowAmount, { fontSize: 13 }]}>{money(Math.round(spentTotal))}</Text>}{rows.length > 0 ? ' de ' + money(Math.round(limTotal)) : ''}
       </Text>
+      {isCurrent && rows.length > 0 && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, paddingHorizontal: 2 }}>
+          <View style={[s.timeMark, { position: 'relative', left: 0, top: 0 }]} />
+          <Text style={s.tileLabel}>La rayita marca hasta dónde deberías ir a hoy para no pasarte en el mes.</Text>
+        </View>
+      )}
 
       {rows.length === 0 && (
         <View style={[s.dashedCard, { marginTop: 14 }]}>
@@ -82,16 +89,21 @@ export function BudgetsScreen({ moves, limits, onSaveLimit, onApplyLimits, onEdi
         );
       })}
 
+      <Pressable accessibilityRole="button" style={s.outlineBtn} onPress={() => onEdit(null)}><Text style={[s.panelTitle, { fontSize: 15 }]}>+ Crear presupuesto</Text></Pressable>
+
       {isCurrent && suggestions.length > 0 && (
         <View style={[s.dashedCard, { marginTop: 12 }]}>
           <Text style={s.panelTitle}>💡 Sugerencias de presupuesto</Text>
           <Text style={s.smallMuted}>Ponle tope a lo que más gastas. {basis}.</Text>
-          {suggestions.slice(0, 6).map((x) => (
+          {suggestions.slice(0, allSugg ? 6 : 3).map((x) => (
             <Pressable accessibilityRole="button" key={x.cat} style={s.ghostBtn} onPress={() => onSaveLimit(x.cat, x.amount)} accessibilityLabel={'Crear presupuesto de ' + x.cat}>
               <Text style={[s.linkSm, { fontSize: 14, fontWeight: '600' }]} numberOfLines={1}>{icon(x.cat)} {x.cat}: crear presupuesto de {money(x.amount)}</Text>
               <Text style={s.rowSub}>{sugg.months === 0 ? 'Llevas ' + money(Math.round(x.avg)) + ' este mes' : 'Gastas en promedio ' + money(Math.round(x.avg)) + '/mes'}</Text>
             </Pressable>
           ))}
+          {!allSugg && suggestions.length > 3 && (
+            <Pressable accessibilityRole="button" onPress={() => setAllSugg(true)} hitSlop={8}><Text style={s.linkSm}>Ver {Math.min(suggestions.length, 6) - 3} más</Text></Pressable>
+          )}
           {suggestions.length > 1 && (
             <Pressable accessibilityRole="button" style={[s.button, { marginTop: 4 }]} onPress={() => onApplyLimits(Object.fromEntries(suggestions.slice(0, 6).map((x) => [x.cat, x.amount])))}>
               <Text style={s.buttonText}>✓ Crear los {Math.min(suggestions.length, 6)} presupuestos</Text>
@@ -99,8 +111,6 @@ export function BudgetsScreen({ moves, limits, onSaveLimit, onApplyLimits, onEdi
           )}
         </View>
       )}
-
-      <Pressable accessibilityRole="button" style={s.outlineBtn} onPress={() => onEdit(null)}><Text style={[s.panelTitle, { fontSize: 15 }]}>+ Crear presupuesto</Text></Pressable>
     </>
   );
 }

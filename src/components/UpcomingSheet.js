@@ -24,7 +24,7 @@ export function UpcomingSheet({ visible, items, hide, onClose }) {
                     <Text style={s.body} numberOfLines={1}>{u.m.note || u.m.cat}</Text>
                     <Text style={[s.caption, { paddingHorizontal: 0 }]}>{u.d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' })}</Text>
                   </View>
-                  <Text style={[s.body, { color: C.red }]}>{hide ? '$•••' : '-' + money(u.m.amount, true)}</Text>
+                  <Text style={[s.body, { color: C.red }]}>{hide ? '$•••' : '-' + money(Math.round(u.m.amount))}</Text>
                 </View>
               );
             })}
@@ -32,7 +32,7 @@ export function UpcomingSheet({ visible, items, hide, onClose }) {
           {items.length > 0 && (
             <View style={[s.row, s.sep, { paddingHorizontal: 0, justifyContent: 'space-between' }]}>
               <Text style={s.body}>Total por pagar</Text>
-              <Text style={[s.body, { fontWeight: '600' }]}>{hide ? '$•••' : money(total, true)}</Text>
+              <Text style={[s.body, { fontWeight: '600' }]}>{hide ? '$•••' : money(Math.round(total))}</Text>
             </View>
           )}
           <Pressable accessibilityRole="button" style={s.button} onPress={onClose}><Text style={s.buttonText}>Listo</Text></Pressable>

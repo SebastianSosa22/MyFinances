@@ -5,7 +5,7 @@ import { MONTH } from '../components/MonthNav';
 import { DeltaChip, MonthSwitch, Panel, ScreenHeader, Segmented, Tile } from '../components/ui';
 import { BUCKETS, CATS } from '../constants/budget';
 import { daysIn, endOfDay, startOfMonth } from '../lib/dates';
-import { bucketOf, calendarDays, isActive, isRecurring, moveTitle, report } from '../lib/finance';
+import { asExp, bucketOf, calendarDays, isActive, isRecurring, moveTitle, occurrences, report } from '../lib/finance';
 import { accountsSummary } from '../lib/accounts';
 import { isoLocal, money, shortDate } from '../lib/format';
 import { KEPT, balanceSummary, keptOf, outflowOf, pendingBills } from '../lib/summary';
@@ -46,6 +46,13 @@ function monthData(moves, month, now) {
   };
 }
 
+// Ingresos recurrentes (nómina...) que aún faltan por llegar desde mañana hasta el fin del mes
+function pendingIncome(moves, now, last) {
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  if (tomorrow > last) return 0;
+  return moves.filter((m) => m.kind === 'income' && isRecurring(m)).reduce((a, m) => a + m.amount * occurrences(asExp(m), tomorrow, last), 0);
+}
+
 export function AnalysisScreen({ moves, accounts = [], transfers = [], hide, onAdd, onSeeDay, onSeeMoves, onSeeAccounts }) {
   const now = new Date();
   const [view, setView] = useState('expense');
@@ -54,7 +61,14 @@ export function AnalysisScreen({ moves, accounts = [], transfers = [], hide, onA
   const first = useMemo(() => moves.reduce((a, m) => Math.min(a, new Date(m.occurred_at).getTime()), Infinity), [moves]);
   const oldest = startOfMonth(Number.isFinite(first) && first < now.getTime() ? new Date(first) : now);
   const cur = useMemo(() => monthData(moves, month, new Date()), [moves, month]);
-  const prev = useMemo(() => monthData(moves, new Date(month.getFullYear(), month.getMonth() - 1, 1), new Date()), [moves, month]);
+  // Mes en curso: se compara contra los mismos días del mes anterior (1–5 nov contra 1–5 oct), no contra el mes completo
+  const prev = useMemo(() => {
+    const pm = new Date(month.getFullYear(), month.getMonth() - 1, 1);
+    const t = new Date();
+    const sameMonth = month.getFullYear() === t.getFullYear() && month.getMonth() === t.getMonth();
+    const cut = sameMonth ? endOfDay(new Date(pm.getFullYear(), pm.getMonth(), Math.min(t.getDate(), daysIn(pm.getFullYear(), pm.getMonth())))) : t;
+    return monthData(moves, pm, cut);
+  }, [moves, month]);
   const isExp = view === 'expense';
   const total = isExp ? cur.spent : cur.income;
   const count = isExp ? cur.expCount : cur.incCount;
@@ -64,11 +78,14 @@ export function AnalysisScreen({ moves, accounts = [], transfers = [], hide, onA
   const dayKey = now.toDateString();
   const acc = useMemo(() => accountsSummary(accounts, moves, transfers), [accounts, moves, transfers, dayKey]);
   const all = useMemo(() => balanceSummary(moves), [moves, dayKey]);
+  const ahead = useMemo(() => (isCurrent ? { inc: pendingIncome(moves, now, cur.last), out: pendingBills(moves, now, cur.last) } : { inc: 0, out: 0 }), [moves, isCurrent, cur.last, dayKey]);
+  const pm = new Date(month.getFullYear(), month.getMonth() - 1, 1);
+  const prevLabel = 'vs. ' + (isCurrent ? '1–' + Math.min(now.getDate(), daysIn(pm.getFullYear(), pm.getMonth())) + ' ' : '') + MONTH(pm).slice(0, 3).toLowerCase();
 
   return (
     <>
       <ScreenHeader title="Análisis" right={<MonthSwitch month={month} onMonth={pickMonth} min={oldest} max={startOfMonth(now)} />} />
-      {moves.length > 0 && <BalancePanel data={cur} prev={prev} month={month} isCurrent={isCurrent} acc={acc} all={all} hide={hide} onSeeAccounts={onSeeAccounts} />}
+      {moves.length > 0 && <BalancePanel data={cur} prev={prev} prevLabel={prevLabel} ahead={ahead} month={month} isCurrent={isCurrent} acc={acc} all={all} hide={hide} onSeeAccounts={onSeeAccounts} />}
       <Segmented options={VIEWS} value={view} onChange={(v) => { setView(v); setOpen(null); }} style={{ marginTop: 10 }} />
 
       {cats.length > 0 && <Panel>
@@ -77,7 +94,7 @@ export function AnalysisScreen({ moves, accounts = [], transfers = [], hide, onA
             <Text style={s.smallMuted}>{isExp ? 'Tus gastos día por día' : 'Lo que entró en ' + MONTH(month).toLowerCase()}</Text>
             <Amount value={total} size={28} fit />
           </View>
-          <DeltaChip now={total} prev={isExp ? prev.spent : prev.income} upIsGood={!isExp} label={'vs. ' + MONTH(new Date(month.getFullYear(), month.getMonth() - 1, 1)).slice(0, 3).toLowerCase()} />
+          <DeltaChip now={total} prev={isExp ? prev.spent : prev.income} upIsGood={!isExp} label={prevLabel} />
         </View>
         {isExp ? <DayBars data={cur} month={month} isCurrent={isCurrent} now={now} onSeeDay={onSeeDay} /> : (
           <Text style={s.smallMuted}>{count} {count === 1 ? 'ingreso' : 'ingresos'} este mes</Text>
@@ -111,7 +128,7 @@ export function AnalysisScreen({ moves, accounts = [], transfers = [], hide, onA
               </View>
             );
           })}
-          {isExp && cur.kept > 0 && <Text style={s.smallMuted}>Además apartaste {money(cur.kept, true)} para ahorro o inversión (no cuenta como gasto).</Text>}
+          {isExp && cur.kept > 0 && <Text style={s.smallMuted}>Además apartaste {money(Math.round(cur.kept))} para ahorro o inversión (no cuenta como gasto).</Text>}
         </Panel>
       ) : (
         <Empty month={month} isExp={isExp} prevCats={isExp ? prev.expCats : prev.incCats} prevTotal={isExp ? prev.spent : prev.income} onAdd={onAdd} />
@@ -123,27 +140,30 @@ export function AnalysisScreen({ moves, accounts = [], transfers = [], hide, onA
 }
 
 // Balance del mes (ingresos − gastos − lo apartado) y, abajo, el balance total de tus cuentas
-function BalancePanel({ data, prev, month, isCurrent, acc, all, hide, onSeeAccounts }) {
+function BalancePanel({ data, prev, prevLabel, ahead = { inc: 0, out: 0 }, month, isCurrent, acc, all, hide, onSeeAccounts }) {
   const fmt = (v) => (hide ? HIDDEN : money(Math.round(Math.abs(v))));
   const { income, spent, kept, balance } = data;
   const used = income > 0 ? Math.round(((spent + kept) / income) * 100) : 0;
-  const prevName = MONTH(new Date(month.getFullYear(), month.getMonth() - 1, 1)).toLowerCase();
   const hasAccounts = acc.rows.length > 0;
   const net = hasAccounts ? acc.cash - acc.debt : all.total;
   const sign = (v) => (hide ? '' : v < 0 ? '−' : v > 0 ? '+' : '');
-  const color = (v) => (v < 0 ? C.red : v > 0 ? C.green : C.text);
+  // Mes en curso con nómina por llegar: un balance negativo de mitad de mes no es alarma si lo que falta lo cubre
+  const expected = balance + ahead.inc - ahead.out;
+  const calm = isCurrent && balance < 0 && ahead.inc > 0 && expected >= 0;
+  const color = (v) => (calm ? C.text : v < 0 ? C.red : v > 0 ? C.green : C.text);
   const text = income === 0 && spent + kept === 0
     ? 'Sin movimientos este mes'
-    : income === 0 ? 'Este mes no registraste ingresos'
-      : balance >= 0 ? 'Usaste el ' + used + '% de lo que entró' + (isCurrent ? ' (hasta hoy)' : '')
-        : 'Gastaste ' + fmt(balance) + ' más de lo que entró';
+    : calm ? 'Por ahora salió más de lo que entró, pero aún faltan ingresos por llegar este mes.'
+      : income === 0 ? (isCurrent && ahead.inc > 0 ? 'Aún no llegan tus ingresos de este mes' : 'Este mes no registraste ingresos')
+        : balance >= 0 ? 'Usaste el ' + used + '% de lo que entró' + (isCurrent ? ' (hasta hoy)' : '')
+          : 'Gastaste ' + fmt(balance) + ' más de lo que entró';
   const total = (
     <View style={[s.hintRow, { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 12 }]}>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <Text style={s.tileLabel}>{hasAccounts ? 'Balance total de tus cuentas' : 'Balance total desde que usas la app'}</Text>
+        <Text style={s.tileLabel}>{hasAccounts ? 'Balance total de tus cuentas hoy' : 'Balance total hoy, desde que usas la app'}</Text>
         <Text style={s.tileLabel} numberOfLines={2}>
           {hasAccounts
-            ? 'Disponible ' + fmt(acc.cash) + (acc.debt > 0 ? ' − deuda en tarjetas ' + fmt(acc.debt) : ' · sin deuda')
+            ? 'Dinero en cuentas ' + fmt(acc.cash) + (acc.debt > 0 ? ' − deuda en tarjetas ' + fmt(acc.debt) : ' · sin deuda')
             : 'Lo libre ' + (all.cash < 0 && !hide ? '−' : '') + fmt(all.cash) + (all.saved > 0 ? ' + ahorro ' + fmt(all.saved) : '')}
         </Text>
       </View>
@@ -157,7 +177,7 @@ function BalancePanel({ data, prev, month, isCurrent, acc, all, hide, onSeeAccou
           <Text style={s.smallMuted}>Balance de {MONTH(month).toLowerCase()}</Text>
           <Text style={[s.amount, { fontSize: 30, color: hide ? C.text : color(balance) }]} numberOfLines={1} adjustsFontSizeToFit>{sign(balance)}{fmt(balance)}</Text>
         </View>
-        {!hide && prev.income + prev.spent + prev.kept > 0 && <BalanceDelta diff={balance - prev.balance} label={'vs. ' + prevName.slice(0, 3)} />}
+        {!hide && prev.income + prev.spent + prev.kept > 0 && <BalanceDelta diff={balance - prev.balance} label={prevLabel} />}
       </View>
       <View style={s.tileRow}>
         <Tile label="Ingresos" value={hide ? HIDDEN : '+' + fmt(income)} color={C.green} small={kept > 0} />
@@ -165,9 +185,16 @@ function BalancePanel({ data, prev, month, isCurrent, acc, all, hide, onSeeAccou
         {kept > 0 && <Tile label="Apartaste" value={fmt(kept)} color={C.blue} small />}
       </View>
       {income > 0 && (
-        <View style={s.barBg}><View style={{ width: Math.min(used, 100) + '%', height: 6, borderRadius: 3, backgroundColor: used > 100 ? C.red : used > 90 ? C.orange : C.primary }} /></View>
+        <View style={s.barBg}><View style={{ width: Math.min(used, 100) + '%', height: 6, borderRadius: 3, backgroundColor: calm ? C.orange : used > 100 ? C.red : used > 90 ? C.orange : C.primary }} /></View>
       )}
       <Text style={s.smallMuted}>{text}</Text>
+      {isCurrent && ahead.inc > 0 && !hide && (
+        <Text style={s.smallMuted}>
+          Faltan por llegar <Text style={[s.rowAmount, { fontSize: 13, color: C.green }]}>+{money(Math.round(ahead.inc))}</Text>
+          {ahead.out > 0 ? <> y por pagar <Text style={[s.rowAmount, { fontSize: 13 }]}>−{money(Math.round(ahead.out))}</Text></> : null}
+          . Al cierre del mes quedarías en <Text style={[s.rowAmount, { fontSize: 13, color: expected < 0 ? C.red : C.green }]}>{expected < 0 ? '−' : '+'}{money(Math.round(Math.abs(expected)))}</Text>.
+        </Text>
+      )}
       {onSeeAccounts && hasAccounts ? <Pressable accessibilityRole="button" onPress={onSeeAccounts} accessibilityLabel="Ver tus cuentas">{total}</Pressable> : total}
     </Panel>
   );
@@ -234,7 +261,7 @@ function Empty({ month, isExp, prevCats, prevTotal, onAdd }) {
             {isExp && <Text style={{ fontSize: 22, marginRight: 10 }}>{c ? c.icon : '🧾'}</Text>}
             <Text style={[s.body, { flex: 1 }]} numberOfLines={1}>{g.name}</Text>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[s.body, { fontWeight: '700' }]}>{money(g.total, true)}</Text>
+              <Text style={[s.body, { fontWeight: '700' }]}>{money(Math.round(g.total))}</Text>
               <Text style={s.balanceSub}>{Math.round((g.total / prevTotal) * 100)}%</Text>
             </View>
           </View>

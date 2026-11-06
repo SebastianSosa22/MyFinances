@@ -72,7 +72,12 @@ export function suggestFromNote(moves, text) {
 // Sugerencias por categoría: tu promedio mensual de los últimos 3 meses con datos, + 10% redondeado a $50.
 // Si aún no tienes un mes anterior con gastos (cuenta nueva), usa lo que llevas en el mes en curso.
 // Devuelve { items: [{ cat, avg, amount }] de mayor a menor, months: meses usados (0 = el mes en curso) }.
-export function limitSuggestions(moves, now = new Date()) {
+// Gastos fijos que no se controlan con un tope mensual (se pagan igual cada mes)
+const FIXED_CATS = ['Renta', 'Impuestos', 'Seguros'];
+
+export function limitSuggestions(allMoves, now = new Date()) {
+  // Solo lo variable: los pagos recurrentes (renta, suscripciones, MSI...) no se recortan con un presupuesto
+  const moves = allMoves.filter((m) => m.kind === 'income' || !isRecurring(m));
   const months = [];
   for (let k = 1; k <= 3; k++) {
     const from = new Date(now.getFullYear(), now.getMonth() - k, 1);
@@ -80,7 +85,7 @@ export function limitSuggestions(moves, now = new Date()) {
     if (r.total > 0) months.push(r.byCat);
   }
   const base = months.length ? months : [report(moves, startOfMonth(now), now).byCat];
-  const items = CATS.filter((c) => c.bucket !== 'savings')
+  const items = CATS.filter((c) => c.bucket !== 'savings' && !FIXED_CATS.includes(c.name))
     .map((c) => ({ cat: c.name, avg: base.reduce((a, byCat) => a + (byCat[c.name] || 0), 0) / base.length }))
     .filter((x) => x.avg > 0)
     .map((x) => ({ ...x, amount: Math.max(Math.ceil((x.avg * 1.1) / 50) * 50, 50) }))

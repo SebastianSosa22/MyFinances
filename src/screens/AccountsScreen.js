@@ -132,7 +132,7 @@ export function AccountsScreen({ accounts, moves, transfers, hide, onBack, onNew
         <>
           <View style={[s.tileRow, { gap: 12, marginTop: 14 }]}>
             <View style={s.statCard}>
-              <Text style={s.tileLabel}>Dinero disponible</Text>
+              <Text style={s.tileLabel}>Dinero en cuentas</Text>
               <Text style={[s.statCardValue, { fontSize: 22 }, sum.cash < 0 && { color: C.red }]} numberOfLines={1}>{fmt(sum.cash)}</Text>
             </View>
             <View style={s.statCard}>

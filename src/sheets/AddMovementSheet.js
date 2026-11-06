@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet, OptionRow } from '../components/BottomSheet';
 import { WheelBand, WheelColumn } from '../components/WheelPicker';
 import { Segmented } from '../components/ui';
-import { BUCKETS, CATS, DAYS, DAY_ORDER } from '../constants/budget';
+import { BUCKETS, CATS, CYCLES, DAYS, DAY_ORDER } from '../constants/budget';
 import { daysIn, midnight } from '../lib/dates';
 import { ACCOUNT_TYPES, accountBalance, isCredit } from '../lib/accounts';
 import { bucketOf, isActive, moveTitle, msiAdvance, msiPending, parseDay } from '../lib/finance';
@@ -194,7 +194,7 @@ function AllCats({ visible, cats, selected, onPick, onClose }) {
 
 // Pantalla para registrar un movimiento nuevo o editar uno existente (edit).
 // Quien la usa le pone un `key` distinto cada vez que se abre, así arranca con los valores de `edit`.
-export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, edit, moves, goals = [], accounts = [], transfers = [] }) {
+export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, edit, moves, goals = [], accounts = [], transfers = [], cycle = 'monthly', payDay = 1 }) {
   const insets = useSafeAreaInsets();
   const now = new Date();
   const startKind = edit ? (edit.kind === 'income' ? 'income' : KEPT.includes(edit.cat) ? 'saving' : 'expense') : 'expense';
@@ -237,7 +237,10 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
     const sel = pool.find((c) => c.name === cat);
     return sel && !top.includes(sel) ? [...top.slice(0, 4), sel] : top;
   }, [moves, isIncome, isSaving, pool, cat]);
-  const left = useMemo(() => periodView(moves || [], 'monthly', new Date()).left, [moves]);
+  // Mismo periodo y misma cifra que "Te queda" en el Inicio (tu semana, quincena o mes de cobro)
+  const left = useMemo(() => periodView(moves || [], cycle, new Date(), payDay).left, [moves, cycle, payDay]);
+  const thisPeriod = (CYCLES[cycle] || CYCLES.monthly).this;
+  const ThisPeriod = thisPeriod.charAt(0).toUpperCase() + thisPeriod.slice(1);
   const suggestion = useMemo(() => (!edit && kind === 'expense' ? suggestFromNote(moves || [], note) : null), [note, edit, kind, moves]);
   const sugCat = suggestion ? CATS.find((c) => c.name === suggestion.cat) : null;
   const activeGoals = goals.filter((g) => (moves || []).filter((m) => m.goal_id === g.id).reduce((a, m) => a + m.amount, 0) < g.target || g.id === goalId);
@@ -359,7 +362,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
               </View>
             )}
             <View style={s.hintRow}>
-              <Text style={s.smallMuted}>{left >= 0 ? 'Este mes te quedan ' : 'Este mes vas '}<Text style={[s.rowAmount, { fontSize: 13 }]}>{money(Math.abs(left), true)}</Text>{left >= 0 ? '' : ' arriba'}</Text>
+              <Text style={s.smallMuted}>{ThisPeriod + (left >= 0 ? ' te quedan ' : ' ya gastaste ')}<Text style={[s.rowAmount, { fontSize: 13, color: left >= 0 ? C.text : C.red }]}>{money(Math.round(Math.abs(left)))}</Text>{left >= 0 ? '' : ' más de lo que entró'}</Text>
             </View>
           </View>
 

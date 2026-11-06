@@ -40,6 +40,7 @@ import { SideDrawer } from './components/SideDrawer';
 import { Tour, TourTargets } from './components/Tour';
 import { UpcomingSheet } from './components/UpcomingSheet';
 import { useHideAmounts } from './hooks/useHideAmounts';
+import { useEmergencyMonths } from './hooks/useEmergencyMonths';
 import { upcomingPayments } from './lib/summary';
 import { cardAlerts } from './lib/accounts';
 
@@ -63,6 +64,7 @@ export function AppShell({ session }) {
   const [settingsOpen, setSettingsOpen] = useState(false); // móvil: Ajustes en el panel lateral
   const [movesDay, setMovesDay] = useState(null); // día que abre Movimientos al tocarlo en el calendario del Resumen
   const [hide, toggleHide] = useHideAmounts();
+  const [emMonths, setEmMonths] = useEmergencyMonths();
 
   const data = useFinanceData(session);
   const [rem, setReminders] = useReminders(data.moves, data.setNotice, data.accounts, data.transfers);
@@ -184,14 +186,14 @@ export function AppShell({ session }) {
         {!!data.err && <Text style={[s.hint, { color: C.red, marginBottom: 8 }]}>{data.err}</Text>}
         {!!data.notice && <Pressable accessibilityRole="button" onPress={() => data.setNotice('')}><Text style={[s.hint, { color: C.orange, marginBottom: 8 }]}>{data.notice}</Text></Pressable>}
 
-        {tab === 'home' && <HomeScreen name={firstName(session.user)} moves={moves} accounts={accounts} transfers={transfers} onSeeAccounts={() => setTab('accounts')} limits={limits} settings={settings} loading={!data.loaded} hide={hide} onToggleHide={toggleHide} onSeeAll={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} onSeeHistory={() => setTab('history')} onSeeSavings={() => { setSavingsView('saving'); setTab('savings'); }} headerActions={headerActions} onAdd={openAdd} />}
+        {tab === 'home' && <HomeScreen name={firstName(session.user)} upcomingItems={upcoming} emergencyMonths={emMonths} goals={goals} moves={moves} accounts={accounts} transfers={transfers} onSeeAccounts={() => setTab('accounts')} limits={limits} settings={settings} loading={!data.loaded} hide={hide} onToggleHide={toggleHide} onSeeAll={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} onSeeHistory={() => setTab('history')} onSeeSavings={() => { setSavingsView('saving'); setTab('savings'); }} headerActions={headerActions} onAdd={openAdd} />}
         {tab === 'savings' && (
           <>
             <View style={s.screenHead}><Text style={s.screenTitle}>{savingsView === 'budgets' ? 'Presupuestos' : 'Ahorro y metas'}</Text></View>
-            <Segmented options={{ budgets: { label: 'Presupuestos' }, saving: { label: 'Ahorro' } }} value={savingsView} onChange={setSavingsView} style={{ marginTop: 10 }} />
+            <Segmented options={{ budgets: { label: 'Presupuestos' }, saving: { label: 'Ahorro y metas' } }} value={savingsView} onChange={setSavingsView} style={{ marginTop: 10 }} />
             {savingsView === 'budgets'
               ? <BudgetsScreen moves={moves} limits={limits} onSaveLimit={data.saveLimit} onApplyLimits={data.applyLimits} onEdit={openBudget} />
-              : <SavingScreen moves={moves} goals={goals} onNewGoal={() => setGoalSheet({ open: true, goal: null })}
+              : <SavingScreen moves={moves} goals={goals} emMonths={emMonths} onEmMonths={setEmMonths} onNewGoal={() => setGoalSheet({ open: true, goal: null })}
                 onEditGoal={(goal) => setGoalSheet({ open: true, goal })} onDeleteGoal={data.delGoal} onContribute={setContrib} onEditMove={openEdit} />}
           </>
         )}
@@ -214,7 +216,7 @@ export function AppShell({ session }) {
         </View>
       )}
 
-      <AddMovementSheet key={'add' + addKey} visible={addOpen} edit={editRow} moves={moves} goals={goals} accounts={accounts} transfers={transfers} onClose={closeAdd} onAdd={data.addMove} onUpdate={data.updateMove} onDelete={data.delMove} />
+      <AddMovementSheet key={'add' + addKey} visible={addOpen} edit={editRow} moves={moves} goals={goals} accounts={accounts} transfers={transfers} cycle={settings.cycle} payDay={settings.payDay} onClose={closeAdd} onAdd={data.addMove} onUpdate={data.updateMove} onDelete={data.delMove} />
       <AccountSheet key={'acc' + accountSheet.n} visible={accountSheet.open} account={accountSheet.account} onClose={() => setAccountSheet((x) => ({ ...x, open: false }))} onSave={data.saveAccount} onDelete={data.delAccount} />
       <TransferSheet key={'tr' + transferSheet.n} visible={transferSheet.open} accounts={accounts} moves={moves} transfers={transfers} start={transferSheet.start} edit={transferSheet.edit}
         onClose={() => setTransferSheet((x) => ({ ...x, open: false }))} onSave={data.saveTransfer} onDelete={data.delTransfer} />

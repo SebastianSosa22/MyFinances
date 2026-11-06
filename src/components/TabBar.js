@@ -21,7 +21,8 @@ export function TabBar({ tab, setTab, onAdd }) {
     return (
       <View key={item.key} style={s.tabSlot}>
         <Pressable accessibilityRole="button" ref={refs[item.key]} style={[s.tab, on && s.tabOn]} onPress={() => setTab(item.key)} accessibilityLabel={item.label} accessibilityState={{ selected: on }}>
-          <Icon name={item.glyph} size={22} color={on ? C.link : C.muted} />
+          <Icon name={item.glyph} size={20} color={on ? C.link : C.muted} />
+          <Text style={[s.tabLabel, on && { color: C.link }]} numberOfLines={1}>{item.label}</Text>
         </Pressable>
       </View>
     );

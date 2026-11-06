@@ -3,6 +3,7 @@ import { endOfDay, midnight, startOfMonth } from './dates';
 import { report } from './finance';
 import { monthlyIncomeEstimate } from './insights';
 import { monthlyNeedsAverage } from './summary';
+import { EMERGENCY_DEFAULT, coverText } from './emergency';
 
 // Salud financiera: una calificación de 0 a 100 hecha con tus propios datos, en el dispositivo.
 // Cada factor da de 0 a 1 y pesa lo que dice `w`. Si no hay datos para un factor (sin límites, sin tarjetas...),
@@ -17,13 +18,7 @@ export const HEALTH_LEVELS = [
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const pct = (x) => Math.round(x * 100);
-const EMERGENCY_MONTHS = 3;
-const monthsText = (m) => {
-  const v = m >= 10 ? Math.round(m) : Math.round(m * 10) / 10;
-  return v === 1 ? '1 mes' : v + ' meses';
-};
-
-export function financialHealth(moves, { limits = {}, acc = null, saved = 0, now = new Date() } = {}) {
+export function financialHealth(moves, { limits = {}, acc = null, saved = 0, emergencyMonths = EMERGENCY_DEFAULT, now = new Date() } = {}) {
   // Ventana de 30 días: no se desploma el día 1 del mes ni depende de si cobras semanal o mensual
   const from = midnight(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29));
   const r = report(moves, from, endOfDay(now));
@@ -70,14 +65,14 @@ export function financialHealth(moves, { limits = {}, acc = null, saved = 0, now
     });
   }
 
-  // 4) Fondo de emergencia: meses de Necesidades que cubre tu caja de ahorro (meta: 3)
+  // 4) Fondo de emergencia: meses de Necesidades que cubre lo ahorrado sin meta (meta: la que elijas en Ahorro, 3 de inicio)
   const needs = monthlyNeedsAverage(moves, now);
   if (needs > 0) {
     const months = Math.max(saved, 0) / needs;
     factors.push({
-      key: 'emergency', label: 'Fondo de emergencia', w: 15, score: clamp01(months / EMERGENCY_MONTHS),
-      detail: 'Tus ahorros alcanzan para ' + monthsText(months) + ' de gastos básicos (meta: ' + EMERGENCY_MONTHS + ' meses)',
-      tip: months < EMERGENCY_MONTHS ? 'Junta ' + EMERGENCY_MONTHS + ' meses de necesidades en tu caja de ahorro.' : null,
+      key: 'emergency', label: 'Fondo de emergencia', w: 15, score: clamp01(months / emergencyMonths),
+      detail: (months > 0 ? 'Tu fondo alcanza para ' + coverText(months) + ' de gastos básicos' : 'Aún no tienes ahorro sin meta para emergencias') + ' (meta: ' + emergencyMonths + ' meses)',
+      tip: months < emergencyMonths ? 'Junta ' + emergencyMonths + ' meses de gastos básicos en tu fondo de emergencia.' : null,
     });
   }
 
