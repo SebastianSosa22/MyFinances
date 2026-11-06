@@ -34,8 +34,8 @@
          SplashScreen.js la desvanece cuando la app está lista. */
       #boot { position: fixed; inset: 0; z-index: 9999; background: #0B1220; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity .5s ease; }
       #boot.hide { opacity: 0; pointer-events: none; }
-      #boot .logo { width: 104px; height: 104px; border-radius: 26px; background: linear-gradient(#1E2A40, #121A29); display: flex; align-items: center; justify-content: center; }
-      #boot svg { width: 82px; height: 82px; overflow: visible; }
+      #boot .logo { width: 104px; height: 104px; display: flex; align-items: center; justify-content: center; }
+      #boot svg { width: 104px; height: 104px; overflow: visible; }
       #boot .arc { fill: none; stroke-width: 7; stroke-linecap: round; stroke-dashoffset: var(--len); animation: boot-draw .55s cubic-bezier(.6,0,.2,1) forwards; }
       #boot .s2 { animation-delay: .5s; } #boot .s3 { animation-delay: .9s; }
       #boot .coin { transform-origin: 35px 35px; transform: scale(0); animation: boot-pop .45s cubic-bezier(.3,1.6,.5,1) 1.3s forwards; }
