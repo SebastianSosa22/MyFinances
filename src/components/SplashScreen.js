@@ -1,71 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
-import { C } from '../theme/colors';
-import { FONT } from '../theme/styles';
+import { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 
-const NATIVE = Platform.OS !== 'web';
-const LOGO = Platform.OS === 'web' ? { uri: '/icon-192.png' } : require('../../assets/icon.png');
-const SIZE = 96;
-const MIN_MS = 2800; // tiempo mínimo en pantalla para que la animación se alcance a ver
-const BEAT = 800;
+const MIN_MS = 2800; // tiempo mínimo desde que se abre la app, para que la animación se vea completa
+const FADE_MS = 500;
 
-// Pantalla de carga al abrir la app: el logo entra, "respira" con un aro que se expande
-// y, cuando la app está lista (ready) y pasó el tiempo mínimo, todo se desvanece.
-// Repite la animación de la pantalla de carga de public/index.html para que el cambio no se note.
+// La pantalla de carga con el logo animado está en public/index.html (#boot), fuera de la app de React,
+// así la animación arranca en cuanto abre la página y no se reinicia cuando carga el código.
+// Este componente solo decide cuándo quitarla: cuando la app está lista (ready) y pasó el tiempo mínimo.
 export function SplashScreen({ ready, onDone }) {
-  const [enter] = useState(() => new Animated.Value(0));
-  const [beat] = useState(() => new Animated.Value(0));
-  const [ring] = useState(() => new Animated.Value(0));
-  const [out] = useState(() => new Animated.Value(1));
-  const [minDone, setMinDone] = useState(false);
-
+  const done = useRef(onDone);
+  useEffect(() => { done.current = onDone; }, [onDone]);
   useEffect(() => {
-    Animated.timing(enter, { toValue: 1, duration: 600, easing: Easing.out(Easing.back(1.6)), useNativeDriver: NATIVE }).start();
-    const loop = Animated.loop(Animated.parallel([
-      Animated.sequence([
-        Animated.timing(beat, { toValue: 1, duration: BEAT, easing: Easing.inOut(Easing.sin), useNativeDriver: NATIVE }),
-        Animated.timing(beat, { toValue: 0, duration: BEAT, easing: Easing.inOut(Easing.sin), useNativeDriver: NATIVE }),
-      ]),
-      Animated.sequence([
-        Animated.timing(ring, { toValue: 1, duration: BEAT * 2, easing: Easing.out(Easing.quad), useNativeDriver: NATIVE }),
-        Animated.timing(ring, { toValue: 0, duration: 0, useNativeDriver: NATIVE }),
-      ]),
-    ]));
-    const t = setTimeout(() => loop.start(), 600);
-    const m = setTimeout(() => setMinDone(true), MIN_MS);
-    return () => { clearTimeout(t); clearTimeout(m); loop.stop(); };
-  }, [enter, beat, ring]);
-
-  useEffect(() => {
-    if (!ready || !minDone) return;
-    Animated.timing(out, { toValue: 0, duration: 500, easing: Easing.in(Easing.cubic), useNativeDriver: NATIVE }).start(() => onDone && onDone());
-  }, [ready, minDone, out, onDone]);
-
-  const logoScale = Animated.multiply(
-    enter.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }),
-    Animated.add(beat.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }), out.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0] })),
-  );
-
-  return (
-    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, st.wrap, { opacity: out }]}>
-      <View style={st.logo}>
-        <Animated.View style={[st.ring, {
-          opacity: ring.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0] }),
-          transform: [{ scale: ring.interpolate({ inputRange: [0, 1], outputRange: [1, 1.7] }) }],
-        }]} />
-        <Animated.Image source={LOGO} style={[st.img, { opacity: enter, transform: [{ scale: logoScale }] }]} />
-      </View>
-      <Animated.View style={{ opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
-        <Text style={st.name}>Finanzas</Text>
-      </Animated.View>
-    </Animated.View>
-  );
+    if (!ready) return undefined;
+    const el = Platform.OS === 'web' && typeof document !== 'undefined' ? document.getElementById('boot') : null;
+    if (!el) { done.current(); return undefined; }
+    const since = typeof performance !== 'undefined' ? performance.now() : MIN_MS;
+    let fade;
+    const hold = setTimeout(() => {
+      el.classList.add('hide');
+      fade = setTimeout(() => { el.remove(); done.current(); }, FADE_MS);
+    }, Math.max(0, MIN_MS - since));
+    return () => { clearTimeout(hold); clearTimeout(fade); };
+  }, [ready]);
+  return null;
 }
-
-const st = StyleSheet.create({
-  wrap: { backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', zIndex: 100 },
-  logo: { width: SIZE, height: SIZE },
-  ring: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 26, borderWidth: 2, borderColor: C.primary },
-  img: { width: SIZE, height: SIZE, borderRadius: 22 },
-  name: { fontFamily: FONT, fontSize: 22, fontWeight: '700', letterSpacing: -0.4, color: C.text, marginTop: 28 },
-});
