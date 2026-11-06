@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Amount } from '../components/HomeCards';
+import { Amount, HIDDEN } from '../components/HomeCards';
 import { MONTH } from '../components/MonthNav';
 import { DeltaChip, MonthSwitch, Panel, ScreenHeader, Segmented, Tile } from '../components/ui';
 import { BUCKETS, CATS } from '../constants/budget';
 import { daysIn, endOfDay, startOfMonth } from '../lib/dates';
 import { bucketOf, calendarDays, isActive, isRecurring, moveTitle, report } from '../lib/finance';
+import { accountsSummary } from '../lib/accounts';
 import { isoLocal, money, shortDate } from '../lib/format';
-import { KEPT, keptOf, outflowOf, pendingBills } from '../lib/summary';
+import { KEPT, balanceSummary, keptOf, outflowOf, pendingBills } from '../lib/summary';
 import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
@@ -33,9 +34,11 @@ function monthData(moves, month, now) {
     const d = Number(key.slice(8, 10));
     if (x.exp > 0 && new Date(month.getFullYear(), month.getMonth(), d) <= to) byDay[d] = x.exp;
   });
+  const spent = outflowOf(r), kept = keptOf(r.byCat);
   return {
     from, last, to, r,
-    spent: outflowOf(r), kept: keptOf(r.byCat), income: r.income,
+    spent, kept, income: r.income,
+    balance: r.income - spent - kept, // lo que te quedó libre en el mes
     expCats: group(expRows, (m) => m.cat || 'Sin categoría'),
     incCats: group(incRows, (m) => moveTitle(m)),
     expCount: expRows.length, incCount: incRows.length,
@@ -43,7 +46,7 @@ function monthData(moves, month, now) {
   };
 }
 
-export function AnalysisScreen({ moves, onAdd, onSeeDay, onSeeMoves }) {
+export function AnalysisScreen({ moves, accounts = [], transfers = [], hide, onAdd, onSeeDay, onSeeMoves, onSeeAccounts }) {
   const now = new Date();
   const [view, setView] = useState('expense');
   const [month, setMonth] = useState(() => startOfMonth(now));
@@ -58,10 +61,14 @@ export function AnalysisScreen({ moves, onAdd, onSeeDay, onSeeMoves }) {
   const cats = isExp ? cur.expCats : cur.incCats;
   const isCurrent = month.getFullYear() === now.getFullYear() && month.getMonth() === now.getMonth();
   const pickMonth = (d) => { setMonth(d); setOpen(null); };
+  const dayKey = now.toDateString();
+  const acc = useMemo(() => accountsSummary(accounts, moves, transfers), [accounts, moves, transfers, dayKey]);
+  const all = useMemo(() => balanceSummary(moves), [moves, dayKey]);
 
   return (
     <>
       <ScreenHeader title="Análisis" right={<MonthSwitch month={month} onMonth={pickMonth} min={oldest} max={startOfMonth(now)} />} />
+      {moves.length > 0 && <BalancePanel data={cur} prev={prev} month={month} isCurrent={isCurrent} acc={acc} all={all} hide={hide} onSeeAccounts={onSeeAccounts} />}
       <Segmented options={VIEWS} value={view} onChange={(v) => { setView(v); setOpen(null); }} style={{ marginTop: 10 }} />
 
       {cats.length > 0 && <Panel>
@@ -112,6 +119,70 @@ export function AnalysisScreen({ moves, onAdd, onSeeDay, onSeeMoves }) {
 
       {isExp && cats.length > 0 && <Details moves={moves} data={cur} isCurrent={isCurrent} now={now} onSeeMoves={onSeeMoves} />}
     </>
+  );
+}
+
+// Balance del mes (ingresos − gastos − lo apartado) y, abajo, el balance total de tus cuentas
+function BalancePanel({ data, prev, month, isCurrent, acc, all, hide, onSeeAccounts }) {
+  const fmt = (v) => (hide ? HIDDEN : money(Math.round(Math.abs(v))));
+  const { income, spent, kept, balance } = data;
+  const used = income > 0 ? Math.round(((spent + kept) / income) * 100) : 0;
+  const prevName = MONTH(new Date(month.getFullYear(), month.getMonth() - 1, 1)).toLowerCase();
+  const hasAccounts = acc.rows.length > 0;
+  const net = hasAccounts ? acc.cash - acc.debt : all.total;
+  const sign = (v) => (hide ? '' : v < 0 ? '−' : v > 0 ? '+' : '');
+  const color = (v) => (v < 0 ? C.red : v > 0 ? C.green : C.text);
+  const text = income === 0 && spent + kept === 0
+    ? 'Sin movimientos este mes'
+    : income === 0 ? 'Este mes no registraste ingresos'
+      : balance >= 0 ? 'Usaste el ' + used + '% de lo que entró' + (isCurrent ? ' (hasta hoy)' : '')
+        : 'Gastaste ' + fmt(balance) + ' más de lo que entró';
+  const total = (
+    <View style={[s.hintRow, { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 12 }]}>
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text style={s.tileLabel}>{hasAccounts ? 'Balance total de tus cuentas' : 'Balance total desde que usas la app'}</Text>
+        <Text style={s.tileLabel} numberOfLines={2}>
+          {hasAccounts
+            ? 'Disponible ' + fmt(acc.cash) + (acc.debt > 0 ? ' − deuda en tarjetas ' + fmt(acc.debt) : ' · sin deuda')
+            : 'Lo libre ' + (all.cash < 0 && !hide ? '−' : '') + fmt(all.cash) + (all.saved > 0 ? ' + ahorro ' + fmt(all.saved) : '')}
+        </Text>
+      </View>
+      <Text style={[s.rowAmount, { fontSize: 18, color: hide ? C.text : net < 0 ? C.red : C.text }]} numberOfLines={1}>{(net < 0 && !hide ? '−' : '') + fmt(net)}</Text>
+    </View>
+  );
+  return (
+    <Panel style={{ marginTop: 10 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <Text style={s.smallMuted}>Balance de {MONTH(month).toLowerCase()}</Text>
+          <Text style={[s.amount, { fontSize: 30, color: hide ? C.text : color(balance) }]} numberOfLines={1} adjustsFontSizeToFit>{sign(balance)}{fmt(balance)}</Text>
+        </View>
+        {!hide && prev.income + prev.spent + prev.kept > 0 && <BalanceDelta diff={balance - prev.balance} label={'vs. ' + prevName.slice(0, 3)} />}
+      </View>
+      <View style={s.tileRow}>
+        <Tile label="Ingresos" value={hide ? HIDDEN : '+' + fmt(income)} color={C.green} small={kept > 0} />
+        <Tile label="Gastos" value={hide ? HIDDEN : '−' + fmt(spent)} small={kept > 0} />
+        {kept > 0 && <Tile label="Apartaste" value={fmt(kept)} color={C.blue} small />}
+      </View>
+      {income > 0 && (
+        <View style={s.barBg}><View style={{ width: Math.min(used, 100) + '%', height: 6, borderRadius: 3, backgroundColor: used > 100 ? C.red : used > 90 ? C.orange : C.primary }} /></View>
+      )}
+      <Text style={s.smallMuted}>{text}</Text>
+      {onSeeAccounts && hasAccounts ? <Pressable accessibilityRole="button" onPress={onSeeAccounts} accessibilityLabel="Ver tus cuentas">{total}</Pressable> : total}
+    </Panel>
+  );
+}
+
+// Cambio del balance contra el mes anterior, en pesos (un % sobre un balance chico o negativo confunde)
+function BalanceDelta({ diff, label }) {
+  const d = Math.round(diff), good = d >= 0;
+  return (
+    <View style={s.deltaRow}>
+      <View style={[s.deltaChip, { backgroundColor: good ? C.greenSoft : '#3A1F26' }]}>
+        <Text style={[s.deltaText, { color: good ? C.green : C.red }]}>{d === 0 ? '= $0' : (d > 0 ? '▲ ' : '▼ ') + money(Math.abs(d))}</Text>
+      </View>
+      <Text style={s.smallMuted}>{label}</Text>
+    </View>
   );
 }
 
