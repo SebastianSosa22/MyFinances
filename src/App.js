@@ -8,9 +8,11 @@ import { ResetPasswordScreen } from './screens/ResetPasswordScreen';
 import { s } from './theme/styles';
 import { C } from './theme/colors';
 import { setupPwa } from './lib/pwa';
+import { captureLinks } from './lib/invite';
 import { startAnalytics, stopAnalytics } from './lib/analytics';
 
 setupPwa();
+captureLinks();
 
 export default function App() {
   const [session, setSession] = useState(undefined);

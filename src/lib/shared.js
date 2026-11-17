@@ -69,9 +69,11 @@ export function knownPeople(moves) {
 // Saldos por persona hasta hoy. Si tú pagaste, cada persona te debe su parte de cada vez que no esté saldada;
 // si pagó otra persona, tú le debes tu parte (lo que deban los demás entre ellos no se lleva aquí).
 // Devuelve { people: [{ name, owesMe, iOwe, net, items }], owedToMe, iOwe }. items: [{ m, key, date, amount, dir: 'in'|'out', paid }]
-export function sharedBalances(moves, now = new Date()) {
+// `remote`: gastos de otras personas donde tú apareces (shared_with_me). Si pagó el dueño, le debes tu parte;
+// si pagaste tú, el dueño te debe la suya. Sus items llevan remote: true (se saldan con mark_shared_paid).
+export function sharedBalances(moves, now = new Date(), remote = []) {
   const map = new Map();
-  const get = (name) => { if (!map.has(name)) map.set(name, { name, owesMe: 0, iOwe: 0, items: [] }); return map.get(name); };
+  const get = (name) => { if (!map.has(name)) map.set(name, { name, owesMe: 0, iOwe: 0, items: [], linked: false }); return map.get(name); };
   moves.forEach((m) => {
     if (!isShared(m)) return;
     const dates = dueDates(m, now);
@@ -91,6 +93,29 @@ export function sharedBalances(moves, now = new Date()) {
         const key = keyOf(d), paid = (m.split.mine_paid || []).includes(key);
         if (!paid) who.iOwe += m.amount;
         who.items.push({ m, key, date: d, amount: m.amount, dir: 'out', paid });
+      });
+    }
+  });
+  remote.forEach((r) => {
+    const sp = r.split;
+    if (!sp || !Array.isArray(sp.people)) return;
+    const m = { ...r, kind: 'expense', amount: Number(r.amount) };
+    const dates = dueDates(m, now);
+    const who = get(r.owner_name);
+    who.linked = true;
+    if (iPaid(sp)) {
+      const me = sp.people.find((p) => p.name === r.my_name);
+      if (!me || !(me.share > 0)) return;
+      dates.forEach((d) => {
+        const key = keyOf(d), paid = (me.paid || []).includes(key);
+        if (!paid) who.iOwe += me.share;
+        who.items.push({ m, key, date: d, amount: me.share, dir: 'out', paid, remote: true });
+      });
+    } else if (sp.payer === r.my_name && m.amount > 0) {
+      dates.forEach((d) => {
+        const key = keyOf(d), paid = (sp.mine_paid || []).includes(key);
+        if (!paid) who.owesMe += m.amount;
+        who.items.push({ m, key, date: d, amount: m.amount, dir: 'in', paid, remote: true });
       });
     }
   });

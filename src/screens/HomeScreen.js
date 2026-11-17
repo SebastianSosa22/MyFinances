@@ -13,7 +13,7 @@ import { balanceSummary, homeSummary, outflowOf, periodView } from '../lib/summa
 import { s } from '../theme/styles';
 
 // Inicio (diseño "Bóveda nocturna"): encabezado, Disponible, Tu reparto, cuentas y ahorro, y los próximos pagos
-export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAccounts, limits, settings, loading, hide, onToggleHide, onSeeAll, onSeeHistory, onSeeSavings, onSeeShared, onAdd, headerActions }) {
+export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAccounts, limits, settings, loading, hide, onToggleHide, onSeeAll, onSeeHistory, onSeeSavings, onSeeShared, remote = [], onAdd, headerActions }) {
   const wide = useWide();
   const [pick, setPick] = useState(null);
   const period = pick || settings.cycle; // el Inicio abre en TU ciclo de cobro
@@ -25,7 +25,7 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
   const acc = useMemo(() => accountsSummary(accounts, moves, transfers), [accounts, moves, transfers, dayKey]);
   const cards = useMemo(() => cardsDue(accounts, moves, transfers, new Date(), sm.end), [accounts, moves, transfers, sm.end, dayKey]);
   const health = useMemo(() => financialHealth(moves, { limits, acc, saved: balance.saved }), [moves, limits, acc, balance.saved, settings.split, dayKey]);
-  const shared = useMemo(() => sharedBalances(moves), [moves, dayKey]);
+  const shared = useMemo(() => sharedBalances(moves, new Date(), remote), [moves, remote, dayKey]);
   const { start, end, prev, upcoming } = sm;
   const { income } = view;
 
@@ -50,6 +50,8 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
       <MoneyTiles acc={acc} saved={balance.saved} savedNow={view.saved} hide={hide} onAccounts={onSeeAccounts} onSavings={onSeeSavings} />
     </TourTarget>
   );
+  // Cuentas compartidas: también para quien apenas aceptó una invitación y aún no registra nada
+  const sharedCard = (shared.owedToMe > 0 || shared.iOwe > 0) && <SharedCard data={shared} hide={hide} onPress={onSeeShared} />;
   const icon = (u) => { const c = CATS.find((z) => z.name === u.m.cat); return c ? c.icon : '🧾'; };
 
   // Cuenta nueva sin movimientos: en vez de cifras en cero, una bienvenida con el primer paso
@@ -64,6 +66,7 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
           <Pressable accessibilityRole="button" style={[s.button, { marginTop: 4 }]} onPress={onAdd}><Text style={s.buttonText}>+ Registrar mi ingreso</Text></Pressable>
         </Panel>
         {tiles}
+        {sharedCard}
       </>
     );
   }
@@ -76,7 +79,7 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
         <View style={wide ? s.col : null}>
           {hero}
           {tiles}
-          {(shared.owedToMe > 0 || shared.iOwe > 0) && <SharedCard data={shared} hide={hide} onPress={onSeeShared} />}
+          {sharedCard}
         </View>
         <View style={wide ? s.col : null}>
           {budget}

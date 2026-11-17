@@ -14,6 +14,9 @@ import { MovesScreen } from './screens/MovesScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { AddMovementSheet } from './sheets/AddMovementSheet';
 import { SharedSheet } from './sheets/SharedSheet';
+import { InviteSheet } from './sheets/InviteSheet';
+import { useSharedNetwork } from './hooks/useSharedNetwork';
+import { takeOpenShared } from './lib/invite';
 import { AccountSheet } from './sheets/AccountSheet';
 import { AdjustSheet, TransferSheet } from './sheets/TransferSheet';
 import { AccountsScreen } from './screens/AccountsScreen';
@@ -52,7 +55,7 @@ export function AppShell({ session }) {
   const [savingsView, setSavingsView] = useState('budgets'); // dentro de Presupuestos: 'budgets' o 'saving' (ahorro y metas)
   const [budgetSheet, setBudgetSheet] = useState({ open: false, edit: null, n: 0 });
   const [addOpen, setAddOpen] = useState(false);
-  const [sharedOpen, setSharedOpen] = useState(false); // Cuentas compartidas (desde la tarjeta del Inicio)
+  const [sharedOpen, setSharedOpen] = useState(takeOpenShared); // Cuentas compartidas (tarjeta del Inicio o aviso push)
   const [addKey, setAddKey] = useState(0); // se cambia al abrir para que la hoja arranque limpia (o con el movimiento a editar)
   const [editRow, setEditRow] = useState(null);
   const [goalSheet, setGoalSheet] = useState({ open: false, goal: null });
@@ -67,6 +70,7 @@ export function AppShell({ session }) {
   const [hide, toggleHide] = useHideAmounts();
 
   const data = useFinanceData(session);
+  const net = useSharedNetwork(session); // gastos compartidos con otros usuarios de la app
   const [rem, setReminders] = useReminders(data.moves, data.setNotice, data.accounts, data.transfers);
   const [settings, saveSettings, settingsLoaded] = useUserSettings(session);
   const push = usePush(rem);
@@ -186,7 +190,7 @@ export function AppShell({ session }) {
         {!!data.err && <Text style={[s.hint, { color: C.red, marginBottom: 8 }]}>{data.err}</Text>}
         {!!data.notice && <Pressable accessibilityRole="button" onPress={() => data.setNotice('')}><Text style={[s.hint, { color: C.orange, marginBottom: 8 }]}>{data.notice}</Text></Pressable>}
 
-        {tab === 'home' && <HomeScreen name={firstName(session.user)} moves={moves} accounts={accounts} transfers={transfers} onSeeAccounts={() => setTab('accounts')} limits={limits} settings={settings} loading={!data.loaded} hide={hide} onToggleHide={toggleHide} onSeeAll={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} onSeeHistory={() => setTab('history')} onSeeSavings={() => { setSavingsView('saving'); setTab('savings'); }} onSeeShared={() => setSharedOpen(true)} headerActions={headerActions} onAdd={openAdd} />}
+        {tab === 'home' && <HomeScreen name={firstName(session.user)} moves={moves} accounts={accounts} transfers={transfers} onSeeAccounts={() => setTab('accounts')} limits={limits} settings={settings} loading={!data.loaded} hide={hide} onToggleHide={toggleHide} onSeeAll={() => goTab('moves')} onSeeDay={(day) => { setMovesDay(day); setTab('moves'); }} onSeeHistory={() => setTab('history')} onSeeSavings={() => { setSavingsView('saving'); setTab('savings'); }} onSeeShared={() => setSharedOpen(true)} remote={net.remote} headerActions={headerActions} onAdd={openAdd} />}
         {tab === 'savings' && (
           <>
             <View style={s.screenHead}><Text style={s.screenTitle}>{savingsView === 'budgets' ? 'Presupuestos' : 'Ahorro y metas'}</Text></View>
@@ -216,8 +220,9 @@ export function AppShell({ session }) {
         </View>
       )}
 
-      {sharedOpen && <SharedSheet visible moves={moves} hide={hide} onUpdate={data.updateMove} onClose={() => setSharedOpen(false)} />}
-      <AddMovementSheet key={'add' + addKey} visible={addOpen} edit={editRow} moves={moves} goals={goals} accounts={accounts} transfers={transfers} onClose={closeAdd} onAdd={data.addMove} onUpdate={data.updateMove} onDelete={data.delMove} />
+      {sharedOpen && <SharedSheet visible moves={moves} hide={hide} net={net} onUpdate={data.updateMove} onAddOwn={data.addMove} onClose={() => setSharedOpen(false)} />}
+      <InviteSheet net={net} />
+      <AddMovementSheet linkedNames={net.linkedNames} contactNames={net.contacts.map((c) => c.name)} key={'add' + addKey} visible={addOpen} edit={editRow} moves={moves} goals={goals} accounts={accounts} transfers={transfers} onClose={closeAdd} onAdd={data.addMove} onUpdate={data.updateMove} onDelete={data.delMove} />
       <AccountSheet key={'acc' + accountSheet.n} visible={accountSheet.open} account={accountSheet.account} onClose={() => setAccountSheet((x) => ({ ...x, open: false }))} onSave={data.saveAccount} onDelete={data.delAccount} />
       <TransferSheet key={'tr' + transferSheet.n} visible={transferSheet.open} accounts={accounts} moves={moves} transfers={transfers} start={transferSheet.start} edit={transferSheet.edit}
         onClose={() => setTransferSheet((x) => ({ ...x, open: false }))} onSave={data.saveTransfer} onDelete={data.delTransfer} />
