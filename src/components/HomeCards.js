@@ -153,3 +153,29 @@ export function UpcomingPanel({ items, icons, hide }) {
     </Panel>
   );
 }
+
+// Cuentas compartidas: cuánto te deben y cuánto debes, con las personas con saldo pendiente (máximo 3)
+export function SharedCard({ data, hide, onPress }) {
+  const fmt = (v) => (hide ? HIDDEN : money(v));
+  const rows = data.people.filter((p) => p.owesMe > 0 || p.iOwe > 0);
+  const extra = rows.length - 3;
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={[s.panel, { gap: 10 }]} accessibilityLabel="Ver cuentas compartidas">
+      <View style={s.panelHead}>
+        <Text style={s.panelTitle}>👥 Cuentas compartidas</Text>
+        <Text style={s.linkSm}>Ver todo ›</Text>
+      </View>
+      <View style={s.tileRow}>
+        <Tile label="Te deben" value={fmt(data.owedToMe)} color={C.green} />
+        <Tile label="Debes" value={fmt(data.iOwe)} color={data.iOwe > 0 ? C.orange : undefined} />
+      </View>
+      {rows.slice(0, 3).map((p, i) => (
+        <View key={p.name} style={[{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }, i > 0 && s.sep, i > 0 && { paddingTop: 8 }]}>
+          <Text style={[s.rowTitle, { flex: 1, minWidth: 0 }]} numberOfLines={1}>{p.owesMe >= p.iOwe ? p.name + ' te debe' : 'Le debes a ' + p.name}</Text>
+          <Text style={[s.rowAmount, { color: p.owesMe >= p.iOwe ? C.green : C.orange }]}>{fmt(Math.abs(p.owesMe - p.iOwe) || Math.max(p.owesMe, p.iOwe))}</Text>
+        </View>
+      ))}
+      {extra > 0 && <Text style={s.smallMuted}>y {extra} {extra === 1 ? 'persona' : 'personas'} más</Text>}
+    </Pressable>
+  );
+}

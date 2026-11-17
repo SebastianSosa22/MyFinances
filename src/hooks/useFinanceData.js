@@ -90,7 +90,7 @@ export function useFinanceData(session) {
       const warn = spendWarning(acc, accountBalance(acc, moves, transfers), accountBalance(acc, [temp, ...moves], transfers), (v) => money(v, true));
       if (warn) setNotice((prev) => (prev ? prev + '\n' + warn : warn));
     }
-    track('movement_add', { kind: row.kind, cat: row.cat || null, freq: row.freq || 'once', note: !!row.note, goal: !!row.goal_id });
+    track('movement_add', { kind: row.kind, cat: row.cat || null, freq: row.freq || 'once', note: !!row.note, goal: !!row.goal_id, shared: !!row.split });
     const t0 = Date.now();
     supabase.from('movements').insert(row).select().single().then(({ data, error }) => {
       if (error) { setMoves((prev) => prev.filter((m) => m.id !== temp.id)); setErr('No se pudo guardar: ' + error.message); trackError(error, 'movement_add'); return; }
@@ -102,10 +102,11 @@ export function useFinanceData(session) {
 
   const updateMove = async (id, patch) => {
     if (isTemp(id)) return false;
-    const prev = moves;
-    setMoves(byDateDesc(moves.map((m) => (m.id === id ? { ...m, ...patch } : m))));
+    // Con funciones de actualización: así varios cambios seguidos (p. ej. saldar gastos compartidos) no se pisan
+    const before = moves.find((m) => m.id === id);
+    setMoves((cur) => byDateDesc(cur.map((m) => (m.id === id ? { ...m, ...patch } : m))));
     const { error } = await supabase.from('movements').update(patch).eq('id', id);
-    if (error) { setMoves(prev); setErr('No se pudo guardar: ' + error.message); trackError(error, 'movement_edit'); return false; }
+    if (error) { if (before) setMoves((cur) => byDateDesc(cur.map((m) => (m.id === id ? before : m)))); setErr('No se pudo guardar: ' + error.message); trackError(error, 'movement_edit'); return false; }
     track('movement_edit', { fields: Object.keys(patch).join(',') });
     setErr('');
     return true;

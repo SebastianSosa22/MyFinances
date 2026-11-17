@@ -1,5 +1,6 @@
 import { endOfDay, midnight } from './dates';
 import { asExp, msiPending, occurrences } from './finance';
+import { isShared, sharedAccountOut } from './shared';
 
 // Tipos de cuenta: tarjeta de débito, de crédito y efectivo
 export const ACCOUNT_TYPES = {
@@ -27,8 +28,9 @@ export function accountBalance(a, moves, transfers = [], now = new Date()) {
   let flow = 0, msiLeft = 0;
   moves.forEach((m) => {
     if (m.account_id !== a.id) return;
-    const k = occurrences(asExp(m), from, to);
-    flow += (m.kind === 'income' ? 1 : -1) * m.amount * k;
+    // Gasto compartido: sale el total si tú pagaste (menos lo que ya te regresaron) o tu parte cuando le pagas a quien pagó
+    if (isShared(m)) flow -= sharedAccountOut(m, from, to);
+    else flow += (m.kind === 'income' ? 1 : -1) * m.amount * occurrences(asExp(m), from, to);
     if (isCredit(a)) msiLeft += m.amount * msiPending(m, now).length;
   });
   transfers.forEach((t) => {

@@ -11,6 +11,8 @@ import { bucketOf, isActive, moveTitle, msiAdvance, msiPending, parseDay } from 
 import { commas, isoLocal, money, shortDate } from '../lib/format';
 import { suggestFromNote } from '../lib/insights';
 import { KEPT, periodView } from '../lib/summary';
+import { ME, buildSplit, computeShares, isShared, knownPeople, splitError, withWhom } from '../lib/shared';
+import { SplitSheet, draftFromSplit } from './SplitSheet';
 import { C } from '../theme/colors';
 import { s } from '../theme/styles';
 
@@ -199,7 +201,9 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
   const now = new Date();
   const startKind = edit ? (edit.kind === 'income' ? 'income' : KEPT.includes(edit.cat) ? 'saving' : 'expense') : 'expense';
   const [kind, setKind] = useState(startKind);
-  const [amount, setAmount] = useState(edit ? String(edit.amount) : '');
+  const [amount, setAmount] = useState(edit ? String(isShared(edit) ? edit.split.total : edit.amount) : '');
+  // Gasto compartido: lo elegido en la hoja Dividir gasto ({ names, payer, mode, values }) o null
+  const [split, setSplit] = useState(edit && isShared(edit) ? draftFromSplit(edit) : null);
   const [cat, setCat] = useState(edit && edit.kind === 'expense' ? edit.cat : edit && INCOME_CATS.some((c) => c.name === edit.note) ? edit.note : startKind === 'saving' ? 'Ahorro' : '');
   const [goalId, setGoalId] = useState(edit ? edit.goal_id || null : null);
   const [note, setNote] = useState(edit && !(edit.kind === 'income' && INCOME_CATS.some((c) => c.name === edit.note)) ? edit.note || '' : '');
@@ -216,7 +220,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
     const last = (moves || []).find((m) => m.account_id && accounts.some((a) => a.id === m.account_id && !a.archived));
     return last ? last.account_id : null;
   });
-  const [sheet, setSheet] = useState(null); // 'date' | 'repeat' | 'msi' | 'cats' | 'account' | 'advance'
+  const [sheet, setSheet] = useState(null); // 'date' | 'repeat' | 'msi' | 'cats' | 'account' | 'advance' | 'split'
   const [error, setError] = useState('');
   const [pad, setPad] = useState(false); // teclado numérico: oculto hasta que tocas el monto
   const openPad = () => { Keyboard.dismiss(); setPad(true); };
@@ -245,6 +249,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
   const switchKind = (k) => {
     setKind(k); setError('');
     setCat(k === 'saving' ? 'Ahorro' : ''); setGoalId(null);
+    if (k !== 'expense') setSplit(null);
   };
   // A meses sin intereses solo se puede pagar con tarjeta de crédito
   const payAccounts = accounts.filter((a) => (!a.archived && (!msi || isCredit(a))) || a.id === (edit && edit.account_id));
@@ -264,12 +269,18 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
     : date.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
 
   const n = parseFloat(amount) || 0;
+  // Con división: tu parte de lo escrito (el total). Sin división: todo.
+  const shares = split && kind === 'expense' ? computeShares(n, split.names, split.mode, split.values) : null;
+  const mine = shares ? shares[0].share : n;
+  const known = useMemo(() => knownPeople(moves || []), [moves]);
   const save = async () => {
     if (!(n > 0)) { setError('Escribe un monto mayor a $0.'); openPad(); return; }
     if (kind === 'expense' && !cat) { setError('Elige una categoría.'); return; }
     if (msi && kind === 'expense' && round2(n / msi) < 0.01) { setError('El monto es muy chico para dividirlo en ' + msi + ' meses.'); return; }
+    const splitProblem = shares ? splitError(n, shares, split.mode) : '';
+    if (splitProblem) { setError(splitProblem + ' Toca Dividir gasto para corregirlo.'); return; }
     const day = freq === 'weekly' ? wday : freq === 'monthly' ? mday : null;
-    let common = { amount: n, freq, day, occurred_at: when() };
+    let common = { amount: shares ? mine : n, freq, day, occurred_at: when() };
     // Meses sin intereses: un pago mensual igual, del mes de la compra hasta el último mes
     if (msi && kind === 'expense') {
       const last = new Date(date.getFullYear(), date.getMonth() + msi - 1, 1);
@@ -277,6 +288,8 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
       common = { amount: round2(n / msi), freq: 'monthly', day: date.getDate(), occurred_at: when(), ends_at: isoLocal(end) };
     }
     common.account_id = account ? account.id : null;
+    // Al editar un gasto compartido se conserva lo que ya estaba saldado con cada persona
+    if (kind === 'expense') common.split = shares ? buildSplit({ total: n, mode: split.mode, payer: split.payer, shares, prev: edit && isShared(edit) ? edit.split : null }) : null;
     const goal = goals.find((g) => g.id === goalId);
     const patch = isIncome
       ? { ...common, note: note.trim() || cat || 'Ingreso' }
@@ -301,7 +314,8 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
 
   const [int, dec] = amount.split('.');
   const recurring = freq !== 'once';
-  const saveLabel = !(n > 0) ? 'Escribe un monto' : edit ? 'Guardar cambios' : 'Guardar ' + TABS[kind].label.toLowerCase();
+  const saveLabel = !(n > 0) ? 'Escribe un monto' : edit ? 'Guardar cambios' : 'Guardar ' + TABS[kind].label.toLowerCase() + (shares ? ' · tu parte ' + money(mine) : '');
+  const splitLabel = split ? withWhom({ payer: split.payer, people: split.names.slice(1).map((name) => ({ name })) }).replace(/^con /, 'Con ') + ' · ' + (split.mode === 'equal' ? 'iguales' : split.mode === 'percent' ? 'por %' : 'montos') : 'No';
 
   // Chip de categoría con el punto de color de su parte del presupuesto
   const catChip = (c, on, onPress, dot) => (
@@ -336,6 +350,11 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
               </Text>
             </Pressable>
             <TextInput style={s.noteInput} placeholder={isIncome ? '¿De dónde vino? (opcional)' : '¿En qué fue? (opcional)'} placeholderTextColor="#5D6A80" value={note} onChangeText={setNote} maxLength={80} returnKeyType="done" onFocus={() => setPad(false)} accessibilityLabel="Descripción" />
+            {!!shares && n > 0 && (
+              <View style={[s.pill, { backgroundColor: C.greenSoft, marginTop: 2 }]}>
+                <Text style={[s.pillText, { color: C.green }]}>👥 Tu parte: {money(mine)} · {split.payer === ME ? 'lo demás te lo deben' : 'se la debes a ' + split.payer}</Text>
+              </View>
+            )}
             {!!suggestion && (suggestion.cat !== cat || (suggestion.amount && !amount)) && (
               <Pressable accessibilityRole="button" onPress={() => { setCat(suggestion.cat); setError(''); if (!amount && suggestion.amount) setAmount(String(suggestion.amount)); }} style={[s.catChip, { borderColor: C.link }]}>
                 <Text style={[s.catChipText, { color: C.link }]}>💡 {sugCat ? sugCat.icon : ''} {suggestion.cat}{suggestion.amount ? ' · ' + money(suggestion.amount) : ''}{suggestion.source === 'historial' ? ' (como la última vez)' : ''}</Text>
@@ -390,10 +409,16 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
               <Text style={s.formLabel}>Fecha</Text>
               <Text style={s.formValue} numberOfLines={1}>{recurring || msi ? 'Desde ' + dateLabel.toLowerCase() : dateLabel}{recurring ? ' · ' + repeatDetail : ''} ›</Text>
             </Pressable>
-            {kind === 'expense' && !edit && !recurring && (
+            {kind === 'expense' && !edit && !recurring && !split && (
               <Pressable accessibilityRole="button" style={[s.formRow, s.formSep]} onPress={() => setSheet('msi')}>
                 <Text style={s.formLabel}>Meses sin intereses</Text>
                 <Text style={[s.formValue, msi && { color: C.link }]} numberOfLines={1}>{msi ? msi + ' MSI' + (n > 0 ? ' · ' + money(round2(n / msi), true) + '/mes' : '') : 'No'} ›</Text>
+              </Pressable>
+            )}
+            {kind === 'expense' && !msi && !(edit && pendingMsi > 0) && (
+              <Pressable accessibilityRole="button" style={[s.formRow, s.formSep]} onPress={() => setSheet('split')} accessibilityLabel="Dividir gasto">
+                <Text style={s.formLabel}>Dividir gasto</Text>
+                <Text style={[s.formValue, split && { color: C.link }]} numberOfLines={1}>{splitLabel} ›</Text>
               </Pressable>
             )}
           </View>
@@ -440,7 +465,8 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
       <DateSheet visible={sheet === 'date'} onClose={() => setSheet(null)} date={date} setDate={setDate} />
       <RepeatSheet visible={sheet === 'repeat'} onClose={() => setSheet(null)} freq={freq} setFreq={setFreq} wday={wday} setWday={setWday} mday={mday} setMday={setMday} isIncome={isIncome} />
       {sheet === 'msi' && <MsiSheet visible onClose={() => setSheet(null)} value={msi} amount={n} onApply={applyMsi} />}
-      {sheet === 'advance' && <AdvanceSheet visible onClose={() => setSheet(null)} move={edit} onApply={(k) => { setSheet(null); advance(k); }} />}
+      {sheet === 'split' && <SplitSheet visible total={n} value={split} known={known} onClose={() => setSheet(null)} onApply={(v) => { setSplit(v); setError(''); setSheet(null); }} />}
+      {sheet === 'advance' &&<AdvanceSheet visible onClose={() => setSheet(null)} move={edit} onApply={(k) => { setSheet(null); advance(k); }} />}
     </Modal>
   );
 }
