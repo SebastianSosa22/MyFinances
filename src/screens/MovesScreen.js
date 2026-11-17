@@ -6,6 +6,7 @@ import { SwipeRow } from '../components/SwipeRow';
 import { BUCKETS, CATS, EFREQ } from '../constants/budget';
 import { endOfDay, startOfMonth } from '../lib/dates';
 import { ACCOUNT_TYPES } from '../lib/accounts';
+import { isShared, withWhom } from '../lib/shared';
 import { asExp, bucketOf, isActive, isRecurring, moveTitle, occurrenceDates, parseDay, titleIsCat } from '../lib/finance';
 import { cleanAmount, money, shortDate } from '../lib/format';
 import { KEPT } from '../lib/summary';
@@ -72,6 +73,7 @@ export function MovesScreen({ moves, accounts = [], loading, onDelete, onEdit, i
     if (f.account && (f.account === 'none' ? !!m.account_id : m.account_id !== f.account)) return false;
     if (f.onlySaved && !(m.kind === 'expense' && KEPT.includes(m.cat))) return false;
     if (f.origin === 'recurring' && !isRecurring(m)) return false;
+    if (f.origin === 'shared' && !isShared(m)) return false;
     if (f.origin === 'once' && isRecurring(m)) return false;
     if (minV && m.amount < minV) return false;
     if (maxV && m.amount > maxV) return false;
@@ -104,7 +106,7 @@ export function MovesScreen({ moves, accounts = [], loading, onDelete, onEdit, i
     const ended = isRecurring(m) && !isActive(m, now);
     const color = isInc ? C.green : kept ? '#C9A7FF' : C.text;
     const acc = m.account_id && accounts.find((a) => a.id === m.account_id);
-    const sub = [isInc ? 'Ingreso' : !titleIsCat(m) ? m.cat : b.label, acc ? acc.name : null, !byDate ? shortDate(x.at) : null].filter(Boolean).join(' · ');
+    const sub = [isInc ? 'Ingreso' : !titleIsCat(m) ? m.cat : b.label, isShared(m) ? '👥 ' + withWhom(m.split) : null, acc ? acc.name : null, !byDate ? shortDate(x.at) : null].filter(Boolean).join(' · ');
     const soft = isInc ? SOFT.savings : SOFT[bucketOf(m.cat)] || C.raised;
     return (
       <SwipeRow key={x.key} first={i === 0} flat={!card} onDelete={() => onDelete(m.id)}>
@@ -114,7 +116,10 @@ export function MovesScreen({ moves, accounts = [], loading, onDelete, onEdit, i
             <Text style={s.rowTitle} numberOfLines={1}>{moveTitle(m)}</Text>
             <Text style={s.rowSub} numberOfLines={1}>{sub}{isRecurring(m) && <Text style={{ color: C.link }}>{sub ? ' · ' : ''}↻ {EFREQ[m.freq] || 'Recurrente'}</Text>}</Text>
           </View>
-          <Text style={[s.rowAmount, { color: isInc ? C.green : kept ? color : C.text }]}>{isInc ? '+' : '−'}{money(m.amount)}</Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[s.rowAmount, { color: isInc ? C.green : kept ? color : C.text }]}>{isInc ? '+' : '−'}{money(m.amount)}</Text>
+            {isShared(m) && <Text style={[s.rowSub, { fontSize: 11 }]}>de {money(Number(m.split.total) || m.amount)}</Text>}
+          </View>
         </Pressable>
       </SwipeRow>
     );
@@ -143,8 +148,9 @@ export function MovesScreen({ moves, accounts = [], loading, onDelete, onEdit, i
       </View>
 
       <View style={[s.chipsRow, { marginTop: 4 }]}>
-        {Object.entries(KINDS).map(([k, label]) => <Pill key={k} label={label} on={f.kind === k && f.origin !== 'recurring'} onPress={() => set({ kind: k, origin: 'all', onlySaved: k === 'income' ? false : f.onlySaved })} />)}
+        {Object.entries(KINDS).map(([k, label]) => <Pill key={k} label={label} on={f.kind === k && f.origin !== 'recurring' && f.origin !== 'shared'} onPress={() => set({ kind: k, origin: 'all', onlySaved: k === 'income' ? false : f.onlySaved })} />)}
         <Pill label="Recurrentes" on={f.origin === 'recurring'} onPress={() => set({ origin: f.origin === 'recurring' ? 'all' : 'recurring', kind: 'all' })} />
+        {moves.some(isShared) && <Pill label="👥 Compartidos" on={f.origin === 'shared'} onPress={() => set({ origin: f.origin === 'shared' ? 'all' : 'shared', kind: 'all' })} />}
         {!!dayDate && (
           <Pressable accessibilityRole="button" onPress={() => setDay(null)} style={[s.fChip, s.fChipOn, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
             <Text style={[s.fChipText, s.fChipTextOn]}>{shortDate(dayDate)}</Text><Icon name="x" size={14} color={C.onPrimary} />

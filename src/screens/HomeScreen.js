@@ -1,18 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, ActivityIndicator, Pressable } from 'react-native';
 import { HealthCard } from '../components/HealthCard';
-import { AvailableHero, BudgetCard, HomeHeader, MoneyTiles, UpcomingPanel } from '../components/HomeCards';
+import { AvailableHero, BudgetCard, HomeHeader, MoneyTiles, SharedCard, UpcomingPanel } from '../components/HomeCards';
 import { TourTarget } from '../components/Tour';
 import { Panel, Segmented } from '../components/ui';
 import { CATS, PERIODS } from '../constants/budget';
 import { useWide } from '../hooks/useWide';
 import { accountsSummary, cardsDue } from '../lib/accounts';
 import { financialHealth } from '../lib/health';
+import { sharedBalances } from '../lib/shared';
 import { balanceSummary, homeSummary, outflowOf, periodView } from '../lib/summary';
 import { s } from '../theme/styles';
 
 // Inicio (diseño "Bóveda nocturna"): encabezado, Disponible, Tu reparto, cuentas y ahorro, y los próximos pagos
-export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAccounts, limits, settings, loading, hide, onToggleHide, onSeeAll, onSeeHistory, onSeeSavings, onAdd, headerActions }) {
+export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAccounts, limits, settings, loading, hide, onToggleHide, onSeeAll, onSeeHistory, onSeeSavings, onSeeShared, onAdd, headerActions }) {
   const wide = useWide();
   const [pick, setPick] = useState(null);
   const period = pick || settings.cycle; // el Inicio abre en TU ciclo de cobro
@@ -24,6 +25,7 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
   const acc = useMemo(() => accountsSummary(accounts, moves, transfers), [accounts, moves, transfers, dayKey]);
   const cards = useMemo(() => cardsDue(accounts, moves, transfers, new Date(), sm.end), [accounts, moves, transfers, sm.end, dayKey]);
   const health = useMemo(() => financialHealth(moves, { limits, acc, saved: balance.saved }), [moves, limits, acc, balance.saved, settings.split, dayKey]);
+  const shared = useMemo(() => sharedBalances(moves), [moves, dayKey]);
   const { start, end, prev, upcoming } = sm;
   const { income } = view;
 
@@ -74,6 +76,7 @@ export function HomeScreen({ name, moves, accounts = [], transfers = [], onSeeAc
         <View style={wide ? s.col : null}>
           {hero}
           {tiles}
+          {(shared.owedToMe > 0 || shared.iOwe > 0) && <SharedCard data={shared} hide={hide} onPress={onSeeShared} />}
         </View>
         <View style={wide ? s.col : null}>
           {budget}
