@@ -34,7 +34,7 @@ function defaults(mode, names, total) {
 
 // Hoja "Dividir gasto": con quién, quién pagó y cómo se divide (iguales, porcentaje o montos).
 // value: { names: ['Tú', ...], payer, mode, values } o null. onApply(value) guarda; onApply(null) quita la división.
-export function SplitSheet({ visible, total, value, known = [], onApply, onClose }) {
+export function SplitSheet({ visible, total, value, known = [], linked = [], onApply, onClose }) {
   const [names, setNames] = useState(value ? value.names : [ME]);
   const [payer, setPayer] = useState(value ? value.payer : ME);
   const [mode, setMode] = useState(value ? value.mode : 'equal');
@@ -85,7 +85,7 @@ export function SplitSheet({ visible, total, value, known = [], onApply, onClose
               const on = names.includes(n);
               return (
                 <Pressable accessibilityRole="button" accessibilityState={{ selected: on }} key={n} onPress={() => toggle(n)} style={[s.catChip, on && s.catChipOn]}>
-                  <Text style={[s.catChipText, on && { fontWeight: '600' }]} numberOfLines={1}>{n}</Text>
+                  <Text style={[s.catChipText, on && { fontWeight: '600' }]} numberOfLines={1}>{n}{linked.includes(n) ? ' 🔗' : ''}</Text>
                 </Pressable>
               );
             })}
@@ -100,7 +100,7 @@ export function SplitSheet({ visible, total, value, known = [], onApply, onClose
               <Pressable accessibilityRole="button" onPress={add} style={[s.catChip, s.catChipOn, { height: 44 }]}><Text style={[s.catChipText, { fontWeight: '600' }]}>Agregar</Text></Pressable>
             </View>
           )}
-          {options.length === 0 && !adding && <Text style={s.smallMuted}>Agrega a las personas por su nombre. No necesitan tener la app.</Text>}
+          {!adding && <Text style={s.smallMuted}>{options.length === 0 ? 'Agrega a las personas por su nombre. No necesitan tener la app.' : linked.length > 0 ? '🔗 = usa la app: verá este gasto y le llegará un aviso.' : 'Desde Cuentas compartidas puedes invitarlos a la app para que vean lo que les toca.'}</Text>}
         </View>
 
         {others.length > 0 && (

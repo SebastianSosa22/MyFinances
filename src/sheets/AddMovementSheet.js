@@ -196,7 +196,7 @@ function AllCats({ visible, cats, selected, onPick, onClose }) {
 
 // Pantalla para registrar un movimiento nuevo o editar uno existente (edit).
 // Quien la usa le pone un `key` distinto cada vez que se abre, así arranca con los valores de `edit`.
-export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, edit, moves, goals = [], accounts = [], transfers = [] }) {
+export function AddMovementSheet({ linkedNames = [], contactNames = [], visible, onClose, onAdd, onUpdate, onDelete, edit, moves, goals = [], accounts = [], transfers = [] }) {
   const insets = useSafeAreaInsets();
   const now = new Date();
   const startKind = edit ? (edit.kind === 'income' ? 'income' : KEPT.includes(edit.cat) ? 'saving' : 'expense') : 'expense';
@@ -272,7 +272,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
   // Con división: tu parte de lo escrito (el total). Sin división: todo.
   const shares = split && kind === 'expense' ? computeShares(n, split.names, split.mode, split.values) : null;
   const mine = shares ? shares[0].share : n;
-  const known = useMemo(() => knownPeople(moves || []), [moves]);
+  const known = useMemo(() => [...new Set([...knownPeople(moves || []), ...contactNames])], [moves, contactNames]);
   const save = async () => {
     if (!(n > 0)) { setError('Escribe un monto mayor a $0.'); openPad(); return; }
     if (kind === 'expense' && !cat) { setError('Elige una categoría.'); return; }
@@ -465,7 +465,7 @@ export function AddMovementSheet({ visible, onClose, onAdd, onUpdate, onDelete, 
       <DateSheet visible={sheet === 'date'} onClose={() => setSheet(null)} date={date} setDate={setDate} />
       <RepeatSheet visible={sheet === 'repeat'} onClose={() => setSheet(null)} freq={freq} setFreq={setFreq} wday={wday} setWday={setWday} mday={mday} setMday={setMday} isIncome={isIncome} />
       {sheet === 'msi' && <MsiSheet visible onClose={() => setSheet(null)} value={msi} amount={n} onApply={applyMsi} />}
-      {sheet === 'split' && <SplitSheet visible total={n} value={split} known={known} onClose={() => setSheet(null)} onApply={(v) => { setSplit(v); setError(''); setSheet(null); }} />}
+      {sheet === 'split' && <SplitSheet visible total={n} value={split} known={known} linked={linkedNames} onClose={() => setSheet(null)} onApply={(v) => { setSplit(v); setError(''); setSheet(null); }} />}
       {sheet === 'advance' &&<AdvanceSheet visible onClose={() => setSheet(null)} move={edit} onApply={(k) => { setSheet(null); advance(k); }} />}
     </Modal>
   );
